@@ -8,6 +8,11 @@ Created on Wed Sep 20 14:28:30 2023
 #This module provides utility functions for smoothing 
 #the process of working with the simulator.
 
+import pydynaa
+
+from netsquid.protocols.protocol import Signals
+from netsquid.qubits import qubitapi as qapi
+from netsquid.util.datacollector import DataCollector
 
 def get_data_qubit_indices(node, num_indices):
     """ A convenience function for obtaining the indices of data qubits for a

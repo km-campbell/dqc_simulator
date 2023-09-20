@@ -5,14 +5,12 @@ Created on Tue Apr  4 12:40:42 2023
 @author: kenny
 """
 
-import netsquid as ns
 import pydynaa
 from netsquid.protocols.protocol import Signals, Protocol
 from netsquid.protocols.nodeprotocols import NodeProtocol
 from netsquid.components import instructions as instr
 from netsquid.components.qprogram import QuantumProgram
-from netsquid.util.datacollector import DataCollector
-from netsquid.qubits import qubitapi as qapi
+
 
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 
