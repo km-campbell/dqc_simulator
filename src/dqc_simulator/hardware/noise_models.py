@@ -21,7 +21,7 @@ from netsquid.qubits.dmutil import partialtrace, reorder_dm
 #and also work within that formalism specifically. This means you need 
 #to access the dm itself.
 
-#for implementing dms analytically, the following may be useful:
+#for implementing DMs analytically, the following may be useful:
 import netsquid as ns
 from netsquid.qubits import qubitapi as qapi
 from netsquid.components.qprogram import QuantumProgram

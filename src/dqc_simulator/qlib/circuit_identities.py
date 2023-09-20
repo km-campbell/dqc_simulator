@@ -7,7 +7,7 @@ Created on Tue May  9 15:16:05 2023
 
 from netsquid.components import instructions as instr
 
-from dqc_simulator.hardware.custom_quantum_processors import INSTR_T_DAGGER
+from dqc_simulator.qlib.gates import INSTR_T_DAGGER
 
 
 def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, ctrl_qubit2_index,

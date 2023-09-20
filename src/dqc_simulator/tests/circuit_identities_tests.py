@@ -18,10 +18,11 @@ from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
 
 from dqc_simulator.hardware.dqc_creation import create_dqc_network
 from dqc_simulator.software.dqc_control import (
-    dqcMasterProtocol, get_data_qubit_indices, sort_greedily_by_node_and_time,
+    dqcMasterProtocol, sort_greedily_by_node_and_time,
     EntangleLinkedNodesProtocol)
-from dqc_simulator.qlib.useful_circuit_identities import ( 
+from dqc_simulator.qlib.circuit_identities import ( 
     two_control_ibm_toffoli_decomp)
+from dqc_simulator.util.helper import get_data_qubit_indices
 
 class TestToffoliDecomp(unittest.TestCase):
     def setUp(self):

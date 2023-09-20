@@ -22,14 +22,14 @@ from netsquid.protocols.protocol import Signals
 
 from dqc_simulator.hardware.dqc_creation import (link_2_nodes, 
                                                  create_dqc_network)
-from dqc_simulator.hardware.custom_quantum_processors import (
+from dqc_simulator.hardware.quantum_processors import (
                                                 create_processor,
                                                 INSTR_ARB_GEN)
-from dqc_simulator.qlib.useful_quantum_states import werner_state
+from dqc_simulator.qlib.states import werner_state
+from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.dqc_control import (
                           HandleCommBlockForOneNodeProtocol, 
                           EntangleLinkedNodesProtocol,
-                          sort_greedily_by_node_and_time,
                           dqcMasterProtocol)
 
 

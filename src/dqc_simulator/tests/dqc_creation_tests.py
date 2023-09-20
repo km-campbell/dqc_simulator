@@ -15,14 +15,14 @@ from netsquid.nodes import Node, Network
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
 
-from dqc_simulator.hardware.custom_noise_models import ( 
+from dqc_simulator.hardware.noise_models import ( 
                                                  AnalyticalDepolarisationModel)
-from dqc_simulator.hardware.custom_quantum_processors import (create_processor,
-                                       INSTR_ARB_GEN, INSTR_T_DAGGER, 
-                                       INSTR_CH, INSTR_CT)
+from dqc_simulator.hardware.quantum_processors import create_processor
 from dqc_simulator.hardware.dqc_creation import (link_2_nodes,
                                                  create_dqc_network)
-from dqc_simulator.qlib.useful_quantum_states import werner_state
+from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_T_DAGGER, 
+                                       INSTR_CH, INSTR_CT)
+from dqc_simulator.qlib.states import werner_state
 
 #integrated network tests
 # =============================================================================

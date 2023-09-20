@@ -17,7 +17,7 @@ from netsquid.components.qprogram import QuantumProgram
 from netsquid.nodes import Node, Network
 
 
-from dqc_simulator.hardware.custom_quantum_processors import (
+from dqc_simulator.hardware.quantum_processors import (
     create_qproc_with_analytical_noise_ionQ_aria_durations)
 
 class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
@@ -122,7 +122,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         self.assertAlmostEqual(fidelity, 1.00000, 5)
         
     def test_can_do_ideal_schor_error_correction_circuit(self):
-        from dqc_simulator.qlib.useful_circuit_identities import ( 
+        from dqc_simulator.qlib.circuit_identities import ( 
                                             two_control_ibm_toffoli_decomp)
         from dqc_simulator.software.dqc_control import dqcMasterProtocol 
         network = Network("9_qubit_monolith")

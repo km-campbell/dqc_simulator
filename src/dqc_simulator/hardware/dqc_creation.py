@@ -14,7 +14,7 @@ from netsquid.qubits.state_sampler import StateSampler
 from netsquid.qubits import ketstates as ks
 from netsquid.components.models.delaymodels import FibreDelayModel
 
-from dqc_simulator.hardware.custom_quantum_processors import create_processor
+from dqc_simulator.hardware.quantum_processors import create_processor
 
 
 

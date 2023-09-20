@@ -24,13 +24,11 @@ from netsquid.components.models.qerrormodels import (DepolarNoiseModel,
 from netsquid.components.models.delaymodels import (FibreDelayModel,
                                                     FixedDelayModel)
 
-from dqc_simulator.hardware.custom_noise_models import ( 
+from dqc_simulator.hardware.noise_models import ( 
                                               AnalyticalDepolarisationModel)
-from dqc_simulator.hardware.custom_quantum_processors import (
-                                       INSTR_ARB_GEN, INSTR_CH, INSTR_CT, 
-                                       INSTR_T_DAGGER)
+from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT, 
+                                      INSTR_T_DAGGER, INSTR_IDENTITY)
 
-INSTR_IDENTITY = instr.IGate("I", operator=ns.I)
 
 class TestAnalyticalDepolarisationModelWorksOnGates(unittest.TestCase):
     def test_entangling_gate_with_10_percent_error(self):

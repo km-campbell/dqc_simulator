@@ -9,32 +9,17 @@ import numpy as np
 
 from netsquid.components import instructions as instr
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
-from netsquid.qubits.operators import * 
 from netsquid.components.models.qerrormodels import (DepolarNoiseModel, 
                                                      DephaseNoiseModel)
 from netsquid.components.models.delaymodels import (FibreDelayModel,
                                                     FixedDelayModel)
 
-from dqc_simulator.hardware.custom_noise_models import AnalyticalDepolarisationModel
+from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
+from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
+                                      INSTR_T_DAGGER )
 
 #creating custom instructions
 
-def INSTR_ARB_GEN(alpha, beta):
-    total_probability_q1 = abs(alpha)**2 + abs(beta)**2
-    if round(total_probability_q1, 3) !=1.000:
-        raise ValueError('alpha and beta do not give normalised input to circuit')
-    
-    state_gen_op = Operator("state_generating_op", 
-                            np.array([[alpha, 0], [0, beta]]) @ 
-                            np.array([[1, 1], [1, -1]]))
-    instruction = instr.IGate("state_gen_gate", state_gen_op)
-    return instruction
-
-INSTR_CH = instr.IGate("CH", H.ctrl) #creates CH gate as instruction
-
-INSTR_CT = instr.IGate("CT", T.ctrl) 
-
-INSTR_T_DAGGER = instr.IGate("T_dagger", operator=T.conj)
 
 # =============================================================================
 # #defining alternative initialisation instruction to replicate doing an x-gate

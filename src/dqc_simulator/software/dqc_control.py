@@ -14,6 +14,8 @@ from netsquid.components.qprogram import QuantumProgram
 from netsquid.util.datacollector import DataCollector
 from netsquid.qubits import qubitapi as qapi
 
+from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
+
 #The following will act on the qsource node, Charlie, when one of the nodes 
 #either side of Charlie a message to Charlie asking for an entangled pair.
 #This message should have the form of a pair of indices in a tuple with the 
@@ -100,178 +102,6 @@ class EntangleLinkedNodesProtocol(NodeProtocol):
                 
             #TO DO: raise error if Alice sends tuple and 
             #Bob sends int or vice versa
-
-
-def sort_greedily_by_node_and_time(gate_tuples):
-    """
-    Distributes the circuit between nodes and splits into explicit time-slices
-    (rows in output array).
-    
-    INPUT: 
-        gate_tuples:  list of tuples
-        The gates in the entire circuit. The tuples should be of the form:
-        1) single-qubit gate: (gate_instr, qubit, node_name)
-        2) two-qubit gate: (list of instructions or gate_instruction if local,
-                            qubit0, node0_name,qubit1, node1_name, scheme)
-                            #can later extend this to multi-qubit gates
-                            #keeping scheme as last element
-                            list of instructions: list
-                                list of same form as gate_tuples containing
-                                the local gates to be conducted as part of the
-                                remote gate. Ie, for remote-cnot this would
-                                contain the cnot (but not the gates used for
-                                 bsm or correction).Note if this is given as
-                                empty list and scheme = "tp" then it will
-                                just do a teleportation
-                                
-                            qubitii: int
-                                The qubit index
-                            node_name: str
-                            The name of the relevant node
-                            scheme: str, optional 
-                                Only needed for remote gates
-
-                            
-
-    OUTPUT: 
-        node_op_dict: dict 
-            Dictionary with term for each node which is an list of different 
-            time slices (each time slice is a list within the list)
-    """
-    node_op_dict = {}
-
-    for gate_tuple in gate_tuples:
-        if len(gate_tuple) == 3: #if single-qubit gate
-            gate_instr = gate_tuple[0]
-            qubit_index = gate_tuple[1]
-            node_name = gate_tuple[2]
-
-            if node_name in node_op_dict: #if node in node_op_dict already
-                #adding to last row of node_op_dict entry for this node
-                node_op_dict[node_name][-1] = (node_op_dict[node_name][-1] +
-                                            [(gate_instr, qubit_index)])
-
-            else:
-                node_op_dict[node_name] = [[(gate_instr, qubit_index)]] 
-
-        elif len(gate_tuple) > 3: #if multi-qubit gate
-            qubit_index0 = gate_tuple[1]
-            node0_name = gate_tuple[2]
-            qubit_index1 = gate_tuple[3]
-            node1_name = gate_tuple[4]
-            if node0_name == node1_name: #if local
-                gate_instr = gate_tuple[0]
-                node_name = node0_name
-                if node_name in node_op_dict: #if node in node_op_dict already
-                    node_op_dict[node_name][-1] = (node_op_dict[node_name][-1]
-                                                   + 
-                                                   [(gate_instr, qubit_index0, 
-                                                  qubit_index1)]) 
-                                                  #adding to last row
-                                                  #of node_op_dict entry 
-                                                  #for this node 
-                    
-                else: #if dictionary entry does not exist
-                    node_op_dict[node_name] = [[(gate_instr, qubit_index0, 
-                                             qubit_index1)]] #list of lists
-            else: #if remote gate
-                scheme = gate_tuple[-1]
-                more2do4tp_safe = False 
-                gate_instructions = gate_tuple[0]
-                #if only one instruction given, with no qubit index specified
-                #eg, just instr.INSTR_CNOT given:
-                if type(gate_instructions) is ns.components.instructions.IGate:
-                    #putting into correct form to use the comm-qubit index
-                    #as the control. Which comm-qubit index to use will be 
-                    #defined by the correction block in
-                    #HandleCommBlockForOneNodeProtocol
-                    gate_instructions = [(gate_instructions, -1, 
-                                          qubit_index1)]
-                if node0_name not in node_op_dict: #if node0 does not yet have
-                                                   #entry in node_op_dict
-                    node_op_dict[node0_name] = [[]]
-                if node1_name not in node_op_dict: #if node1 does not yet have
-                                                   #entry in node_op_dict
-                    node_op_dict[node1_name] =[[]]
-                if (len(node_op_dict[node0_name])
-                    > len(node_op_dict[node1_name])):
-                    length_diff = (len(node_op_dict[node0_name]) - 
-                                   len(node_op_dict[node1_name]))
-                    #adding dummy rows to make lengths match (enforcing
-                    #scheduling)
-                    start = len(node_op_dict[node1_name])
-                    end = start + length_diff
-                    for ii in range(start, end):
-                        node_op_dict[node1_name].append([])
-                elif (len(node_op_dict[node0_name])
-                      < len(node_op_dict[node1_name])): 
-                    length_diff = (len(node_op_dict[node1_name]) - 
-                                   len(node_op_dict[node0_name]))
-                    #adding dummy rows to make lengths match (enforcing
-                    #scheduling)
-                    start = len(node_op_dict[node0_name])
-                    end = start + length_diff
-                    for ii in range(start, end):
-                        node_op_dict[node0_name].append([])
-                if scheme == "cat":
-                    node0_list = (
-                        [(qubit_index0, node1_name, "cat", "entangle")] + 
-                        [(qubit_index0, node1_name, "cat", "disentangle_end")])
-                    node1_list = (
-                        [(node0_name, "cat", "correct")]
-                        + gate_instructions + 
-                        [(qubit_index1, node0_name,
-                          "cat", "disentangle_start")])
-                elif scheme == "tp_risky":
-                    #does not teleport back to original node to free up 
-                    #comm-qubit
-                    node0_list = [(qubit_index0, node1_name, "tp", "bsm")] 
-                    node1_list = ([(node0_name, "tp", "correct")]
-                                      + gate_instructions)
-                elif scheme == "free_comm_qubit_with_tele":
-                    node0_list = [(qubit_index0, node1_name, "tp", "bsm")]
-                    node1_list = [(node0_name, "tp", "correct4tele_only"),
-                                   (instr.INSTR_SWAP, -1, qubit_index1)] 
-                elif scheme == "tp_safe":
-                    #does tp remote gate then teleports back to original node 
-                    #to free up comm-qubit.
-                    #for remote gate:
-                    node0_list = [(qubit_index0, node1_name, "tp", "bsm")]
-                    node1_list = ([(qubit_index1, node0_name, "tp", "correct")]
-                                  + gate_instructions)
-                    more2do4tp_safe = True
-                    #for teleportation back
-                    node1_list_nxt_ts = [(-1, node0_name, "tp", "bsm")]
-                    node0_list_nxt_ts = [(node1_name, "tp",
-                                          "correct4tele_only"), 
-                                  (instr.INSTR_SWAP, -1, qubit_index0)]
-                    
-                else:
-                    raise Exception(f"Scheme not specified for remote gate"
-                                    f"{gate_tuple} or is not of form 'cat',"
-                                    f" 'tp_safe' or 'tp_risky'")
-                #adding the lists to the last row of the relevant dictionary
-                #entry for each node
-                node_op_dict[node0_name][-1] = (node_op_dict[node0_name][-1] + 
-                                             node0_list)
-                node_op_dict[node1_name][-1] = (node_op_dict[node1_name][-1] + 
-                                             node1_list)
-                if more2do4tp_safe:
-                    node_op_dict[node0_name].append(node0_list_nxt_ts)
-                    node_op_dict[node0_name].append([])
-                    node_op_dict[node1_name].append(node1_list_nxt_ts)
-                    node_op_dict[node1_name].append([])
-                else:
-                    #adding extra row to the ammended dictionary entries to 
-                    #indicate start of new time slice
-                    node_op_dict[node0_name].append([])
-                    node_op_dict[node1_name].append([])
-                    
-    for node_key in node_op_dict:
-        if node_op_dict[node_key][-1] == []:
-            del node_op_dict[node_key][-1]
-            
-    return node_op_dict
 
 class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     """Carries out the parts of the protocol on one node. This is designed 
@@ -802,69 +632,7 @@ class dqcMasterProtocol(Protocol):
                 dummy_entity._schedule_now(evtype_dummy)
             break #exiting outer while loop once for loops are done
 
-def get_data_qubit_indices(node, num_indices):
-    """ A convenience function for obtaining the indices of data qubits for a
-    given node.
-    
-    INPUT: node: netsquid.nodes.Node object
-            The node whose data qubits should be recovered.
-           num_indices: int
-           The number of data qubit indices requested
-    
-    OUTPUT: list of the indices requested
-    """
-    starting_data_qubit_index = len(node.comm_qubit_positions)
-    end = starting_data_qubit_index + num_indices
-    index_list = [ii for ii in range(starting_data_qubit_index, end)]
-    return index_list
 
-def get_data_collector(master_protocol, qubit_indices_2b_checked,
-                       desired_state):
-    """ Sets up data collector for arbitrary simulation.
-
-    Parameters
-    ----------
-    master_protocol: :class: netsquid.protocols.protocol.Protocol
-        Protocol to run the DQC circuit.
-    qubits_2b_checked: list of tuples of form (list of indices, node)
-        The qubits whose state should be checked against a known state
-    desired_state: :class: numpy.ndarray
-        The ideal state which the actual state should be compared to. Can be
-        given as a ket vector or density matrix regardless of the formalism 
-        being worked with
-
-    Returns
-    -------
-    :class:`~netsquid.util.datacollector.DataCollector`
-        Data collector to record fidelity.
-    """
-
-    def collect_fidelity_data(evexpr):
-        #defining which protocol you wish to sample the event expression from 
-        #(CorrectionProtocol)
-        qubits_2b_checked = []
-        for qubit_node_tuple in qubit_indices_2b_checked:
-            if type(qubit_node_tuple[0]) == int:
-                qubit_indices = [qubit_node_tuple[0]]
-            elif type(qubit_node_tuple[0]) == list():
-                qubit_indices = qubit_node_tuple[0]
-            else:
-                raise TypeError("first element of each tuple must be qubit "
-                                "index or list of qubit indices")
-            node = qubit_node_tuple[-1]
-            qubits = node.qmemory.pop(qubit_indices)
-            qubits_2b_checked = qubits_2b_checked + qubits
-            
-        fidelity = qapi.fidelity(qubits_2b_checked, 
-                                 desired_state, squared=True)
-        for qubit in qubits_2b_checked:
-            qapi.discard(qubit)
-        return {"fidelity": fidelity}
-
-    dc = DataCollector(collect_fidelity_data)
-    dc.collect_on(pydynaa.EventExpression(source=master_protocol,
-                                          event_type=Signals.FINISHED.value))
-    return dc
 
 #Correcting occupies a qubit because that needs to be used as the control for 
 #a cnot etc but the bsm frees one if done to teleport a comm_qubit
@@ -872,7 +640,10 @@ def get_data_collector(master_protocol, qubit_indices_2b_checked,
 #I am assuming:
 #1) The input list of gate tuples is loosely ordered like in a circuit diagram
 #2) That there is only one remote gate per node on a time slice. This is by 
-#construction and so is not really an assumption.
+#construction and so is not really an assumption. All of that said, it is 
+#actually possible to have multiple remote gates on a node if the compiler 
+#allows it. In that case many of the safeguards here will not work and so you 
+#need the compiler to have properly accounted for resources.
 #3) For now, gates cannot be done in parallel with receiving entanglement. This
 #is probably physically realistic anyway.
 #4) At the moment, unlike the CollComm protocol explored by the Santa Barbara
