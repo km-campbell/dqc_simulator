@@ -9,6 +9,8 @@ Created on Thu May 18 10:13:44 2023
 
 #bit flip noise
 
+import numpy as np
+
 from netsquid.components.models.qerrormodels import QuantumErrorModel
 from netsquid.qubits import qubitapi as qapi
 from netsquid.util.constrainedmap import ValueConstraint
@@ -22,7 +24,6 @@ from netsquid.qubits.dmutil import partialtrace, reorder_dm
 #for implementing dms analytically, the following may be useful:
 import netsquid as ns
 from netsquid.qubits import qubitapi as qapi
-import numpy as np
 from netsquid.components.qprogram import QuantumProgram
 from netsquid.qubits.qformalism import QFormalism, set_qstate_formalism
 from netsquid.components import instructions as instr

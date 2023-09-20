@@ -5,21 +5,23 @@ Created on Tue May  9 15:19:27 2023
 @author: kenny
 """
 
+import unittest
+import functools as ft
+
 import netsquid as ns
 import numpy as np
 from netsquid.components import instructions as instr
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
 from netsquid.nodes import Node, Network
-from netsquid.qubits.qformalism import set_qstate_formalism
-from netsquid.qubits.qformalism import QFormalism
+from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
 
-import unittest
-import functools as ft
-
-from network import create_dqc_network
-from dqc_executor import dqcMasterProtocol, get_data_qubit_indices, sort_greedily_by_node_and_time, EntangleLinkedNodesProtocol
-from useful_circuit_identities import two_control_ibm_toffoli_decomp
+from dqc_simulator.hardware.dqc_creation import create_dqc_network
+from dqc_simulator.software.dqc_control import (
+    dqcMasterProtocol, get_data_qubit_indices, sort_greedily_by_node_and_time,
+    EntangleLinkedNodesProtocol)
+from dqc_simulator.qlib.useful_circuit_identities import ( 
+    two_control_ibm_toffoli_decomp)
 
 class TestToffoliDecomp(unittest.TestCase):
     def setUp(self):

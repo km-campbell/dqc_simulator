@@ -5,31 +5,30 @@ Created on Fri May 19 15:01:04 2023
 @author: kenny
 """
 
+import unittest
+
 import netsquid as ns
 import numpy as np
 import pydynaa
 import pandas
 from netsquid.util.datacollector import DataCollector
 from netsquid.protocols.protocol import Signals
-from netsquid.qubits import qubitapi as qapi
-from netsquid.qubits.qformalism import set_qstate_formalism
-from netsquid.qubits.qformalism import QFormalism
 from netsquid.qubits import ketstates as ks
+from netsquid.qubits import qubitapi as qapi
+from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
 from netsquid.components import instructions as instr
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
 from netsquid.components.qprogram import QuantumProgram
-
-from custom_quantum_processors import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT, 
-                                       INSTR_T_DAGGER)
-
 from netsquid.components.models.qerrormodels import (DepolarNoiseModel,
                                                      DephaseNoiseModel)
 from netsquid.components.models.delaymodels import (FibreDelayModel,
                                                     FixedDelayModel)
 
-import unittest
-
-from custom_noise_models import AnalyticalDepolarisationModel
+from dqc_simulator.hardware.custom_noise_models import ( 
+                                              AnalyticalDepolarisationModel)
+from dqc_simulator.hardware.custom_quantum_processors import (
+                                       INSTR_ARB_GEN, INSTR_CH, INSTR_CT, 
+                                       INSTR_T_DAGGER)
 
 INSTR_IDENTITY = instr.IGate("I", operator=ns.I)
 

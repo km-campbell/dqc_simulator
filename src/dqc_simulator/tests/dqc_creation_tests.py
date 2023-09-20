@@ -5,24 +5,25 @@ Created on Tue Dec  6 19:11:14 2022
 @author: kenny
 """
 
-import netsquid as ns
-import pydynaa
-import numpy as np
-from netsquid.qubits import ketstates as ks
-from netsquid.qubits import qubitapi as qapi
-from netsquid.components import instructions as instr
-from netsquid.nodes import Node, Network
-from netsquid.qubits.qformalism import set_qstate_formalism
-from netsquid.qubits.qformalism import QFormalism
-
-from useful_quantum_states import werner_state
-from custom_quantum_processors import create_processor
-from network import link_2_nodes
-
-# =============================================================================
-# from network import create_DQC_network
-# =============================================================================
 import unittest
+import numpy as np
+
+import netsquid as ns
+from netsquid.components import instructions as instr
+from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
+from netsquid.nodes import Node, Network
+from netsquid.qubits import ketstates as ks
+from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
+
+from dqc_simulator.hardware.custom_noise_models import ( 
+                                                 AnalyticalDepolarisationModel)
+from dqc_simulator.hardware.custom_quantum_processors import (create_processor,
+                                       INSTR_ARB_GEN, INSTR_T_DAGGER, 
+                                       INSTR_CH, INSTR_CT)
+from dqc_simulator.hardware.dqc_creation import (link_2_nodes,
+                                                 create_dqc_network)
+from dqc_simulator.qlib.useful_quantum_states import werner_state
+
 #integrated network tests
 # =============================================================================
 # #for debugging
@@ -109,7 +110,6 @@ class Test_link_2_nodes(unittest.TestCase):
 #                           unnormalised_beta, self.Werner_State)
 # =============================================================================
 
-from network import create_dqc_network
 
 class TestCreateDQCNetwork(unittest.TestCase):
     def setUp(self):
@@ -323,10 +323,6 @@ class TestCreateDQCNetwork(unittest.TestCase):
             self.assertEqual(node.comm_qubit_positions, (0, 1))
             
     def test_can_use_custom_processor(self):
-        from custom_noise_models import AnalyticalDepolarisationModel
-        from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
-        from custom_quantum_processors import (INSTR_ARB_GEN, INSTR_T_DAGGER, 
-                                               INSTR_CH, INSTR_CT)
         def create_noisy_processor():
             alpha = 1/np.sqrt(3)
             beta = np.sqrt(2/3)

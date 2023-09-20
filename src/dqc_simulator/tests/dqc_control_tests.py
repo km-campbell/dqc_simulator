@@ -20,12 +20,19 @@ from netsquid.qubits.qformalism import QFormalism
 from netsquid.protocols import Protocol
 from netsquid.protocols.protocol import Signals
 
-from dqc_simulator.hardware.network import (link_2_nodes, create_dqc_network)
+from dqc_simulator.hardware.dqc_creation import (link_2_nodes, 
+                                                 create_dqc_network)
+from dqc_simulator.hardware.custom_quantum_processors import (
+                                                create_processor,
+                                                INSTR_ARB_GEN)
 from dqc_simulator.qlib.useful_quantum_states import werner_state
-from dqc_simulator.hardware.custom_quantum_processors import create_processor
-from dqc_simulator.software.dqc_executor import (HandleCommBlockForOneNodeProtocol, 
-                          EntangleLinkedNodesProtocol)
-from custom_quantum_processors import INSTR_ARB_GEN
+from dqc_simulator.software.dqc_control import (
+                          HandleCommBlockForOneNodeProtocol, 
+                          EntangleLinkedNodesProtocol,
+                          sort_greedily_by_node_and_time,
+                          dqcMasterProtocol)
+
+
 
 
 #integrated network tests
@@ -518,10 +525,8 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
         self.assertEqual(round(fidelity, 3), 1.000)
         
 
-from dqc_executor import sort_greedily_by_node_and_time
-from dqc_executor import dqcMasterProtocol
-from network import create_dqc_network
-from dqc_executor import HandleCommBlockForOneNodeProtocol
+
+
 class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
     """Integration tests of dqcMasterProtocol with the compiler set to 
     sort_greedily_by_node_and_time

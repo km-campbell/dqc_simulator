@@ -5,15 +5,17 @@ Created on Mon Aug 14 11:02:43 2023
 @author: kenny
 """
 
+import numpy as np
+
 from netsquid.components import instructions as instr
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
-from custom_noise_models import AnalyticalDepolarisationModel
-import numpy as np
 from netsquid.qubits.operators import * 
 from netsquid.components.models.qerrormodels import (DepolarNoiseModel, 
                                                      DephaseNoiseModel)
 from netsquid.components.models.delaymodels import (FibreDelayModel,
                                                     FixedDelayModel)
+
+from dqc_simulator.hardware.custom_noise_models import AnalyticalDepolarisationModel
 
 #creating custom instructions
 

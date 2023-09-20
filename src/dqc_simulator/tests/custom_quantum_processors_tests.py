@@ -5,10 +5,11 @@ Created on Wed Aug 16 16:37:05 2023
 @author: kenny
 """
 
+import unittest
+
 import netsquid as ns
 import numpy as np
 import functools as ft
-import unittest
 from netsquid.components import instructions as instr
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
@@ -16,7 +17,7 @@ from netsquid.components.qprogram import QuantumProgram
 from netsquid.nodes import Node, Network
 
 
-from custom_quantum_processors import (
+from dqc_simulator.hardware.custom_quantum_processors import (
     create_qproc_with_analytical_noise_ionQ_aria_durations)
 
 class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
@@ -121,8 +122,9 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         self.assertAlmostEqual(fidelity, 1.00000, 5)
         
     def test_can_do_ideal_schor_error_correction_circuit(self):
-        from useful_circuit_identities import two_control_ibm_toffoli_decomp
-        from dqc_executor import dqcMasterProtocol 
+        from dqc_simulator.qlib.useful_circuit_identities import ( 
+                                            two_control_ibm_toffoli_decomp)
+        from dqc_simulator.software.dqc_control import dqcMasterProtocol 
         network = Network("9_qubit_monolith")
         p_depolar_error_cnot = 0.
         comm_qubit_depolar_rate = 0.

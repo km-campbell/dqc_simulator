@@ -4,6 +4,7 @@ Created on Fri Mar 31 12:37:47 2023
 
 @author: kenny
 """
+
 import netsquid as ns
 from netsquid.nodes import Node, Connection, Network
 from netsquid.components.qchannel import QuantumChannel
@@ -13,7 +14,7 @@ from netsquid.qubits.state_sampler import StateSampler
 from netsquid.qubits import ketstates as ks
 from netsquid.components.models.delaymodels import FibreDelayModel
 
-from custom_quantum_processors import create_processor
+from dqc_simulator.hardware.custom_quantum_processors import create_processor
 
 
 
