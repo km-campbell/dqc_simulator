@@ -109,7 +109,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     and fed only the gate tuples for that block.
     
         INPUT:
-            gate_tuples: list of tuples or tuple of tuples
+            gate_tuples: list or list-like iterable of tuples 
                         (first entry may be list of tuples if there are
                          remote gates)
                 The gates to be conducted. Remote gates may have a list of 

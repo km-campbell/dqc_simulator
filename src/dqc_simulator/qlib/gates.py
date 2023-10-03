@@ -11,7 +11,8 @@ Created on Wed Sep 20 12:13:12 2023
 
 import numpy as np
 
-from netsquid.qubits.operators import Operator, H, T, I
+from netsquid.qubits.operators import (Operator, H, T, I, S, Y,
+                                       create_rotation_op)
 from netsquid.components import instructions as instr
 
 
@@ -34,3 +35,83 @@ INSTR_CT = instr.IGate("CT", T.ctrl)
 INSTR_IDENTITY = instr.IGate("I", operator=I)
 
 INSTR_T_DAGGER = instr.IGate("T_dagger", operator=T.conj)
+
+INSTR_S_DAGGER = instr.IGate("S_dagger", operator=S.conj)
+
+
+def INSTR_U(theta, phi, lambda_var, controlled=False):
+    """
+    (controlled) single qubit unitary
+
+    Parameters
+    ----------
+    theta : TYPE
+        DESCRIPTION.
+    phi : TYPE
+        DESCRIPTION.
+    lambda_var : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    instruction : TYPE
+        DESCRIPTION.
+
+    """
+    a11 = np.exp(-1j * (phi + lambda_var)/2) * np.cos(theta/2)
+    a12 = -np.exp(-1j * (phi - lambda_var)/2) * np.sin(theta/2)
+    a21 = np.exp(1j * (phi - lambda_var)/2) * np.sin(theta/2)
+    a22 = np.exp(1j * (phi + lambda_var)/2) * np.cos(theta/2)
+    op = Operator("single_qubit_unitary_op",
+                  np.array([[a11, a12], [a21, a22]]))
+    name = "single_qubit_unitary_gate"
+    if controlled==True:
+        op = op.ctrl
+        name = "controlled_unitary_gate"
+    elif type(controlled) != bool:
+        raise TypeError(f"{controlled} is not of type `bool' ")
+    instruction = instr.IGate(name, op)
+    return instruction
+
+
+
+INSTR_CY = instr.IGate("CY", operator=Y.ctrl)
+
+def INSTR_RZ(angle, controlled=False, conjugate=False):
+    """
+    
+
+    Parameters
+    ----------
+    angle : float
+        Angle of rotation.
+    controlled : bool, optional
+        Whether this is implemented as a control gate (CRz) or not. The default
+        is False.
+    conjugate : bool, optional
+        Whether to implement the complex conjugate of Rz or not. The default 
+        is False.
+
+    Returns
+    -------
+    class: netsquid.components.instructions.Instruction
+
+    """
+    op = create_rotation_op(angle, axis=(0, 0, 1))
+    
+    if controlled == True:
+        op = op.ctrl
+    elif type(controlled) != bool:
+        raise TypeError("{controlled} is not of type `bool' ")
+        
+    if conjugate == True:
+        op = op.conj
+    elif type(conjugate) != False:
+        raise TypeError("{conjugate} is not of type `bool' ")
+        
+        
+    
+        
+    
+
+    
