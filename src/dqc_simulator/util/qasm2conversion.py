@@ -5,8 +5,12 @@ Created on Fri Sep 29 16:17:01 2023
 @author: kenny
 """
 
+import abc
+
+
 import numpy as np
 import pandas
+import pyparsing
 from netsquid.components import instructions as instr
 
 from dqc_simulator.qlib import gates
@@ -19,53 +23,213 @@ from dqc_simulator.qlib import gates
 # implemented as native
 #gates. This aligns with NetSquid's platform agnostic philosophy. I feel that 
 #any breaking down of gates into subroutines, should be done for specific 
-#platforms and included in compilation (not just at runtime)
+#platforms and included in compilation (not just at runtime). All of this means
+#I am not parsing openQASM 2.0 but rather directly converting it to something 
+#else
 
-def qasm2sim_readable(filepath):
-    registers = dict()
-    qasm2python_gate_dict = {"U" : gates.INSTR_U,
-                             "CX" : instr.INSTR_CNOT,
-                             "u3" : gates.INSTR_U,
-                             "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
-                             "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
-                             "cx" : instr.INSTR_CNOT,
-                             "id" : gates.INSTR_IDENTITY,
-                             "x" : instr.INSTR_X,
-                             "y" : instr.INSTR_Y,
-                             "z" : instr.INSTR_Z,
-                             "h" : instr.INSTR_H,
-                             "s" : instr.INSTR_S,
-                             "sdg" : gates.INSTR_S_DAGGER,
-                             "t" : instr.INSTR_T,
-                             "tdg" : gates.INSTR_T_DAGGER,
-                             "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
-                             "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
-                             "rz" : gates.INSTR_RZ,
-                             "cz" : instr.INSTR_CZ,
-                             "cy" : gates.INSTR_CY,
-                             "ch" : gates.INSTR_CH,
-                             "ccx" : instr.INSTR_CCX,
-                             "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
-                             "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
-                             "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
+class QasmNonTerminal(metaclass=abc.ABCMeta):
+    """Abstract base class for QASM non-terminal symbols. I will also add some
+    additional implicit ones like maths operations whose terminals are 
+    specifically included in the grammar but in reality could all be represented
+    as a single non-terminal symbol"""
     
-    def _get_gate_cmd(gate_name, params):
-        if params == None:
-            gate_cmd = qasm2python_gate_dict[gate_name]
+    @abc.abstractmethod
+    def make_sim_readable(self, terminal):
+        """
+        Should be overwritten with method taking same arguments which translates
+        the qasm terminal into something intelligible by the target code.
+
+        Parameters
+        ----------
+        terminal : str
+            A QASM terminal symbol.
+        """
+        raise NotImplementedError
+
+class QasmUnaryop(QasmNonTerminal):
+    def __init__(self):
+        self.allowed_ops = {'sin' : np.sin,
+                            'cos' : np.cos,
+                            'tan' : np.tan,
+                            'exp' : np.exp,
+                            'ln' : np.ln,
+                            'sqrt' : np.sqrt}
+        
+    def make_sim_readable(self, op_terminal):
+        """
+        Carry out unary operation and output numerical result understandable
+        by python
+        
+        Parameters
+        ----------
+        op_terminal : str
+            A QASM unaryop terminal symbol. Eg, 'tan(1.2)'.
+            
+        Returns
+        --------
+        float containing result of operation
+        """
+        split_op_str = op_str.replace(')', '').split('(')
+        self.op_name = split_op_str[0]
+        self.op_arg = split_op_str[1]
+        return self.allowed_ops[self.op_name](self.op_arg)
+        
+class QasmMathsExpr(QasmNonTerminal):
+    def __init__(self):
+        self.maths_ops = {"+" : lambda a, b : a + b, "-" : lambda a, b: a - b,
+                          "*" : lambda a, b : a * b, "/" : lambda a, b : a / b,
+                          "^" : lambda a, b : a ^ b}
+    
+    def make_sim_readable(self, op_terminal):
+        """
+        Carry out basic mathematical operation and output as something 
+
+        Parameters
+        ----------
+        op_terminal : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        
+
+class QasmMathsTerms():
+    """Terminals corresponding to the <exp> non-terminal in the openQASM 2.0
+    grammar.
+    <id> terms (see https://arxiv.org/abs/1707.03429) are allowed in the
+    grammar but are not supported here. Floats are supported but are handled
+    elsewhere"""
+    def __init__(self, str4conversion=None):
+        self.str4conversion = str4conversion
+        self.maths_constants = {'pi' : np.pi}
+        
+    def make_sim_readable(self):
+        #maybe make maths_ops class etc and just call the method make_sim_readable
+        #defined in those classes
+        #could then put float there
+
+
+class QasmCMD(metaclass=abc.ABCMeta):
+    def __init__(self, name, params, cmd_args, valid_cmds, param_constructors,
+                 valid_arg_types):
+        """
+        Parameters
+        ----------
+        name : str
+            The name of the QASM command.
+        params : list of str
+            Parameters for the QASM command as strings. Further processing may 
+            be needed to convert them to the final datatype given in 
+            valid_param_types
+        cmd_args : type from valid_arg_types
+            Arguments to the QASM command.
+        valid_cmds : dict or 1d-array of str
+            All of the valid commands. For many subclasses, this should contain
+            an appropriate translation into python, eg this is true of the 
+            GateOp subclass.
+        valid_param_types : dict or 1d-array
+            DESCRIPTION.
+        valid_arg_types : dict or 1d-array
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.name = name
+        self.params = params
+        self.cmd_args = cmd_args 
+        self.valid_cmds = valid_cmds #will be different for different subclasses
+        self.param_constructors = param_constructors #will be different for different subclasses
+        self.valid_arg_types = valid_arg_types #will be different for different subclasses
+
+# =============================================================================
+#     def check_cmd(self):
+#         if self.name in self.valid_cmds:
+#             pass
+#         else:
+#             raise ValueError(f"{self.name} is not recognised as valid qasm "
+#                              "command (terminal)")
+# =============================================================================
+         
+# =============================================================================
+#     def check_args(self):
+#         #checking if cmd_arg is of type in valid_arg_types
+#         for cmd_arg in self.cmd_args:
+#             valid = any(isinstance(cmd_arg, valid_arg_type) for valid_arg_type in self.valid_arg_types)
+#             if valid == False:
+#                 raise TypeError(f"{cmd_arg} is not a valid argument to the "
+#                                 "{self.name} qasm command")
+#             
+#     def check_params(self):
+#         #checking if param is of type in valid_param_types
+#         for param in self.params:
+#             valid = any(isinstance(param, valid_param_type) for valid_param_type in self.valid_param_types)
+#             if valid == False:
+#                 raise TypeError(f"{param} is not a valid parameter for the "
+#                                 "{self.name} qasm command")
+#                 
+#     def validate_qasm_line(self):
+#         self.check_cmd()
+#         self.check_args()
+#         self.check_params()
+# =============================================================================
+    
+    @abc.abstractmethod
+    def make_sim_readable(self):
+        """Should be overwritten with method which translates the qasm command
+        into something intelligible by the target code."""
+        raise NotImplementedError
+        
+    
+        
+class GateOp(QasmCMD):
+    """A quantum gate operation.
+        name : str
+            The name of the QASM command.
+        params : type from param_constructors
+            Parameters for the QASM command.
+        cmd_args : type from valid_arg_types
+            Arguments to the QASM command.
+        valid_cmds : dict 
+            A dictionary of command names (qopt in the qasm grammar) in qasm
+            and the corresponding gate instructions in NetSquid or 
+            dqc_simulator.
+        valid_arg_types : dict or 1d-array
+            DESCRIPTION.
+    """
+    def __init__(self, name, params, cmd_args, valid_cmds, 
+                 valid_arg_types):
+        super().__init__(name, params, cmd_args, valid_cmds,  
+                         valid_arg_types)
+        #renaming for clarity about what is expected from it (which differs 
+        #from parent class).
+        self.qasm2python_gate_dict = self.valid_cmds 
+        self.param_constructors = [float, ] #FINISH
+
+    def _get_gate_cmd(self):
+        if self.params == None:
+            gate_cmd = self.qasm2python_gate_dict[self.name]
         else:
-            params = [float(ii) for ii in params]
-            #WARNING: above line assumes params is list of 
-            #numeric strings. This is a limiting assumption but 
-            #should work for MQT Bench produced .qasm files.
-            gate_cmd = qasm2python_gate_dict[gate_name](*params)
+            for param_constructor in param_constructors:
+                try:
+                    self.params = [param_constructor(param) for param in self.params]
+                    gate_cmd = self.qasm2python_gate_dict[self.name](*self.params)
+                except ValueError:
+                    pass #does nothing if the error raised is a ValueError
     
     def _split_arg_name_from_index(arg):
         split_arg = arg.remove(']').split('[')
         arg_reg = split_arg[0]
-        arg_qindex = int(split_arg1)
+        arg_qindex = int(split_arg)
         return arg_reg, arg_qindex
     
-    def _handle_single_qubit_gate(gate_name, params, gate_args, gate_list):
+    def _handle_single_qubit_gate(gate_name, params, gate_args, gate_list,
+                                  qasm2python_gate_dict, registers):
         """
         Handle single qubit gates
 
@@ -106,6 +270,51 @@ def qasm2sim_readable(filepath):
                     (_get_gate_cmd(gate_name, params), 
                      qubit_index, qreg_name))
         return gate_list
+    def translate(self):
+
+        
+#I think that what I want to do is make all types of bracket (ie, [] and ()) 
+#merge into the previous word (alphanumeric sequence with no whitespace between
+#characters) and then simply split the overall QASM line into a list of these 
+#merged words. 
+
+def remove_param_spaces(string):
+    #want to find all words that are between brackets and remove whitespace.
+    #This means they will be part of the previous word and are easier to handle
+    #on a case by case basis
+    #I think you will need regex (python package reg) for this
+    pattern = regex.compile(r'\[ #[ character
+                           (?:', re.VERBOSE) #FINISH!
+    
+# =============================================================================
+#     if '(' in string:
+#         num_open_brackets = string.count('(')
+#         for ii in range(num_open_brackets):
+#             open_bracket_pos = string.find('(')
+# =============================================================================
+            
+
+def tokenize_line():
+    """The basic idea here is to split a line into a command (or first word as
+    this includes things like the word OPENQASM) and arguments.
+    The command may have parameters, which for now will be kept together in 
+    a block with the command."""
+    
+
+#TO DO: make GateDecl class and many other classes inheriting from QasmCMD
+#These classes are essentially taking the place of first_word in the if loops
+#below 
+
+#TO DO: refactor below to be in terms of classes so that you don't have so many
+#if else loops.
+def qasm2sim_readable(filepath):
+    registers = dict()
+    qasm2python_gate_dict = {"U" : gates.INSTR_U,
+                             "CX" : instr.INSTR_CNOT}
+    #implementing functions from <exp> in openQASM 2.0's grammar
+    exp_dict = {"pi" : np.pi, "exp" : np.exp}
+    
+        
     
     def _handle_two_qubit_gate(gate_name, params, gate_args, gate_list,
                                   qasm2python_gate_dict, registers):
@@ -143,7 +352,7 @@ def qasm2sim_readable(filepath):
     with open(filepath, 'r') as file:
         
         for line in file:
-            word_list = line.split()
+            word_list = line.split() #TO DO: replace with something using pyparsers parse_string
             first_word = word_list[0]
             params = None
             gate_list = []
@@ -155,6 +364,36 @@ def qasm2sim_readable(filepath):
                 pass
             elif first_word == '//':
                 pass
+            elif first_word == 'include':
+                #standard header is so ubiquitous that it makes sense to handle
+                #it as its own case
+                if word_list[1] == "qelib1.inc":
+                    standard_lib = {"u3" : gates.INSTR_U,
+                                     "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
+                                     "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
+                                     "cx" : instr.INSTR_CNOT,
+                                     "id" : gates.INSTR_IDENTITY,
+                                     "x" : instr.INSTR_X,
+                                     "y" : instr.INSTR_Y,
+                                     "z" : instr.INSTR_Z,
+                                     "h" : instr.INSTR_H,
+                                     "s" : instr.INSTR_S,
+                                     "sdg" : gates.INSTR_S_DAGGER,
+                                     "t" : instr.INSTR_T,
+                                     "tdg" : gates.INSTR_T_DAGGER,
+                                     "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
+                                     "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
+                                     "rz" : gates.INSTR_RZ,
+                                     "cz" : instr.INSTR_CZ,
+                                     "cy" : gates.INSTR_CY,
+                                     "ch" : gates.INSTR_CH,
+                                     "ccx" : instr.INSTR_CCX,
+                                     "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
+                                     "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
+                                     "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
+                    qasm2python_gate_dict.update(standard_lib) 
+                else:
+                    pass #TO DO: add ability to include files
             elif first_word == 'qreg' or first_word == 'creg':
                 reg_def = word_list[1].split('[')
                 reg_name = reg_def[0]
@@ -175,8 +414,9 @@ def qasm2sim_readable(filepath):
                                            gate_list, qasm2python_gate_dict, 
                                            registers)
                 elif first_word == "ccx":
-                    #FINISH
+                    pass #TO DO: NEED TO IMPLEMENT something here
                     
+    return gate_list
                     
                         
                             
@@ -197,6 +437,11 @@ def qasm2sim_readable(filepath):
 #post-processing step where the number of different qregs is evaluated and they
 #are assigned to nodes. In cases where there is only 1 qreg, you can automatically
 #say the circuit is monolithic.
+
+#TO DO: add ability to handle include statements
             
             
+            
+#Cases not handled:
+#   1) Where bracket is 
             
