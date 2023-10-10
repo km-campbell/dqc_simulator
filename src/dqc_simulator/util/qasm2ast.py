@@ -1181,7 +1181,7 @@ class Qasm_Cannot_Read_File_Exception(Qasm_Exception):
     
 
 
-def qasm2asts(filepaths, name='main',
+def qasm2ast(filepath, name='main',
              save_pgm_source=False, save_element_source=False,
              save_gate_source=False, show_gate_decls=False,
              include_path='.'):
@@ -1208,8 +1208,8 @@ def qasm2asts(filepaths, name='main',
     
         Returns
         -------
-        asts : dict of dicts
-            An dictionary of abstract syntax tree (AST) parsed from the QASM
+        ast : dict of dicts
+            An abstract syntax tree (AST) parsed from the QASM
             code given by the filename from filepath. The filename is the key
             for the dictionary
     
@@ -1221,27 +1221,29 @@ def qasm2asts(filepaths, name='main',
         x = err.errpacket()
         print(x)
         raise Exception("")
-    asts = dict()
+        
     qt = None
-    for filepath in filepaths:
-        try:
-            qt = QasmTranslator.fromFile(filepath,
-                                         name=name,
-                                         no_unknown=False, #altered from original script
-                                         save_pgm_source=save_pgm_source,
-                                         save_element_source=save_element_source,
-                                         save_gate_source=save_gate_source,
-                                         show_gate_decls=show_gate_decls,
-                                         include_path=include_path)
-            qt.translate()
+    try:
+        qt = QasmTranslator.fromFile(filepath,
+                                     name=name,
+                                     no_unknown=False, #altered from original script
+                                     save_pgm_source=save_pgm_source,
+                                     save_element_source=save_element_source,
+                                     save_gate_source=save_gate_source,
+                                     show_gate_decls=show_gate_decls,
+                                     include_path=include_path)
+        qt.translate()
 
-        except Qasm_Exception as ex:
-            _handle_error(ex, filepath)
+    except Qasm_Exception as ex:
+        _handle_error(ex, filepath)
+
+    translated_ast = qt.get_translation()
+    return translated_ast
 
 
-        translated_ast = qt.get_translation()
-        filename = os.path.basename(filepath)
-        asts[filename] = translated_ast
-    return asts
+# =============================================================================
+#     filename = os.path.basename(filepath)
+#     asts[filename] = translated_ast
+# =============================================================================
 
 # fin
