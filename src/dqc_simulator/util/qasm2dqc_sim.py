@@ -6,17 +6,17 @@ Created on Fri Sep 29 16:17:01 2023
 """
 
 import abc
-
+import re
 
 import numpy as np
 import pandas
-import pyparsing
+import pyparsing as pp
 from netsquid.components import instructions as instr
 
 from dqc_simulator.qlib import gates
 
 #Note a key difference between my code and a proper QISKIT parser is that I 
-#implement the standard library gates primarily as built in gates rather than
+#implement the standard library gates primarily as built in gates (ie, as literals) rather than
 #building them from openQASM's two native gate sets as macros whose expansion 
 #is deferred until runtime (which is what is
 #done by openQASM 2.0). This means that all of my gates are basically
@@ -299,6 +299,52 @@ def tokenize_line():
     this includes things like the word OPENQASM) and arguments.
     The command may have parameters, which for now will be kept together in 
     a block with the command."""
+    lpar = pp.Literal('(').suppress()
+    rpar = pp.Literal(')').suppress()
+    l_sqr_brace = pp.Literal('[').suppress()
+    r_sqr_brace = pp.Literal(']').suppress()
+    idQasm = pp.Regex(r'[a-z][A-Za-z0-9]*') # id from https://arxiv.org/abs/1707.03429
+    real = pp.Regex(r'([0-9]+\.[0-9]*|[0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?')
+    nninteger = pp.Regex(r'[1-9]+[0-9]*|0')
+    arith_op = pp.one_of(['+', '-', '*', '/', '^'])
+# =============================================================================
+#     exp_num_or_word = real | nninteger | pi | idQasm  
+# =============================================================================
+# =============================================================================
+#     params =  pp.original_text_for(pp.nested_expr) #anything (including more
+# =============================================================================
+                                                   #nested brackets) inside 
+                                                   #parentheses
+    reg_index_slice = l_sqr_brace + nninteger + r_sqr_brace
+    decl =  (pp.Keyword('qreg') + idQasm + reg_index_slice |
+             pp.Keyword('creg') + idQasm + reg_index_slice ) 
+    unaryop = pp.one_of(['sin', 'cos', 'tan', 'exp', 'ln', 'sqrt'])
+    expQasm = real ^ nninteger ^ pp.Keyword('pi') ^ idQasm 
+    expQasm = expQasm ^ expQasm + arith_op + expQasm
+    expQasm = expQasm ^ lpar + expQasm + rpar
+    expQasm = expQasm ^ unaryop + lpar + expQasm + rpar
+    #allowing arithmetic operations on this more complete definition
+    expQasm = expQasm ^ expQasm + arith_op + expQasm 
+    
+    # It may actually be easiest to implement the entire Backus Naur form for 
+    # (simply using if pass statements for comments and the header and then
+    # have literals acting on certain sequences of code do certain things in
+    # the manner you were starting to do with classes. I think for now it is 
+    # best to simply pass the barrier literal. You can always implement it later
+    # when how you will partition your circuit is clearer but you are not trying
+    # to support all of openQASM 2.0, just the bits used to create a logical
+    # circuit. Compilation etc, will happen after parsing. 
+    # In short your parser will have the structure 
+    # for line in file
+    #   tokenize_line(line)
+    #   
+    #That said, I think that, initially, you should only support <decl> and 
+    #<uop>
+
+
+#OK: now that you have found nuqasm2 I think that you should let this create an
+#AST and then act on that AST. You will most likely need to parse elements from
+#op_reg_list, to extract the index from the register name.
     
 
 #TO DO: make GateDecl class and many other classes inheriting from QasmCMD
