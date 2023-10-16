@@ -614,7 +614,7 @@ class dqcMasterProtocol(Protocol):
                 for node_key in node_op_dict:
                     #if node does anything on this time slice
                     if time_slice < len(node_op_dict[node_key]): 
-                            #strictly less than because python indexes from 0
+                        #strictly less than because python indexes from 0
                         gate_tuples4node_and_time = (
                             node_op_dict[node_key][time_slice])
                         protocol4node_and_time = (

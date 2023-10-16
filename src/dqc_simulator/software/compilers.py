@@ -28,7 +28,7 @@ def sort_greedily_by_node_and_time(gate_tuples):
         The gates in the entire circuit. The tuples should be of the form:
         1) single-qubit gate: (gate_instr, qubit, node_name)
         2) two-qubit gate: (list of instructions or gate_instruction if local,
-                            qubit0, node0_name,qubit1, node1_name, scheme)
+                            qubit0, node0_name, qubit1, node1_name, scheme)
                             #can later extend this to multi-qubit gates
                             #keeping scheme as last element
                             list of instructions: list

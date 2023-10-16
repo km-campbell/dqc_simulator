@@ -60,7 +60,9 @@ class QTRegEx():
     GATE_OPS_LIST = re.compile(r"\S+\s+\S+;")
     GATE_OP = re.compile(r"(\w+).*")
     GATE_OP_PARAMS = re.compile(r"\S+\((.*)\).*")
-    GATE_OP_REGS = re.compile(r".*\s+(\S+);")
+    GATE_OP_REGS = re.compile(r".*\s+(\S+);") #any characters followed by at least
+                                              #one whitespace followed by at
+                                              #least one non-whitespace character
 
 
 class ASTType(Enum):

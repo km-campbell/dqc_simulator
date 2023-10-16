@@ -5,8 +5,14 @@ Created on Fri Sep 29 16:17:01 2023
 @author: kenny
 """
 
+#NOTE: this module uses code written by pyparsing module author Paul McGuire
+#(https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
+#in accordance with the MIT license. This is marked with an appropriate comment
+#at the relevant points in the script.
+
 import abc
 import re
+import operator
 
 import numpy as np
 import pandas
@@ -14,7 +20,7 @@ import pyparsing as pp
 from netsquid.components import instructions as instr
 
 from dqc_simulator.qlib import gates
-from qasm2ast import qasm2ast, ASTType
+from dqc_simulator.util.qasm2ast import qasm2ast, ASTType
 
 #Note a key difference between my code and a proper QISKIT parser is that I 
 #implement the standard library gates primarily as built in gates (ie, as literals) rather than
@@ -28,7 +34,312 @@ from qasm2ast import qasm2ast, ASTType
 #I am not parsing openQASM 2.0 but rather directly converting it to something 
 #else
 
+#useful parsing terms
+class QasmParsingElement():
+    """ParsingElement defined using the pyparsing package with some additional
+    more specific methods"""
+    def __init__(self):
+        pass
+    lpar = pp.Literal('(').suppress()
+    rpar = pp.Literal(')').suppress()
+    l_sqr_brace = pp.Literal('[').suppress()
+    r_sqr_brace = pp.Literal(']').suppress()
+    idQasm = pp.Regex(r'[a-z][A-Za-z0-9]*') # id from https://arxiv.org/abs/1707.03429
+    real = pp.Regex(r'([0-9]+\.[0-9]*|[0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?')
+    nninteger = pp.Regex(r'[1-9]+[0-9]*|0')
+    #bidmas
+    number = real | nninteger | pp.Keyword('pi') 
+    arith_op = pp.one_of(['+', '-', '*', '/', '^'])
+    unaryop = pp.one_of(['sin', 'cos', 'tan', 'exp', 'ln', 'sqrt'])
+# =============================================================================
+#     exp_num_or_word = real | nninteger | pi | idQasm  
+# =============================================================================
+# =============================================================================
+#     params =  pp.original_text_for(pp.nested_expr) #anything (including more
+# =============================================================================
+                                                   #nested brackets) inside 
+                                                   #parentheses
+# =============================================================================
+#     reg_index_slice = l_sqr_brace + nninteger + r_sqr_brace
+#     decl =  (pp.Keyword('qreg') + idQasm + reg_index_slice |
+#              pp.Keyword('creg') + idQasm + reg_index_slice ) 
+# =============================================================================
+# =============================================================================
+#     atom = number | pp.Keyword('pi') 
+#     exp_ops = [('-', 1, pp.OpAssoc.LEFT), ('^', 2, pp.OpAssoc.RIGHT), 
+#                  (pp.one_of(['*', '/']), 2, pp.OpAssoc.LEFT),
+#                  (pp.one_of(['+', '-']), 2, pp.OpAssoc.LEFT), 
+#                  (unaryop, 1, pp.OpAssoc.LEFT)]
+#     exp_qasm = pp.infix_notation(atom, exp_ops, '(', ')')
+# =============================================================================
+    # use CaselessKeyword for e and pi, to avoid accidentally matching
+    # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
+    # and CaselessKeyword only match whole words
+    
+class ExpQasm(QasmParsingElement):
+    #slightly modifying code written by pyparsing module author Paul McGuire
+    #(https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
+    #in accordance with the MIT license:
+    def __init__(self):
+        self.exp_qasmStack = []
+        
+    def _push_first(self, toks):
+        self.exp_qasmStack.append(toks[0])
 
+    def _push_unary_minus(self, toks):
+        for t in toks:
+            if t == "-":
+                self.exp_qasmStack.append("unary -")
+            else:
+                break
+        
+    def _insert_fn_argcount_tuple(self, t):
+        fn = t.pop(0)
+        num_args = len(t[0])
+        t.insert(0, (fn, num_args))
+        
+    def define_grammar(self):
+        pi = pp.CaselessKeyword("pi")
+        # fnumber = Combine(Word("+-"+nums, nums) +
+        #                    Optional("." + Optional(Word(nums))) +
+        #                    Optional(e + Word("+-"+nums, nums)))
+        # or use provided pyparsing_common.number, but convert back to str:
+        # fnumber = ppc.number().addParseAction(lambda t: str(t[0]))
+        fnumber = pp.Regex(r"[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?")
+        ident = pp.Word(pp.alphas, pp.alphanums + "_$")
+    
+        plus, minus, mult, div = map(pp.Literal, "+-*/")
+        addop = plus | minus
+        multop = mult | div
+        expop = pp.Literal("^")
+    
+        exp_qasm = pp.Forward()
+        exp_qasm_list = pp.delimitedList(pp.Group(exp_qasm))
+        # add parse action that replaces the function identifier with a (name, number of args) tuple
+
+    
+        fn_call = (ident + self.lpar - exp_qasm + self.rpar).setParseAction(
+            self._insert_fn_argcount_tuple
+        )
+        atom = (
+            addop[...]
+            + (
+                (fn_call | pi | fnumber | ident).setParseAction(self._push_first)
+                | pp.Group(self.lpar + exp_qasm + self.rpar)
+            )
+        ).setParseAction(self._push_unary_minus)
+    
+        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...", we get right-to-left
+        # exponents, instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
+        factor = pp.Forward()
+        factor <<= atom + (expop + factor).setParseAction(self._push_first)[...]
+        term = factor + (multop + factor).setParseAction(self._push_first)[...]
+        exp_qasm <<= term + (addop + term).setParseAction(self._push_first)[...]
+        return exp_qasm
+    #END of code modified from
+    #https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py
+ 
+    
+# =============================================================================
+#     arith_expr = pp.infix_notation(exp_qasm, arith_ops, '(', ')')
+#     unary_op_acting = pp.Group(unaryop + lpar + exp_qasm + rpar)
+# # =============================================================================
+# #     atom = arith_expr | unary_op_acting | number
+# # =============================================================================
+#     atom = number | arith_expr | unary_op_acting
+#     exp_qasm <<= atom 
+# =============================================================================
+# =============================================================================
+#     exp_qasm = unary_op_acting ^ expr_or_number
+# =============================================================================
+    #facilitating arithmatic combinations of exp_qasm terms:
+# =============================================================================
+#     exp_qasm = pp.infix_notation(exp_qasm, arith_ops, '(', ')')
+# =============================================================================
+
+
+class NonTerminalInterpreter(QasmParsingElement, metaclass=abc.ABCMeta):   
+    @abc.abstractmethod
+    def interpret(self, unparsed_terminal_token):
+        """
+        Should be overwritten with a method interpretting an unparsed string
+        corresponding to a terminal token. The terminal token should be of a
+        specific non-terminal type, which should be indicated in the subclass 
+        name.
+        
+        Parameters
+        ----------
+        unparsed_terminal_token : str
+            An unparsed string corresponding to a terminal token. The terminal 
+            token should be of a specific non-terminal type, which should be 
+            indicated in the subclass name.
+
+        Raises
+        ------
+        NotImplementedError
+            Error for if this method is not overwritten.
+        """
+        raise NotImplementedError("This method should be overwritten when "
+                                  "defining a subclass.")
+    
+class ExpQasmInterpreter(NonTerminalInterpreter):
+    def __init__(self):
+        pass #just defining the class instance as self
+    unaryop_funcs = {'sin' : np.sin, 'cos' : np.cos,'tan' : np.tan,
+                     'exp' : np.exp, 'ln' : np.log, 'sqrt' : np.sqrt}
+        
+    arith_op_funcs = opn = {
+                            "+": operator.add,
+                            "-": operator.sub,
+                            "*": operator.mul,
+                            "/": operator.truediv,
+                            "^": operator.pow,
+                            }
+        
+# =============================================================================
+#     def _do_nothing(self):
+#         """A function that does the identity transformation (that is to say 
+#         nothing)"""
+#         pass
+# =============================================================================
+    
+    def _evaluate_stack(self, s):
+        #modifying code written by pyparsing module author Paul McGuire
+        #(https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
+        #in accordance with the MIT license:
+        op, num_args = s.pop(), 0
+        if isinstance(op, tuple):
+            op, num_args = op
+        if op == "unary -":
+            return -self._evaluate_stack(s)
+        if op in self.arith_op_funcs:
+            # note: operands are pushed onto the stack in reverse order
+            op2 = self._evaluate_stack(s)
+            op1 = self._evaluate_stack(s)
+            return self.arith_op_funcs[op](op1, op2)
+        elif op == "pi":
+            return np.pi  # 3.1415926535
+        elif op in self.unaryop_funcs:
+            # note: args are pushed onto the stack in reverse order
+            args = reversed([self._evaluate_stack(s) for _ in range(num_args)])
+            return self.unaryop_funcs[op](*args)
+        elif op[0].isalpha():
+            raise Exception("invalid identifier '%s'" % op)
+        else:
+            return float(op)
+        #END of code modified from 
+        #https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py
+    
+    def interpret(self, exp_qasm_string):
+        exp_qasm = ExpQasm()
+        exp_qasm_grammar = exp_qasm.define_grammar()
+        #The 'ParseAction's a added to the parse_string method in what follows
+        #cause it to update the exp_qasmStack
+        exp_qasm_grammar.parse_string(exp_qasm_string, parseAll=True)
+        return self._evaluate_stack(exp_qasm.exp_qasmStack[:])
+        
+# =============================================================================
+#         #implementing temporary stop-gap approach which ignores most exp_qasm
+#         #possibilities
+#         if exp_qasm_string == 'pi':
+#             exp_qasm_expr = np.pi
+#         else:
+#             exp_qasm_expr = float(exp_qasm_string)
+#         return exp_qasm_expr
+#             #TO DO: allow interpretation of any <exp> token defined in the 
+#             #openQASM 2.0 paper. See the commented out blocks below for your 
+#             #initial attempts
+# =============================================================================
+# =============================================================================
+#         tokens = exp_qasm_token.parse_string(exp_qasm_string)
+#         prev_token = None
+#         ii = 0
+#         op_stack = []
+#         num_stack = []
+#         #using modified Shunting-yard algorithm 
+#         #(see https://inspirnathan.com/posts/155-handling-unary-operations-with-shunting-yard-algorithm/ 
+#         #and https://en.wikipedia.org/wiki/Shunting_yard_algorithm#The_algorithm_in_detail)
+#         while tokens: #while there are tokens to be read
+#             token = tokens[ii]
+#             if token == self.number: #due to defi
+#                 num_stack.append(token)
+#             elif token == self.unaryop:
+#                 op_stack.append(token)
+#             elif token == arith_op:
+#                 while 
+# =============================================================================
+# =============================================================================
+#         parsed_exp_qasm = self.exp_qasm.parse_string(exp_qasm_string)
+#         #checking there is only one parameter in param_string
+#         if len(parsed_exp_qasm) != 1:
+#             raise ValueError(f"{exp_qasm_string} is not the string of a single"
+#                              " exp_qasm expression")
+#         parsed_exp_qasm = parsed_exp_qasm[0]
+#         num_stack = []
+#         unaryop_func = self._do_nothing
+#         arith_op_func = self._do_nothing
+#         for expr in parsed_exp_qasm: #could be terminal token or list
+#             if expr == unaryop:
+#                 unary_op_name = terminal
+#                 unaryop_func = self.unaryop_funcs[unary_op_name]
+#             for terminal in expr:
+#                 for non_terminal in handler_funcs4non_terminals:
+#                     if terminal == self.number:
+#                         num_stack.append(number)
+#                     elif terminal == self.unaryop:
+#                         unary_op_name = terminal
+#                         unaryop_func = self.unaryop_funcs[unary_op_name]
+#                     elif terminal == self.arithmetic_op: 
+#                     #if terminal token is example of non-terminal token 
+#                     #(non_terminal will be pyparsing.one_of object):
+#                         handler_func = handler_funcs4non_terminals[non_terminal]
+#                         evaluated_expr = handler_func(terminal, parsed_exp_qasm)
+#                         number = unaryop_func(arith_op_func(evaluated_expr))
+#                 #evaluate expr here to convert it to number
+#                 unaryop_func = self._do_nothing
+#                 arith_op_func = self._do_nothing
+#                 
+#                 #want numerical value (float) of evaluated expression as  
+#                 #overall output from the interpret method.
+# =============================================================================
+                    
+class ArgumentInterpreter(NonTerminalInterpreter):
+    def parse_argument_non_terminal(self, argument_terminal):
+        """
+        Tokenizes the <argument> non-terminal from the grammar specified in
+        the openQASM 2.0 paper (https://arxiv.org/abs/1707.03429)
+    
+        Parameters
+        ----------
+        argument_terminal : str
+            A string contain some terminal token which is an example of the 
+            <argument> non-terminal defined in the openQASM 2.0 paper
+            (https://arxiv.org/abs/1707.03429).
+    
+        Returns
+        ------
+        reg_name : str
+            The name of a register (creg or qreg).
+        bit_index : None or int
+            If argument_terminal represents a (qu)bit, this is the index of 
+            that (qu)bit
+    
+        """
+        
+        bit_index = None
+        if '[' in argument_terminal: #is (qu)bit
+            split_bit = argument_terminal.replace(']', '').split('[')
+            reg_name = split_bit[0]
+            bit_index = split_bit[1]
+        elif '[' not in argument_terminal: 
+            reg_name = argument_terminal
+        return reg_name, bit_index
+    
+    def interpret(self, argument_terminal): 
+        reg_name, bit_index = self.parse_argument_non_terminal(argument_terminal)
+        bit_index = int(bit_index)
+        return [bit_index, reg_name]
+        
 
 # =============================================================================
 # class QasmNonTerminal(metaclass=abc.ABCMeta):
@@ -275,16 +586,18 @@ from qasm2ast import qasm2ast, ASTType
 #                      qubit_index, qreg_name))
 #         return gate_list
 #     def translate(self):
-# 
-#         
-# 
-#     
-# 
-# #I think that what I want to do is make all types of bracket (ie, [] and ()) 
-# #merge into the previous word (alphanumeric sequence with no whitespace between
-# #characters) and then simply split the overall QASM line into a list of these 
-# #merged words. 
-# 
+# =============================================================================
+
+        
+
+    
+
+#I think that what I want to do is make all types of bracket (ie, [] and ()) 
+#merge into the previous word (alphanumeric sequence with no whitespace between
+#characters) and then simply split the overall QASM line into a list of these 
+#merged words. 
+
+# =============================================================================
 # def remove_param_spaces(string):
 #     #want to find all words that are between brackets and remove whitespace.
 #     #This means they will be part of the previous word and are easier to handle
@@ -326,12 +639,12 @@ from qasm2ast import qasm2ast, ASTType
 #     decl =  (pp.Keyword('qreg') + idQasm + reg_index_slice |
 #              pp.Keyword('creg') + idQasm + reg_index_slice ) 
 #     unaryop = pp.one_of(['sin', 'cos', 'tan', 'exp', 'ln', 'sqrt'])
-#     expQasm = real ^ nninteger ^ pp.Keyword('pi') ^ idQasm 
-#     expQasm = expQasm ^ expQasm + arith_op + expQasm
-#     expQasm = expQasm ^ lpar + expQasm + rpar
-#     expQasm = expQasm ^ unaryop + lpar + expQasm + rpar
+#     exp_qasm = real ^ nninteger ^ pp.Keyword('pi') ^ idQasm 
+#     exp_qasm = exp_qasm ^ exp_qasm + arith_op + exp_qasm
+#     exp_qasm = exp_qasm ^ lpar + exp_qasm + rpar
+#     exp_qasm = exp_qasm ^ unaryop + lpar + exp_qasm + rpar
 #     #allowing arithmetic operations on this more complete definition
-#     expQasm = expQasm ^ expQasm + arith_op + expQasm 
+#     exp_qasm = exp_qasm ^ exp_qasm + arith_op + exp_qasm 
 # =============================================================================
     
 # =============================================================================
@@ -355,12 +668,43 @@ from qasm2ast import qasm2ast, ASTType
 #OK: now that you have found nuqasm2 I think that you should let this create an
 #AST and then act on that AST. You will most likely need to parse elements from
 #op_reg_list, to extract the index from the register name.
+
+
     
+
+class DqcCircuit():
+    def __init__(self, qregs, cregs, defined_gates, ops):
+        """ 
+        Parameters
+            ----------
+            qregs : dict
+                The quantum registers and their associated sizes.
+            cregs : dict
+                The classical registers and their associated sizes.
+            defined_gates : dict
+                The gates that are defined (ie, built into QASM or declared with a 
+                <gatedecl> in accordance with the QASM grammar - this includes 
+                gates defined in external files included using an 'include'
+                statement in the .qasm code) and their corresponding instruction
+                defined within NetSquid or dqc_simulator.qlib.gates.
+            gates : list of tuples
+                The operations (such as gates, initialisations or measurements)
+                in the quantum circuit written in a way dqc_simulator can 
+                understand.
+
+            Returns
+            -------
+            None.
+        """
+        self.qregs = qregs
+        self.cregs = cregs
+        self.defined_gates = defined_gates
+        self.ops = ops
 
 class Ast2SimReadable(metaclass=abc.ABCMeta):
     """Abstract base class for various converters to simulation readable 
     commands"""
-    def __init__(self, ast_element):
+    def __init__(self, ast_c_sect_element, dqc_circuit):
         """
         Parameters
         ----------
@@ -368,6 +712,10 @@ class Ast2SimReadable(metaclass=abc.ABCMeta):
             An element of the AST's 'c_sect'. This typically corresponds to a 
             parsed line of .qasm source code but in some rare instances it 
             could be multiple lines
+            
+        dqc_circuit : instance of DqcCircuit defined above
+            The specs need to make a circuit that could run on a DQC (it may
+            actually be monolithic but is written in a DQC suitable form)
 
         Returns
         -------
@@ -375,6 +723,8 @@ class Ast2SimReadable(metaclass=abc.ABCMeta):
 
         """
         self.ast_c_sect_element = ast_c_sect_element 
+        self.dqc_circuit = dqc_circuit
+
     @abc.abstractmethod
     def make_sim_readable(self):
         """
@@ -385,6 +735,11 @@ class Ast2SimReadable(metaclass=abc.ABCMeta):
         ----------
         terminal : str
             A QASM terminal symbol.
+            
+        Returns
+        -------
+        Subclasses should overwrite this method to return an updated instance 
+        of the DqcCircuit class
         """
         raise NotImplementedError
 
@@ -397,76 +752,183 @@ class AstUnknown(Ast2SimReadable):
         
 class AstComment(Ast2SimReadable):
     def make_sim_readable(self):
-        pass #This ignores comments in the source code, as they are not needed
-             #in the gate_list to be interpreted
+        return self.dqc_circuit #This ignores comments in the source code,
+             #as they are not needed in the gate_list to be interpreted
         
-class Ast2Qreg(Ast2SimReadable):
+class AstQreg(Ast2SimReadable):
     def make_sim_readable(self):
-        #FINISH
+        qreg_name = self.ast_c_sect_element['qreg_name']
+        qreg_number = self.ast_c_sect_element['qreg_num']
+        self.dqc_circuit.qregs[qreg_name] = int(qreg_number)
+        return self.dqc_circuit
 
+class AstCreg(Ast2SimReadable):
+    def make_sim_readable(self):
+        creg_name = self.ast_c_sect_element['creg_name']
+        creg_number = self.ast_c_sect_element['creg_num']
+        self.dqc_circuit.cregs[creg_name] = int(creg_number)
+        return self.dqc_circuit
 
-#TO DO: FINISH defining classes in commented out block below
+class AstMeasure(Ast2SimReadable):
+        
+    def make_sim_readable(self):
+        print("WARNING: measurement present in .qasm code but ignored")
+        return self.dqc_circuit #FOR NOW THIS DOES NOTHING AND MEASUREMENTS
+                                #ARE SIMPLY IGNORED. I would like to make this 
+                                #optional in the future, so that I can analyse
+                                #states at the end of circuits with many 
+                                #measurements at the end automatically. That
+                                #said, it may be better to just change the 
+                                #.qasm source code.
 # =============================================================================
-# class AstCreg(Ast2SimReadable):
-#     def make_sim_readable(self):
-# 
-# class AstMeasure(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstBarrier(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstGate(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstOp(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstCtl(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstCtl2(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstBlank(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstDeclaration_Qasm_2_0(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
-# class AstInclude(Ast2SimReadable):
-#     def make_sim_readable(self):
-#         
+#         source_reg = self.ast_c_sect_element['source_reg']
+#         target_reg = self.ast_c_sect_element['target_reg']
+#         #'source_reg' and 'target_reg' are the relevant keys. 
+#         source_reg_name, source_qubit_index = ( 
+#             self.tokenize_argument_non_terminal(source_reg))
+#         target_reg_name, target_qubit_index = ( 
+#             self.tokenize_argument_non_terminal(target_reg))
+# # =============================================================================
+# #         if source_qubit_index is not None and target_qubit_index is not None:
+# # # =============================================================================
+# # #             self.dqc_circuit.ops = (instr.INSTR_MEASURE, )
+# # # =============================================================================
+# # =============================================================================
+#         #FINISH!!!!!
 # =============================================================================
+        
+class AstBarrier(Ast2SimReadable):
+    def make_sim_readable(self):
+        print("WARNING: 'barrier' command present in .qasm code but ignored")
+        return self.dqc_circuit #FOR NOW THIS DOES NOTHING AND THE BARRIER 
+                                #COMMAND IS SIMPLY IGNORED. 
+class AstGateDef(Ast2SimReadable):
+    def make_sim_readable(self):
+        raise NotImplementedError("Arbitrary gate declarations are not yet "
+                                  "supported. Only the openQASM 2.0 native "
+                                  "gates and standard header gates can "
+                                  "currently be used. I aim to support "
+                                  "arbitrary gates in the future")
+        #To support this you would need to use the ast['g_sect'] which is 
+        #not currently passed to your Ast2SimReadable subclasses. This could 
+        #actually done before any of these subclasses are used as all the 
+        #relevant info is in ast['g_sect'] already. As such you would also not
+        #need to parse the gate info 
+        
+class AstGate(Ast2SimReadable):
+    def make_sim_readable(self):
+        #relevant info is 'op' (which is the gate name), 'param_list' (which is
+        #the parameters parenthesised in the .qasm line) and 'reg_list' (which 
+        #is the arguments for the gate (the <argument> non-terminals in the
+        #QASM grammar - you can use your tokenize_argument non-terminals for this).
+        #I want to update the dqc_circuit.ops list.
+        param_interpreter = ExpQasmInterpreter().interpret
+        arg_interpreter = ArgumentInterpreter().interpret
+        #the parser has matched absolutely anything inside parentheses preceded 
+        #by a non-whitespace character. It then split them using a comma
+        #delimiter
+        params = self.ast_c_sect_element['param_list']
+        args = self.ast_c_sect_element['reg_list']
+        gate_name = self.ast_c_sect_element['op']
+        for ii, param in enumerate(params):
+            params[ii] = param_interpreter(param)
+    
+        interpretted_args = []
+        for arg in args:
+            interpretted_args = interpretted_args + arg_interpreter(arg)
+        
+        if params: #if params is not empty
+            gate_tuple = (self.dqc_circuit.defined_gates[gate_name](*params),
+                          *interpretted_args)
+        else:
+            gate_tuple = (self.dqc_circuit.defined_gates[gate_name],
+                          *interpretted_args)
+            
+        self.dqc_circuit.ops.append(gate_tuple)
+        return self.dqc_circuit
+        
+class AstCtl(Ast2SimReadable):
+    def make_sim_readable(self):
+        raise NotImplementedError('QASM if statements are not yet supported')
+        
+class AstCtl2(Ast2SimReadable):
+    def make_sim_readable(self):
+        raise NotImplementedError('QASM if statements are not yet supported')
+        
+class AstBlank(Ast2SimReadable):
+    def make_sim_readable(self):
+        raise NotImplementedError('I am not quite sure what the Blank type '
+                                  'in the parser is yet')
+        
+class AstDeclaration_Qasm_2_0(Ast2SimReadable):
+    def make_sim_readable(self):
+        return self.dqc_circuit #do nothing. The error raised if this is not
+             #the first line of uncommented code in the file should already 
+             #have been raised by the parser and so this line should do nothing
+             #further
+             
+        
+class AstInclude(Ast2SimReadable):
+    def make_sim_readable(self):
+        if self.ast_c_sect_element['include'] is None:
+            return self.dqc_circuit
+        elif self.ast_c_sect_element['include'] == 'qelib1.inc':
+            #merging existing dictionary with standard lib ones
+            standard_lib = {"u3" : gates.INSTR_U,
+                             "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
+                             "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
+                             "cx" : instr.INSTR_CNOT,
+                             "id" : gates.INSTR_IDENTITY,
+                             "x" : instr.INSTR_X,
+                             "y" : instr.INSTR_Y,
+                             "z" : instr.INSTR_Z,
+                             "h" : instr.INSTR_H,
+                             "s" : instr.INSTR_S,
+                             "sdg" : gates.INSTR_S_DAGGER,
+                             "t" : instr.INSTR_T,
+                             "tdg" : gates.INSTR_T_DAGGER,
+                             "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
+                             "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
+                             "rz" : gates.INSTR_RZ,
+                             "cz" : instr.INSTR_CZ,
+                             "cy" : gates.INSTR_CY,
+                             "ch" : gates.INSTR_CH,
+                             "ccx" : instr.INSTR_CCX,
+                             "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
+                             "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
+                             "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
+            self.dqc_circuit.defined_gates.update(standard_lib)
+            return self.dqc_circuit
+        else:
+            raise NotImplementedError("The inclusion of arbitrary files within"
+                                      " the QASM code is not yet supported")
 
 
 def ast2sim_readable(ast):
-# =============================================================================
-#     registers = dict()
-#     qasm2python_gate_dict = {"U" : gates.INSTR_U,
-#                              "CX" : instr.INSTR_CNOT}
-#     #implementing functions from <exp> in openQASM 2.0's grammar
-#     exp_dict = {"pi" : np.pi, "exp" : np.exp}
-# =============================================================================
+    qregs = dict()
+    cregs = dict()
+    native_qasm_gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
+    ops4circuit = []
+    dqc_circuit = DqcCircuit(qregs, cregs, native_qasm_gates, ops4circuit)
+    #implementing functions from <exp> in openQASM 2.0's grammar
     ast_types2sim_types_lookup = {ASTType.UNKNOWN : AstUnknown, 
                                   ASTType.COMMENT : AstComment,
                                   ASTType.QREG : AstQreg,
                                   ASTType.CREG : AstCreg,
                                   ASTType.MEASURE : AstMeasure,
                                   ASTType.BARRIER : AstBarrier,
-                                  ASTType.GATE : AstGate,
-                                  ASTType.OP : AstOp,
+                                  ASTType.GATE : AstGateDef,
+                                  ASTType.OP : AstGate,
                                   ASTType.CTL : AstCtl,
                                   ASTType.CTL_2 : AstCtl2,
                                   ASTType.BLANK : AstBlank,
                                   ASTType.DECLARATION_QASM_2_0 : AstDeclaration_Qasm_2_0,
                                   ASTType.INCLUDE : AstInclude}
-    for ast_element in ast['c_sect']:
-        ast2sim_readable_converter = ast_types2sim_types_lookup[ast_element['type']](ast_element)  
-        ast2sim_readable_converter.make_sim_readable() #May need to give this variable name
-        
-                    
-    return gate_list
+    for ast_c_sect_element in ast['c_sect']:
+        ast2sim_readable_converter = ast_types2sim_types_lookup[ast_c_sect_element['type']](ast_c_sect_element, dqc_circuit)  
+        #updating dqc_circuit object with new information
+        dqc_circuit = ast2sim_readable_converter.make_sim_readable() 
+    return dqc_circuit
 
 
 
