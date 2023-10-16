@@ -830,20 +830,17 @@ class AstGate(Ast2SimReadable):
         params = self.ast_c_sect_element['param_list']
         args = self.ast_c_sect_element['reg_list']
         gate_name = self.ast_c_sect_element['op']
-        for ii, param in enumerate(params):
-            params[ii] = param_interpreter(param)
-    
         interpretted_args = []
         for arg in args:
             interpretted_args = interpretted_args + arg_interpreter(arg)
-        
         if params: #if params is not empty
+            for ii, param in enumerate(params):
+                params[ii] = param_interpreter(param)
             gate_tuple = (self.dqc_circuit.defined_gates[gate_name](*params),
-                          *interpretted_args)
-        else:
+                              *interpretted_args)
+        elif params is None:
             gate_tuple = (self.dqc_circuit.defined_gates[gate_name],
                           *interpretted_args)
-            
         self.dqc_circuit.ops.append(gate_tuple)
         return self.dqc_circuit
         
@@ -874,11 +871,13 @@ class AstInclude(Ast2SimReadable):
             return self.dqc_circuit
         elif self.ast_c_sect_element['include'] == 'qelib1.inc':
             #merging existing dictionary with standard lib ones
-            standard_lib = {"u3" : gates.INSTR_U,
+            standard_lib = {"u3" : gates.INSTR_U, #alias of U native gate
                              "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
                              "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
                              "cx" : instr.INSTR_CNOT,
                              "id" : gates.INSTR_IDENTITY,
+                             "u" : gates.INSTR_U, #alias of U and u3
+                             "p" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var), #alias of u1
                              "x" : instr.INSTR_X,
                              "y" : instr.INSTR_Y,
                              "z" : instr.INSTR_Z,
@@ -896,6 +895,7 @@ class AstInclude(Ast2SimReadable):
                              "ccx" : instr.INSTR_CCX,
                              "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
                              "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
+                             "cp" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True), #alias of cu1
                              "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
             self.dqc_circuit.defined_gates.update(standard_lib)
             return self.dqc_circuit
