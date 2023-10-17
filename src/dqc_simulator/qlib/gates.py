@@ -109,6 +109,9 @@ def INSTR_RZ(angle, controlled=False, conjugate=False):
     elif type(conjugate) != False:
         raise TypeError("{conjugate} is not of type `bool' ")
         
+
+
+        
         
     
         

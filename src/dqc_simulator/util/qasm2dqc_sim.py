@@ -691,10 +691,6 @@ class DqcCircuit():
                 The operations (such as gates, initialisations or measurements)
                 in the quantum circuit written in a way dqc_simulator can 
                 understand.
-
-            Returns
-            -------
-            None.
         """
         self.qregs = qregs
         self.cregs = cregs
@@ -892,7 +888,7 @@ class AstInclude(Ast2SimReadable):
                              "cz" : instr.INSTR_CZ,
                              "cy" : gates.INSTR_CY,
                              "ch" : gates.INSTR_CH,
-                             "ccx" : instr.INSTR_CCX,
+                             #"ccx" : instr.INSTR_CCX,
                              "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
                              "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
                              "cp" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True), #alias of cu1
