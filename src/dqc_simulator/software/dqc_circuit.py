@@ -35,7 +35,6 @@ class DqcCircuit():
                 Meta info indicating what is left to do to the circuit
                  Can be 'monolithic', 'unpartitioned' 'prepped4partitioning',
                  or 'partitioned'. TO DO: add more options like 'optimised'.
-            
         """
         self.qregs = qregs
         self.cregs = cregs
@@ -44,8 +43,8 @@ class DqcCircuit():
         self.qreg2node_lookup = qreg2node_lookup
         self.circuit_type = circuit_type
         self.qubit_count = 0 
-        self.nodes = dict() #initialised value which will be added to by 
-                            #partitioner
+        self.scheme = None #if this is a str, then it is the scheme all 
+                           #two-qubit gates will be conducted using
 
     def replace_qreg_names(self, node_0_name='placeholder',
                             node_1_name='placeholder'):
@@ -59,7 +58,7 @@ class DqcCircuit():
                 an appropriate_placeholder"""
         for gate_spec in self.ops:
             gate_spec[2] = node_0_name
-            if len(gate_spec) == 5:
+            if len(gate_spec) >= 5:
                 gate_spec[4] = node_1_name
                 
     def _replace_qreg_names_with_placeholder(self):
@@ -77,7 +76,7 @@ class DqcCircuit():
     def _specify_partition_manually(self):
         for gate_spec in self.ops:
             gate_spec[2] = self.qreg2node_lookup[gate_spec[2]]
-            if len(gate_spec) == 5:
+            if len(gate_spec) >= 5:
                 gate_spec[4] = self.qreg2node_lookup[gate_spec[4]]
         self.circuit_type = 'partitioned'
 
@@ -110,3 +109,23 @@ class DqcCircuit():
         converter_subroutine = circuit_type_converters[conversion_strategy]
         converter_subroutine()
         
+    def add_scheme_to_ops(self, scheme):
+        """
+        Specifies the scheme to be used for all two qubit gates.
+        
+        Parameters
+        ----------
+        scheme : str
+            The scheme to be used for all two_qubit_gates
+        """
+        self.scheme = scheme
+        for gate_spec in self.ops:
+            if len(gate_spec) >= 5:
+                gate_spec.append(scheme)
+            
+    def lock_in_gate_specs(self):
+        """Renders all elements of self.ops immutable. This is useful for 
+           protecting against accidental alteration of elements in self.ops.
+        """
+        for gate_spec in self.ops:
+            gate_spec = tuple(gate_spec)

@@ -58,11 +58,5 @@ def bisect_circuit(dqc_circuit):
             gate_spec[3] = updated_qubit_index
             gate_spec[4] = node_name
     return dqc_circuit
-# =============================================================================
-#         for ii, gate_spec in enumerate(self.dqc_circuit.ops):
-#             starting_index = self.dqc_circuit.qregs[qreg_name]['starting_index']
-#             updated_qubit_index = qubit_index + starting_index
-#             if updated_qubit_index >= node_1_starting_index:
-#                 updated_qubit_index = updated_qubit_index - node_1starting_index
-# =============================================================================
+
                 

@@ -57,18 +57,26 @@ class Test_qregs2nodes(unittest.TestCase):
         with self.subTest():
             self.assertEqual(dqc_circuit.circuit_type, 'partitioned')
             
+class Test_add_scheme_to_ops(unittest.TestCase):
+    def setUp(self):
+        qregs = dict()
+        cregs = dict()
+        defined_gates = dict()
+        ops = [['u', 1, 'node_0'], ['cx', 0, 'node_0', 1, 'node_0']]
+        self.dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
+                                 qreg2node_lookup=None, circuit_type=None)
+        
+    def test_on_adds_to_two_qubit_gate_only(self):
+        desired_output = [['u', 1, 'node_0'], ['cx', 0, 'node_0', 1, 'node_0', 
+                                               'tp_safe']]
+        self.dqc_circuit.add_scheme_to_ops('tp_safe')
+        self.assertEqual(self.dqc_circuit.ops, desired_output)
+        
+    def test_scheme_attr_updated(self):
+        self.dqc_circuit.add_scheme_to_ops('tp_safe')
+        self.assertEqual(self.dqc_circuit.scheme, 'tp_safe')
             
-# =============================================================================
-# class Test_partition(unittest.TestCase):
-#     def setUp(self):
-#         self.qregs = {'qreg1' : 1, 'qreg2' : 2}
-#         self.cregs = dict()
-#         self.defined_gates = dict()
-#         self.ops = [['u', 0, 'qreg1'],
-#                ['cx', 0, 'qreg1', 1, 'qreg2']]
-#     
-#     def 
-# =============================================================================
+        
 
 if __name__ == '__main__':
     unittest.main()
