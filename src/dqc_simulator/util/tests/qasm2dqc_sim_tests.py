@@ -9,11 +9,12 @@ import unittest
 
 import numpy as np
 from netsquid.components import instructions as instr
+from dqc_simulator.software.dqc_circuit import DqcCircuit
 from dqc_simulator.util.qasm2ast import qasm2ast
 from dqc_simulator.util.qasm2dqc_sim import (ArgumentInterpreter, AstComment,
                                              AstCreg, AstGate, AstQreg,
                                              AstUnknown, ast2sim_readable,
-                                             DqcCircuit, QasmParsingElement)
+                                             QasmParsingElement)
 from dqc_simulator.qlib import gates
 
 
@@ -100,7 +101,18 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
         mock_ast_c_sect_element = {'qreg_name' : 'q', 'qreg_num' : '5'}
         converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
         updated_dqc_circuit = converter.make_sim_readable()
-        self.assertEqual(updated_dqc_circuit.qregs['q'], 5)
+        self.assertEqual(updated_dqc_circuit.qregs['q'], {'size' : 5, 
+                                                          'starting_index' : 0})
+        
+    def test_qreg_starting_index_updated_by_AstQreg(self):
+        mock_ast_c_sect_element = {'qreg_name' : 'q', 'qreg_num' : '5'}
+        converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
+        updated_dqc_circuit = converter.make_sim_readable()
+        mock_ast_c_sect_element = {'qreg_name' : 'qreg2', 'qreg_num' : '9'}
+        converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
+        updated_dqc_circuit = converter.make_sim_readable()
+        self.assertEqual(updated_dqc_circuit.qregs['qreg2'], {'size' : 9, 
+                                                          'starting_index' : 5})
         
     def test_creg_attribute_updated_by_AstCreg(self):
         mock_ast_c_sect_element = {'creg_name' : 'c', 'creg_num' : '5'}
@@ -108,27 +120,25 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
         updated_dqc_circuit = converter.make_sim_readable()
         self.assertEqual(updated_dqc_circuit.cregs['c'], 5)
         
+    def test_ops_attributed_updated_by_AstGate_4_single_qubit_gate(self):
+        with self.subTest():
+            mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['1'],
+                                       'reg_list' : ['q[3]']}
+            converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+            updated_dqc_circuit = converter.make_sim_readable()
+            desired_gate_spec = [gates.INSTR_U(1, -np.pi/2, np.pi/2), 3, 'q'] 
+            self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
+            #I think that this fail is a false negative because of the fact 
+            #that I have defined one gate via a lambda function and one not.
 # =============================================================================
-#     def test_ops_attributed_updated_by_AstGate_4_single_qubit_gate(self):
 #         with self.subTest():
-#             mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['1'],
+#             mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
 #                                        'reg_list' : ['q[3]']}
 #             converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
 #             updated_dqc_circuit = converter.make_sim_readable()
-#             desired_gate_tuple = (gates.INSTR_U(1, -np.pi/2, np.pi/2), 3, 'q') 
+#             desired_gate_tuple = (gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 
+#                                   3, 'q') 
 #             self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_tuple)
-#             #I think that this fail is a false negative because of the fact 
-#             #that I have defined one gate via a lambda function and one not.
-# # =============================================================================
-# #         with self.subTest():
-# #             mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
-# #                                        'reg_list' : ['q[3]']}
-# #             converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-# #             updated_dqc_circuit = converter.make_sim_readable()
-# #             desired_gate_tuple = (gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 
-# #                                   3, 'q') 
-# #             self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_tuple)
-# # =============================================================================
 # =============================================================================
 
 class Test_ast2sim_readable(unittest.TestCase):
@@ -141,6 +151,7 @@ class Test_ast2sim_readable(unittest.TestCase):
         filepath = self.directory_path + filename
         ast = qasm2ast(filepath)
         dqc_circuit = ast2sim_readable(ast)
+        return dqc_circuit
     def test_with_ae_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('ae_indep_qiskit_5.qasm')
         

@@ -21,7 +21,8 @@ from netsquid.components import instructions as instr
 def sort_greedily_by_node_and_time(gate_tuples):
     """
     Distributes the circuit between nodes and splits into explicit time-slices
-    (rows in output array).
+    (rows in output array). Initialisation of qubits must be specified as 
+    an instruction in the gate_tuples input.
     
     INPUT: 
         gate_tuples:  list of tuples
@@ -188,3 +189,4 @@ def sort_greedily_by_node_and_time(gate_tuples):
             del node_op_dict[node_key][-1]
             
     return node_op_dict
+

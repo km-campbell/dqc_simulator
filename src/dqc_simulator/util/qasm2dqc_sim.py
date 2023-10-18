@@ -19,6 +19,7 @@ import pandas
 import pyparsing as pp
 from netsquid.components import instructions as instr
 
+from dqc_simulator.software.dqc_circuit import DqcCircuit
 from dqc_simulator.qlib import gates
 from dqc_simulator.util.qasm2ast import qasm2ast, ASTType
 
@@ -278,33 +279,6 @@ class ArgumentInterpreter(NonTerminalInterpreter):
         
 
 
-class DqcCircuit():
-    def __init__(self, qregs, cregs, defined_gates, ops):
-        """ 
-        Parameters
-            ----------
-            qregs : dict
-                The quantum registers and their associated sizes.
-            cregs : dict
-                The classical registers and their associated sizes.
-            defined_gates : dict
-                The gates that are defined (ie, built into QASM or declared with a 
-                <gatedecl> in accordance with the QASM grammar - this includes 
-                gates defined in external files included using an 'include'
-                statement in the .qasm code) and their corresponding instruction
-                defined within NetSquid or dqc_simulator.qlib.gates.
-            gates : list of tuples
-                The operations (such as gates, initialisations or measurements)
-                in the quantum circuit written in a way dqc_simulator can 
-                understand.
-        """
-        self.qregs = qregs
-        self.cregs = cregs
-        self.defined_gates = defined_gates
-        self.ops = ops
-        
-
-
 class Ast2SimReadable(metaclass=abc.ABCMeta):
     """Abstract base class for various converters to simulation readable 
     commands"""
@@ -362,8 +336,11 @@ class AstComment(Ast2SimReadable):
 class AstQreg(Ast2SimReadable):
     def make_sim_readable(self):
         qreg_name = self.ast_c_sect_element['qreg_name']
-        qreg_number = self.ast_c_sect_element['qreg_num']
-        self.dqc_circuit.qregs[qreg_name] = int(qreg_number)
+        qreg_size = self.ast_c_sect_element['qreg_num']
+        self.dqc_circuit.qregs[qreg_name] = {'size' : int(qreg_size),
+                                             'starting_index' : self.dqc_circuit.qubit_count}
+        self.dqc_circuit.qubit_count = (self.dqc_circuit.qubit_count + 
+                                        int(qreg_size))
         return self.dqc_circuit
 
 class AstCreg(Ast2SimReadable):
@@ -371,6 +348,8 @@ class AstCreg(Ast2SimReadable):
         creg_name = self.ast_c_sect_element['creg_name']
         creg_number = self.ast_c_sect_element['creg_num']
         self.dqc_circuit.cregs[creg_name] = int(creg_number)
+        #TO DO: maybe make more like AstQreg and have both size and starting 
+        #index
         return self.dqc_circuit
 
 class AstMeasure(Ast2SimReadable):
@@ -440,12 +419,12 @@ class AstGate(Ast2SimReadable):
         if params: #if params is not empty
             for ii, param in enumerate(params):
                 params[ii] = param_interpreter(param)
-            gate_tuple = (self.dqc_circuit.defined_gates[gate_name](*params),
-                              *interpretted_args)
+            gate_spec = [self.dqc_circuit.defined_gates[gate_name](*params),
+                              *interpretted_args]
         elif params is None:
-            gate_tuple = (self.dqc_circuit.defined_gates[gate_name],
-                          *interpretted_args)
-        self.dqc_circuit.ops.append(gate_tuple)
+            gate_spec = [self.dqc_circuit.defined_gates[gate_name],
+                          *interpretted_args]
+        self.dqc_circuit.ops.append(gate_spec)
         return self.dqc_circuit
         
 class AstCtl(Ast2SimReadable):
