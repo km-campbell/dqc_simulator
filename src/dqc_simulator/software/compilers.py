@@ -190,3 +190,11 @@ def sort_greedily_by_node_and_time(gate_tuples):
             
     return node_op_dict
 
+
+#I think rather than compiling dqc_circuit you need to pre-process once more 
+#and add initialisation in that stage if you want to use existing machinery
+#if not it needs updated to use instance of DqcCircuit
+
+
+
+

@@ -14,15 +14,7 @@ def bisect_circuit(dqc_circuit):
     Bisects a circuit into two nodes, node_0 and node_1. For circuits with odd
     numbers of qubits, node_0 will be given the extra qubit.
     """
-    def _find_node1starting_index():
-        total_num_qubits = 0
-        for qreg_name in dqc_circuit.qregs:
-            qreg = dqc_circuit.qregs[qreg_name]
-            total_num_qubits = qreg['size'] + total_num_qubits
-        node_0_size = math.ceil(total_num_qubits/2) #ceiling division
-        node1starting_index = node_0_size - 1 #as indexing starts from zero
-        return node1starting_index
-            
+    #helper functions:
     def _assign_qubit_to_node(qubit_index, qreg_name,
                               node1starting_index):
             starting_index = dqc_circuit.qregs[qreg_name]['starting_index']
@@ -33,12 +25,14 @@ def bisect_circuit(dqc_circuit):
                 node_name = 'node_1'
             return updated_qubit_index, node_name
             
-    #I think that dqc_circuit.replace_qreg_names method will be too blunt 
-    #an instrument to use. For each gate_spec in self.dqc_circuit.ops,
-    #I need to look at the qubit index and relate it to the number of 
-    #qubits associated self.dqc_circuit.qregs[qreg_name], where qreg name 
-    #is the entry after the qubit_index entry in the gate_spec. 
-    node1starting_index = _find_node1starting_index()
+    #main body:
+    total_num_qubits = 0
+    for qreg_name in dqc_circuit.qregs:
+        qreg = dqc_circuit.qregs[qreg_name]
+        total_num_qubits = qreg['size'] + total_num_qubits
+    node_0_size = math.ceil(total_num_qubits/2) #ceiling division
+    node_1_size = total_num_qubits - node_0_size
+    node1starting_index = node_0_size - 1 #as indexing starts from zero
     for gate_spec in dqc_circuit.ops:
         qubit_index1 = gate_spec[1]
         qreg_name1 = gate_spec[2]
@@ -57,6 +51,9 @@ def bisect_circuit(dqc_circuit):
                                                     node1starting_index)
             gate_spec[3] = updated_qubit_index
             gate_spec[4] = node_name
-    return dqc_circuit
+    
+    dqc_circuit.node_sizes = {'node_0' : node_0_size, 'node_1' : node_1_size}
+    dqc_circuit.circuit_type = 'partitioned'
+
 
                 

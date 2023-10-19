@@ -12,7 +12,7 @@ class DqcCircuit():
         Parameters
             ----------
             qregs : dict of dicts
-                The quantum registers and their associated info. subdicts
+                The quantum registers and their associated info. Subdicts
                 should have the keys 'size', and 'starting_index', and integer
                 values for each.
             cregs : dict
@@ -36,7 +36,7 @@ class DqcCircuit():
                  Can be 'monolithic', 'unpartitioned' 'prepped4partitioning',
                  or 'partitioned'. TO DO: add more options like 'optimised'.
         """
-        self.qregs = qregs
+        self.qregs = qregs 
         self.cregs = cregs
         self.defined_gates = defined_gates
         self.ops = ops
@@ -45,6 +45,8 @@ class DqcCircuit():
         self.qubit_count = 0 
         self.scheme = None #if this is a str, then it is the scheme all 
                            #two-qubit gates will be conducted using
+        self.node_sizes = dict() #when processed should be dict with entries of 
+                                 #form 'node_name' : integer value 
 
     def replace_qreg_names(self, node_0_name='placeholder',
                             node_1_name='placeholder'):
@@ -129,3 +131,9 @@ class DqcCircuit():
         """
         for gate_spec in self.ops:
             gate_spec = tuple(gate_spec)
+            
+# =============================================================================
+#     def partition(self, partitioner):
+#         self = partitioner(self)
+#         
+# =============================================================================
