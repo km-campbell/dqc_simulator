@@ -111,7 +111,7 @@ class DqcCircuit():
         converter_subroutine = circuit_type_converters[conversion_strategy]
         converter_subroutine()
         
-    def add_scheme_to_ops(self, scheme):
+    def add_scheme_to_2_qubit_gates(self, scheme):
         """
         Specifies the scheme to be used for all two qubit gates.
         

@@ -16,31 +16,11 @@ from dqc_simulator.software.ast2dqc_circuit import (
                                                  ArgumentInterpreter,
                                                  AstComment,
                                                  AstCreg, AstGate, AstQreg,
-                                                 AstUnknown, ast2sim_readable,
-                                                 QasmParsingElement)
+                                                 AstUnknown, ast2dqc_circuit)
 from dqc_simulator.qlib import gates
 
 
-# =============================================================================
-# class TestQasmParsingElement(unittest.TestCase):
-#     def test_exp_qasm(self):
-#         pe = QasmParsingElement()
-#         str1 = 'sin(pi/2 + 0.1) - cos ( 1.53)'
-#         str2 = '1 + 2'
-#         str3 = '(1 + 2)/3'
-#         str4 = '1 * 3 + 1'
-#         str5 = 'sin(sin(0.1) + cos(1.2))'
-#         print(f"Using exp_qasm grammar {str1} parses to "
-#               f"{pe.exp_qasm.parse_string(str1)}")
-#         print(f"Using exp_qasm grammar {str2} parses to "
-#               f" {pe.exp_qasm.parse_string(str2)}")
-#         print(f"Using exp_qasm grammar {str3} parses to "
-#               f" {pe.exp_qasm.parse_string(str3)}")
-#         print(f"Using exp_qasm grammar {str4} parses to "
-#               f" {pe.exp_qasm.parse_string(str4)}")
-#         print(f"Using exp_qasm grammar {str5} parses to "
-#               f" {pe.exp_qasm.parse_string(str5)}")
-# =============================================================================
+
         
 
 class TestNonTerminalInterpreter(unittest.TestCase):
@@ -144,7 +124,7 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
 #             self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_tuple)
 # =============================================================================
 
-class Test_ast2sim_readable(unittest.TestCase):
+class Test_ast2dqc_circuit(unittest.TestCase):
     """Testing using circuits from MQTBench. The following aren't currently
     proper tests, they just confirm that no errors are raised"""
     def setUp(self):
@@ -154,7 +134,7 @@ class Test_ast2sim_readable(unittest.TestCase):
     def _get_dqc_circuit(self, filename):
         filepath = self.directory_path + filename
         ast = qasm2ast(filepath)
-        dqc_circuit = ast2sim_readable(ast)
+        dqc_circuit = ast2dqc_circuit(ast)
         return dqc_circuit
     def test_with_ae_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('ae_indep_qiskit_5.qasm')

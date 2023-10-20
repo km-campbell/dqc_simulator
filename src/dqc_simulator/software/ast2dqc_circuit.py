@@ -445,7 +445,7 @@ class AstInclude(Ast2SimReadable):
                                       " the QASM code is not yet supported")
 
 
-def ast2sim_readable(ast):
+def ast2dqc_circuit(ast):
     qregs = dict()
     cregs = dict()
     native_qasm_gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}

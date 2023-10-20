@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 17 09:55:37 2023
+Created on Thu Oct 19 15:41:19 2023
 
 @author: kenny
 """
-
-#integration tests to determine if the circuits can be run.
 
 import unittest
 
@@ -13,9 +11,7 @@ from dqc_simulator.software.compiler_preprocessing import (
                                 preprocess_qasm_to_compilable_bipartitioned)
                                              
 
-#TO DO: convert all tests copied and pasted from the ast2dqc_circuit_tests.py 
-#to the integration tests in which the circuits are actually run
-#using classes, functions and methods from dqc_simulator.software.dqc_control
+#TO DO: have proper test rather than just printing
 
 
 

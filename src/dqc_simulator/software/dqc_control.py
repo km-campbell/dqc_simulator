@@ -162,7 +162,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
          #having to make many protocols
          
             for gate_tuple in self.gate_tuples:
-                gate_instr = gate_tuple[0] #will be overwritten for remote gate
+                gate_instr = gate_tuple[0] 
                 if len(gate_tuple) == 2: #if single-qubit gate
                     qubit_index = gate_tuple[1]
                     program.apply(gate_instr, qubit_index)

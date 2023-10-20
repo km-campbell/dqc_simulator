@@ -16,7 +16,7 @@ from netsquid.components.models.delaymodels import (FibreDelayModel,
 
 from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
-                                      INSTR_T_DAGGER )
+                                      INSTR_T_DAGGER, INSTR_U)
 
 #creating custom instructions
 
@@ -193,6 +193,44 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations(
     #anything - I can find no way to actually access the metadata (which would
     #potentially be a useful thing to do)
     return qprocessor
+
+
+
+#following not yet tested!
+def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(                                         p_depolar_error_cnot,
+                                         comm_qubit_depolar_rate,
+                                         data_qubit_depolar_rate,
+                                         single_qubit_gate_time=135 * 10**3,
+                                         two_qubit_gate_time=600 * 10**3,
+                                         measurement_time=300 * 10**3,
+                                         alpha=1, beta=0,
+                                         num_positions=20,
+                                         num_comm_qubits=2):
+    num_data_qubits = num_positions - num_comm_qubits
+    cnot_depolar_model = AnalyticalDepolarisationModel(
+        p_error=p_depolar_error_cnot, time_independent=True)
+    comm_qubit_memory_depolar_model = AnalyticalDepolarisationModel(
+        comm_qubit_depolar_rate, time_independent=False)
+    data_qubit_memory_depolar_model = AnalyticalDepolarisationModel(
+        data_qubit_depolar_rate, time_independent=False)
+    #creating processor for all Nodes
+    physical_instructions = [
+        PhysicalInstruction(instr.INSTR_INIT, duration=3, parallel=False,
+                            toplogy=None),
+        PhysicalInstruction(instr.IGate, duration=single_qubit_gate_time,
+                            parallel=True, toplogy=None)]
+    qprocessor = QuantumProcessor(
+        "custom_noisy_qprocessor",
+        phys_instructions=physical_instructions, 
+        num_positions=num_positions, mem_pos_types=["comm"] * num_comm_qubits
+        + ["data"] * num_data_qubits, mem_noise_models=
+        [comm_qubit_memory_depolar_model] * num_comm_qubits +
+        [data_qubit_memory_depolar_model] * num_data_qubits)
+
+
+
+
+
 
 # =============================================================================
 # def create_qproc_with_numerical_noise_ionQ_aria_durations(

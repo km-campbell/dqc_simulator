@@ -86,30 +86,31 @@ class QasmParsingElement():
     number = real | nninteger | pp.Keyword('pi') 
     arith_op = pp.one_of(['+', '-', '*', '/', '^'])
     unaryop = pp.one_of(['sin', 'cos', 'tan', 'exp', 'ln', 'sqrt'])
+    reg_index_slice = l_sqr_brace + nninteger + r_sqr_brace
+    decl =  (pp.Keyword('qreg') + idQasm + reg_index_slice |
+             pp.Keyword('creg') + idQasm + reg_index_slice ) 
+    
 # =============================================================================
-#     exp_num_or_word = real | nninteger | pi | idQasm  
+# # =============================================================================
+# #     exp_num_or_word = real | nninteger | pi | idQasm  
+# # =============================================================================
+# # =============================================================================
+# #     params =  pp.original_text_for(pp.nested_expr) #anything (including more
+# # =============================================================================
+#                                                    #nested brackets) inside 
+#                                                    #parentheses
+# # =============================================================================
+# #     atom = number | pp.Keyword('pi') 
+# #     exp_ops = [('-', 1, pp.OpAssoc.LEFT), ('^', 2, pp.OpAssoc.RIGHT), 
+# #                  (pp.one_of(['*', '/']), 2, pp.OpAssoc.LEFT),
+# #                  (pp.one_of(['+', '-']), 2, pp.OpAssoc.LEFT), 
+# #                  (unaryop, 1, pp.OpAssoc.LEFT)]
+# #     exp_qasm = pp.infix_notation(atom, exp_ops, '(', ')')
+# # =============================================================================
+#     # use CaselessKeyword for e and pi, to avoid accidentally matching
+#     # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
+#     # and CaselessKeyword only match whole words
 # =============================================================================
-# =============================================================================
-#     params =  pp.original_text_for(pp.nested_expr) #anything (including more
-# =============================================================================
-                                                   #nested brackets) inside 
-                                                   #parentheses
-# =============================================================================
-#     reg_index_slice = l_sqr_brace + nninteger + r_sqr_brace
-#     decl =  (pp.Keyword('qreg') + idQasm + reg_index_slice |
-#              pp.Keyword('creg') + idQasm + reg_index_slice ) 
-# =============================================================================
-# =============================================================================
-#     atom = number | pp.Keyword('pi') 
-#     exp_ops = [('-', 1, pp.OpAssoc.LEFT), ('^', 2, pp.OpAssoc.RIGHT), 
-#                  (pp.one_of(['*', '/']), 2, pp.OpAssoc.LEFT),
-#                  (pp.one_of(['+', '-']), 2, pp.OpAssoc.LEFT), 
-#                  (unaryop, 1, pp.OpAssoc.LEFT)]
-#     exp_qasm = pp.infix_notation(atom, exp_ops, '(', ')')
-# =============================================================================
-    # use CaselessKeyword for e and pi, to avoid accidentally matching
-    # functions that start with 'e' or 'pi' (such as 'exp'); Keyword
-    # and CaselessKeyword only match whole words
 
 class ASTType(Enum):
     """Enums designating element types."""
@@ -289,9 +290,17 @@ class ASTElementQReg(ASTElement):
     def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
         super(ASTElementQReg, self).__init__(
             filenum, linenum, ASTType.QREG, source, save_element_source, eol_comment)
-        x = QTRegEx.REG_DECL.match(self.source)
-        self.qreg_name = x.group(1)
-        self.qreg_num = x.group(2)
+        parsed_line = QasmParsingElement.decl.parse_string(self.source)
+        self.qreg_name = parsed_line[1]
+        self.qreg_num = parsed_line[2]
+        #commented out block below is the original nuqasm2 code. It fails to 
+        #correctly parse multi-character register names and instead only
+        #retrieves the last character of the name
+# =============================================================================
+#         x = QTRegEx.REG_DECL.match(self.source)
+#         self.qreg_name = x.group(1)
+#         self.qreg_num = x.group(2)
+# =============================================================================
 
     @ASTElement._eol_comment
     def out(self):
@@ -310,9 +319,17 @@ class ASTElementCReg(ASTElement):
     def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
         super(ASTElementCReg, self).__init__(
             filenum, linenum, ASTType.CREG, source, save_element_source, eol_comment)
-        x = QTRegEx.REG_DECL.match(self.source)
-        self.creg_name = x.group(1)
-        self.creg_num = x.group(2)
+        parsed_line = QasmParsingElement.decl.parse_string(self.source)
+        self.creg_name = parsed_line[1]
+        self.creg_num = parsed_line[2]
+        #commented out block below is the original nuqasm2 code. It fails to 
+        #correctly parse multi-character register names and instead only
+        #retrieves the last character of the name
+# =============================================================================
+#         x = QTRegEx.REG_DECL.match(self.source)
+#         self.creg_name = x.group(1)
+#         self.creg_num = x.group(2)
+# =============================================================================
 
     @ASTElement._eol_comment
     def out(self):
