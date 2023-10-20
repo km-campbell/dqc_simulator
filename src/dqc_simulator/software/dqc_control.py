@@ -151,6 +151,35 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         super().__init__(*args, **kwargs)
         self.gate_tuples = gate_tuples
 
+    def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
+                             gate_op):
+        """
+        A subroutine to handle the possibility that the gate_op is not defined
+        in the gate instruction. Such a scenario can be useful because it 
+        allows one to define one PhysicalInstruction for a variety of gates,
+        making it possible to implement gates of the form 
+        gate_name(list_of_parameters) without having to define a 
+        PhysicalInstruction for infinitely many possible parameter values.
+
+        Parameters
+        ----------
+        qprogram : an instance of 
+                   netsquid.netsquid.components.qprogram.QuantumProgram
+            A quantum program.
+        gate_instr : instance of netsquid.components.instructions.Instruction
+            A quantum instruction describing a gate. Note, this may not 
+            have the operator used to carry out the gate predefined. If the 
+            operator is not incorporated in the instruction definition it is
+            included in gate_op (see below).
+        qubit_indices : int or list of int
+            The indices of the qubits to act the instruction on.
+        gate_op : instance of netsquid.qubits.operators.Operator
+            The operator used to apply the quantum gate.
+        """
+        if gate_op == None:
+            qprogram.apply(gate_instr, qubit_indices)
+        else:
+            qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
 
     def run(self):
         program=QuantumProgram()
@@ -163,9 +192,17 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
          
             for gate_tuple in self.gate_tuples:
                 gate_instr = gate_tuple[0] 
+                #handling gate types with associated parameters:
+                try: #if gate_instr is iterable:
+                    gate_op = gate_instr[1]
+                    gate_instr = gate_instr[0]
+                except TypeError: #elif gate_instr is not iterable
+                    gate_op = None
+                    
                 if len(gate_tuple) == 2: #if single-qubit gate
                     qubit_index = gate_tuple[1]
-                    program.apply(gate_instr, qubit_index)
+                    self._flexi_program_apply(program, gate_instr, qubit_index,
+                                              gate_op)
                 elif type(gate_tuple[-1]) == str: #if primitive for remote gate
                     #The remote gates in this block will use different
                     #comm-qubits because logical gates using the same 
@@ -541,7 +578,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                     if qubit_index0 == -1:
                         qubit_index0 = comm_qubit_index #defined in remote gate
                                                         #section above
-                    program.apply(gate_instr, [qubit_index0, qubit_index1])
+                    self._flexi_program_apply(program, gate_instr,
+                                              [qubit_index0, qubit_index1],
+                                              gate_op)
             #executing any instructions that have not yet been executed. It is 
             #important that the quantum program is always reset after each node
             #to avoid waiting infinitely long if there is nothing left to
