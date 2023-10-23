@@ -19,8 +19,8 @@ class Test_bisect_circuit(unittest.TestCase):
         ops = [['u', 1, 'qreg1'], ['cx', 3, 'qreg1', 4, 'qreg2']]
         dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
                      qreg2node_lookup=None, circuit_type=None)
-        bisect_circuit(dqc_circuit)
-        desired_ops = [['u', 1, 'node_0'], ['cx', 3, 'node_0', 4, 'node_1']]
+        bisect_circuit(dqc_circuit, comm_qubits_per_node=2)
+        desired_ops = [['u', 3, 'node_0'], ['cx', 5, 'node_0', 5, 'node_1']]
         self.assertEqual(dqc_circuit.ops, desired_ops)
     
     def test_more_qregs_than_nodes(self):
@@ -33,7 +33,7 @@ class Test_bisect_circuit(unittest.TestCase):
         dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
                      qreg2node_lookup=None, circuit_type=None)
         bisect_circuit(dqc_circuit)
-        desired_ops = [['u', 1, 'node_0'], ['cx', 5, 'node_0', 7, 'node_1']]
+        desired_ops = [['u', 3, 'node_0'], ['cx', 7, 'node_0', 8, 'node_1']]
         self.assertEqual(dqc_circuit.ops, desired_ops)
         
     def test_odd_num_qubits(self):
@@ -46,7 +46,7 @@ class Test_bisect_circuit(unittest.TestCase):
         dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
                      qreg2node_lookup=None, circuit_type=None)
         bisect_circuit(dqc_circuit)
-        desired_ops = [['u', 1, 'node_0'], ['cx', 5, 'node_0', 7, 'node_1']]
+        desired_ops = [['u', 3, 'node_0'], ['cx', 7, 'node_0', 8, 'node_1']]
         #desired_ops should be unchanged from prev test despite change to
         #ops as the extra qubit should go on node_0
         self.assertEqual(dqc_circuit.ops, desired_ops)
