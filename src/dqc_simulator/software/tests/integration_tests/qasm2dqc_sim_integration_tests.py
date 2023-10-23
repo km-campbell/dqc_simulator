@@ -13,7 +13,7 @@ import netsquid as ns
 
 from dqc_simulator.hardware.dqc_creation import create_dqc_network
 from dqc_simulator.hardware.quantum_processors import (
-        create_processor)    
+        create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates)    
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.compiler_preprocessing import ( 
                                 preprocess_qasm_to_compilable_bipartitioned)
@@ -49,7 +49,13 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                                                         filepath, 
                                                         scheme='tp_safe',
                                                         include_path='.')
+        p_depolar_error_cnot = 0
+        comm_qubit_depolar_rate = 0
+        data_qubit_depolar_rate = 0
         network = create_dqc_network(
+                        p_depolar_error_cnot,
+                        comm_qubit_depolar_rate,
+                        data_qubit_depolar_rate,
                         state4distribution=None, #ks.b00 defined in function body
                         node_list=None,
                         num_nodes=2,
@@ -61,9 +67,8 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                         nodes_have_ebit_ready=False,
                         node_comm_qubits_free=None, #[0, 1] defined in function body
                         node_comm_qubit_positions=None, #(0, 1) defined in function body
-                        custom_qprocessor_func=create_processor,
-                        name="linear network",
-                        num_positions=20)
+                        custom_qprocessor_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
+                        name="linear network")
         protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
                                     compiler_func=sort_greedily_by_node_and_time)
         protocol.start()

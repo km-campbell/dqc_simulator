@@ -176,7 +176,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         gate_op : instance of netsquid.qubits.operators.Operator
             The operator used to apply the quantum gate.
         """
-        if gate_op == None:
+        if gate_op is None:
             qprogram.apply(gate_instr, qubit_indices)
         else:
             qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
@@ -628,6 +628,7 @@ class dqcMasterProtocol(Protocol):
         
     def run(self):
         node_op_dict = self.compiler_func(self.gate_tuples)
+        print(f"node_op_dict is {node_op_dict}")
         node_dict = {}
         for node_key in node_op_dict:
             node_dict[node_key] = self.network.get_node(node_key)

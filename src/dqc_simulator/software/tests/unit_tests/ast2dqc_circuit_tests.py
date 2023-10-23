@@ -135,6 +135,7 @@ class Test_ast2dqc_circuit(unittest.TestCase):
         filepath = self.directory_path + filename
         ast = qasm2ast(filepath)
         dqc_circuit = ast2dqc_circuit(ast)
+        print(dqc_circuit.ops)
         return dqc_circuit
     def test_with_ae_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('ae_indep_qiskit_5.qasm')

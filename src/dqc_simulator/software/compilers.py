@@ -97,7 +97,8 @@ def sort_greedily_by_node_and_time(gate_tuples):
                 gate_instructions = gate_tuple[0]
                 #if only one instruction given, with no qubit index specified
                 #eg, just instr.INSTR_CNOT given:
-                if type(gate_instructions) is ns.components.instructions.IGate:
+                if (isinstance(gate_instructions,ns.components.instructions.IGate)
+                    or isinstance(gate_instructions, tuple)):
                     #putting into correct form to use the comm-qubit index
                     #as the control. Which comm-qubit index to use will be 
                     #defined by the correction block in

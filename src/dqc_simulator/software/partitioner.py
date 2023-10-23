@@ -55,5 +55,6 @@ def bisect_circuit(dqc_circuit):
     dqc_circuit.node_sizes = {'node_0' : node_0_size, 'node_1' : node_1_size}
     dqc_circuit.circuit_type = 'partitioned'
 
-
+#how to ensure that there are right number of comm-qubits and that these are 
+#accounted for when indexing.
                 

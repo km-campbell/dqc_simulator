@@ -19,9 +19,9 @@ def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
     dqc_circuit.add_scheme_to_2_qubit_gates(scheme)
     node_init_commands = []
     for node_name in dqc_circuit.node_sizes:
-        new_commands = [[instr.INSTR_INIT, 
+        new_commands = [instr.INSTR_INIT, 
                         [ii for ii in range(dqc_circuit.node_sizes[node_name])],
-                         node_name]]
+                         node_name]
         node_init_commands.append(new_commands)
     dqc_circuit.ops = node_init_commands + dqc_circuit.ops
     return dqc_circuit

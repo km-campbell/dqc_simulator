@@ -39,6 +39,9 @@ INSTR_T_DAGGER = instr.IGate("T_dagger", operator=T.conj)
 INSTR_S_DAGGER = instr.IGate("S_dagger", operator=S.conj)
 
 
+INSTR_SINGLE_QUBIT_UNITARY = instr.IGate('single_qubit_unitary', num_positions=1)
+INSTR_TWO_QUBIT_UNITARY = instr.IGate('two_qubit_unitary', num_positions=2)
+
 def INSTR_U(theta, phi, lambda_var, controlled=False):
     """
     (controlled) single qubit unitary
@@ -64,18 +67,21 @@ def INSTR_U(theta, phi, lambda_var, controlled=False):
     a22 = np.exp(1j * (phi + lambda_var)/2) * np.cos(theta/2)
     op = Operator("single_qubit_unitary_op",
                   np.array([[a11, a12], [a21, a22]]))
-    name = "single_qubit_unitary_gate"
+    instruction = INSTR_SINGLE_QUBIT_UNITARY
     if controlled==True:
         op = op.ctrl
-        name = "controlled_unitary_gate"
+        instruction = INSTR_TWO_QUBIT_UNITARY
     elif type(controlled) != bool:
         raise TypeError(f"{controlled} is not of type `bool' ")
-    instruction = instr.IGate(name, op)
-    return instruction
+    instructionNop = (instruction, op)
+    return instructionNop
 
 
 
 INSTR_CY = instr.IGate("CY", operator=Y.ctrl)
+
+
+
 
 def INSTR_RZ(angle, controlled=False, conjugate=False):
     """
@@ -109,6 +115,8 @@ def INSTR_RZ(angle, controlled=False, conjugate=False):
     elif type(conjugate) != False:
         raise TypeError("{conjugate} is not of type `bool' ")
         
+    instructionNop = (INSTR_SINGLE_QUBIT_UNITARY, op)
+    return instructionNop
 
 
         

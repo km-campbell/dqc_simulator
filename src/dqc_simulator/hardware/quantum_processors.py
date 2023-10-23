@@ -16,7 +16,9 @@ from netsquid.components.models.delaymodels import (FibreDelayModel,
 
 from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
-                                      INSTR_T_DAGGER, INSTR_U)
+                                      INSTR_T_DAGGER, INSTR_U,
+                                      INSTR_SINGLE_QUBIT_UNITARY, 
+                                      INSTR_TWO_QUBIT_UNITARY)
 
 #creating custom instructions
 
@@ -197,7 +199,8 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations(
 
 
 #following not yet tested!
-def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(                                         p_depolar_error_cnot,
+def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(   
+                                         p_depolar_error_cnot,
                                          comm_qubit_depolar_rate,
                                          data_qubit_depolar_rate,
                                          single_qubit_gate_time=135 * 10**3,
@@ -215,10 +218,52 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         data_qubit_depolar_rate, time_independent=False)
     #creating processor for all Nodes
     physical_instructions = [
-        PhysicalInstruction(instr.INSTR_INIT, duration=3, parallel=False,
-                            toplogy=None),
-        PhysicalInstruction(instr.IGate, duration=single_qubit_gate_time,
-                            parallel=True, toplogy=None)]
+            PhysicalInstruction(instr.INSTR_INIT, duration=3, parallel=False,
+                                toplogy=None),
+            PhysicalInstruction(instr.INSTR_H, duration=single_qubit_gate_time, 
+                                parallel=True, topology=None),
+            PhysicalInstruction(instr.INSTR_X, duration=single_qubit_gate_time,
+                                parallel=True, topology=None),
+            PhysicalInstruction(instr.INSTR_Z, duration=single_qubit_gate_time,
+                                parallel=True, topology=None),
+            PhysicalInstruction(instr.INSTR_S, duration=single_qubit_gate_time,
+                                parallel=True, topology=None),
+            PhysicalInstruction(instr.INSTR_CNOT, duration=two_qubit_gate_time,
+                                parallel=True, topology=None, 
+                                quantum_noise_model=cnot_depolar_model),
+            PhysicalInstruction(INSTR_ARB_GEN(alpha, beta), 
+                                duration=3, parallel=True),
+                                                #duration deliberately negligible
+                                                #to approximate ideality for 
+                                                #when not interested in how input
+                                                #state arrived at
+            PhysicalInstruction(instr.INSTR_CS, duration=two_qubit_gate_time, 
+                                parallel=True, topology=None),
+            PhysicalInstruction(instr.INSTR_MEASURE, duration=measurement_time,
+                                parallel=True, topology=None,
+                                quantum_noise_model=None, 
+                                apply_q_noise_after=False,
+                                discard=True),
+            PhysicalInstruction(instr.INSTR_DISCARD, 
+                                duration=single_qubit_gate_time, parallel=False,
+                                toplology=[ii for ii in range(num_comm_qubits)]),
+            PhysicalInstruction(instr.INSTR_SWAP, duration=1e-10, 
+                                parallel=True, 
+                                topology=None), #duration deliberately negligible
+                                                #to approximate ideality for 
+                                                #TP-safe
+            PhysicalInstruction(instr.INSTR_T, duration=single_qubit_gate_time,
+                                parallel=True, 
+                                topology=None),
+            PhysicalInstruction(INSTR_T_DAGGER, duration=single_qubit_gate_time,
+                                parallel=True,
+                                topology=None),
+            PhysicalInstruction(INSTR_SINGLE_QUBIT_UNITARY, 
+                                duration=single_qubit_gate_time,
+                                parallel=True, topology=None),
+            PhysicalInstruction(INSTR_TWO_QUBIT_UNITARY, 
+                                duration=two_qubit_gate_time,
+                                parallel=True, topology=None)]
     qprocessor = QuantumProcessor(
         "custom_noisy_qprocessor",
         phys_instructions=physical_instructions, 
@@ -226,6 +271,7 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         + ["data"] * num_data_qubits, mem_noise_models=
         [comm_qubit_memory_depolar_model] * num_comm_qubits +
         [data_qubit_memory_depolar_model] * num_data_qubits)
+    return qprocessor
 
 
 
