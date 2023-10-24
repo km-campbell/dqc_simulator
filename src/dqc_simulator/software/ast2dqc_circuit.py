@@ -216,28 +216,34 @@ class ArgumentInterpreter(NonTerminalInterpreter):
     
         Returns
         ------
-        reg_name : str
-            The name of a register (creg or qreg).
-        bit_index : None or int
-            If argument_terminal represents a (qu)bit, this is the index of 
-            that (qu)bit
+        parsed_arg : list
+            The parsed argument. It contains the metadata indicating the type
+            of argument ('qubit' or 'reg'), the name of the quantum register 
+            as a str (reg_name) and the bit index (iff the type of argument is 
+            'qubit')
     
         """
         
-        bit_index = None
         if '[' in argument_terminal: #is (qu)bit
+            arg_type = "qubit"
             split_bit = argument_terminal.replace(']', '').split('[')
             reg_name = split_bit[0]
             bit_index = split_bit[1]
+            parsed_arg = [arg_type, reg_name, bit_index]
         elif '[' not in argument_terminal: 
+            arg_type = "reg"
             reg_name = argument_terminal
-        return reg_name, bit_index
+            parsed_arg = [arg_type, reg_name]
+        return parsed_arg
     
     def interpret(self, argument_terminal): 
-        reg_name, bit_index = self.parse_argument_non_terminal(argument_terminal)
-        bit_index = int(bit_index)
-        return [bit_index, reg_name]
-        
+        parsed_arg = self.parse_argument_non_terminal(argument_terminal)
+        arg_type = parsed_arg[0]
+        if arg_type == "qubit":
+            parsed_arg[-1] = int(parsed_arg[-1])
+        interpretted_arg = parsed_arg
+        return interpretted_arg
+
 
 
 class Ast2SimReadable(metaclass=abc.ABCMeta):
@@ -360,29 +366,108 @@ class AstGateDef(Ast2SimReadable):
         #need to parse the gate info 
         
 class AstGate(Ast2SimReadable):
+    def _add_gate_spec_with_params2circuit(self, params, gate_name, gate_args):
+        """
+        Adds new gate specifications to self.dqc_circuit.ops
+
+        Parameters
+        ----------
+        params : list of float
+            The interpretted numerical parameters used to specify the gate. 
+            Eg, for gate U(theta, phi, lambda) the parameters might be
+            [1, 2.3, 1.2].
+        gate_name : str
+            The name of the gate.
+        gate_args : list
+            List of form: [qubit_index, qreg_name], where qubit_index is of 
+            type int and qreg_name of type str.
+        """
+        gate_spec = [self.dqc_circuit.defined_gates[gate_name](*params),
+                          *gate_args]
+        self.dqc_circuit.ops.append(gate_spec)
+        
+    def _add_gate_spec_without_params2circuit(self, gate_name, gate_args):
+        """
+        Adds new gate specifications to self.dqc_circuit.ops
+
+        Parameters
+        ----------
+        gate_name : str
+            The name of the gate.
+        gate_args : list
+            List of form: [qubit_index, qreg_name], where qubit_index is of 
+            type int and qreg_name of type str.
+        """
+        gate_spec = [self.dqc_circuit.defined_gates[gate_name],
+                          *gate_args]
+        self.dqc_circuit.ops.append(gate_spec)
+    
     def make_sim_readable(self):
-        #TO DO: make this work if arguments are not qubits in accordance with
-        #openQASM 2.0 logic.
-        param_interpreter = ExpQasmInterpreter().interpret
         arg_interpreter = ArgumentInterpreter().interpret
-        #the parser has matched absolutely anything inside parentheses preceded 
-        #by a non-whitespace character. It then split them using a comma
-        #delimiter
+        param_interpreter = ExpQasmInterpreter().interpret
         params = self.ast_c_sect_element['param_list']
         args = self.ast_c_sect_element['reg_list']
         gate_name = self.ast_c_sect_element['op']
-        interpretted_args = []
-        for arg in args:
-            interpretted_args = interpretted_args + arg_interpreter(arg)
-        if params: #if params is not empty
+        
+        for ii, arg in enumerate(args):
+            args[ii] = arg_interpreter(arg)
+        
+        if params:
+            _add_gate_spec2circuit = self._add_gate_spec_with_params2circuit
+            gate_spec_elems = [params, gate_name]
             for ii, param in enumerate(params):
                 params[ii] = param_interpreter(param)
-            gate_spec = [self.dqc_circuit.defined_gates[gate_name](*params),
-                              *interpretted_args]
+                
         elif params is None:
-            gate_spec = [self.dqc_circuit.defined_gates[gate_name],
-                          *interpretted_args]
-        self.dqc_circuit.ops.append(gate_spec)
+            gate_spec_elems = [gate_name]
+            _add_gate_spec2circuit = self._add_gate_spec_without_params2circuit
+                
+        arg1 = args[0]
+        arg1_type = arg1[0]
+        reg1_name = arg1[1]
+        if len(args) == 1: #if single-qubit gate
+            if arg1_type == 'reg':
+                reg_size = self.dqc_circuit.qregs[reg1_name]['size']
+                for qubit_index in range(reg_size):
+                    gate_args = [qubit_index, reg1_name]
+                    _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+            elif arg1_type == 'qubit':
+                qubit_index = arg1[2]
+                gate_args = [qubit_index, reg1_name]
+                _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+                
+        elif len(args) == 2: #if two-qubit gate
+            arg2 = args[1]
+            arg2_type = arg2[0]
+            reg2_name = arg2[1]
+            reg1_size = self.dqc_circuit.qregs[reg1_name]['size']
+            reg2_size = self.dqc_circuit.qregs[reg2_name]['size']
+            
+            if arg1_type == arg2_type == 'reg':
+                qubit_index1 = arg1[2]
+                qubit_index2 = arg2[2]
+                gate_args = [qubit_index1, reg1_name, qubit_index2, reg2_name]
+                _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+            elif arg1_type == arg2_type == 'reg':
+                for qubit_index in range(reg1_size):
+                #if reg1_size != reg2_size there will be an error thrown
+                #later implicitly and so can just use reg1_size or 
+                #reg2_size here, knowing regs MUST be same size. This is 
+                #consistent with the openQasm 2.0 specification
+                    gate_args = [qubit_index, reg1_name, qubit_index,
+                                 reg2_name]
+                    _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+            elif arg1_type == 'qubit' and arg2_type == 'reg':
+                for qubit_index2 in range(reg2_size):
+                    qubit_index1 = arg1[2]
+                    gate_args = [qubit_index1, reg1_name, qubit_index2,
+                                 reg2_name]
+                    _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+            elif arg2_type == 'reg' and arg2_type == 'qubit':
+                qubit_index2 = arg2[2]
+                gate_args = [qubit_index1, reg1_name, qubit_index2, reg2_name]
+                _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+                
         return self.dqc_circuit
         
 class AstCtl(Ast2SimReadable):
@@ -406,8 +491,12 @@ class AstDeclaration_Qasm_2_0(Ast2SimReadable):
              #further
              
         
-class AstInclude(Ast2SimReadable):
+class AstInclude(Ast2SimReadable): 
     def make_sim_readable(self):
+        #TO DO: exchange this all for 'return self.dqc_circuit' once the rest
+        #of the code is ready to do without it. The include statement has 
+        #already been parsed into 'g_sect' when creating the ast and this 
+        #is what should be interpretted (not the ast['c_sect'])
         if self.ast_c_sect_element['include'] is None:
             return self.dqc_circuit
         elif self.ast_c_sect_element['include'] == 'qelib1.inc':
@@ -445,26 +534,133 @@ class AstInclude(Ast2SimReadable):
                                       " the QASM code is not yet supported")
 
 
+class AstGSectInterpreter():
+    """Interprets the 'g_sect' of an AST generated with 
+    dqc_simulator.software.qasm2ast.qasm2ast(filepath). The 'g_sect' contains
+    all of the parsed information about gate definitions <gatedecl> in the
+    qasm grammar, whether they are in the main .qasm file or another file 
+    included using the 'include' command in the main .qasm file """
+    def __init__(self, native_gates):
+        """
+        Parameters
+        ----------
+        native_gates : dict
+            The native gate names and the functions used to run them on 
+            dqc_simulator. Each function should return either an instance of 
+            netsquid.components.instructions.Instruction OR a tuple of form
+            (instance of netsquid.components.instructions.Instruction, 
+             instance of netsquid.qubits.operators.Operator). 
+        """
+        self.native_gates = native_gates
+        
+    def _interpret_subgate_param_list(self, sub_gate_param_list, 
+                               overall_gate_param_list):
+        """
+        Interprets numerical parameters and leaves user-specifiable parameter
+        names unchanged for subgates in an overall gate macro definition.
+
+        Parameters
+        ----------
+        sub_gate_param_list : list of str
+            The parsed parameters for a subgate in the macro.
+        overall_gate_param_list : list of str
+            The parameter names for the overall gate being defined by macro.
+            These are the names of the parameters which the user will specify
+            when calling this macro.
+
+        Returns
+        -------
+        sub_gate_param_list : list of str and/or float
+            The parameters with numerical parameters interpretted and 
+            parameter names which are left for the user to specify untouched.
+        """
+        param_interpreter = ExpQasmInterpreter().interpret
+        for ii, param in enumerate(sub_gate_param_list):
+            if param not in overall_gate_param_list:
+                sub_gate_param_list[ii] = param_interpreter(param)
+        return sub_gate_param_list
+        
+        
+    def interpret(self, ast_g_sect):
+        """
+        Parameters
+        ----------
+        ast_g_sect : list of dict
+            The g_sect of the AST (ie, ast['g_sect']).
+
+        Returns
+        -------
+        defined_gates : dict
+            Dictionary of gate names and the functions used to implement them.
+            Each function should return either an instance of 
+            netsquid.components.instructions.Instruction OR a tuple of form
+            (instance of netsquid.components.instructions.Instruction, 
+             instance of netsquid.qubits.operators.Operator). 
+        """
+        #TO DO:
+        #want to take use ast['g_sect'] to define appropriate gate macros. For each
+        #element, I want to identify whether the gate definition corresponds to 
+        #something that I have already defined a native gate for and if not,
+        #it should create an appropriate macro. This should be generalised
+        #so that any set of native gates could be used and the macro built
+        #in terms of these native gates, as it would if these were gates
+        #previously defined in the QASM code. I think the relevant fields of each 
+        #element to parse are 'gate_name' (this needs to be split into name and params
+        #and the params can be disregarded, as they are stored in 'gate_param_list'); 
+        #'gate_param_list' (needs to be converted into arguments of a function);
+        #'gate_ops_list' (this is a list of dicts with each dict describing a gate used
+        #in the macro and having elements 'op', 'op_param_list', and 'op_reg_list' 
+        #which all needed to be converted into the body of a python function, 
+        #creating a netsquid composite instruction); 
+        defined_gates = self.native_gates
+        for gate_def in ast_g_sect:
+            #isolating the gate name from what may be a gate name and 
+            #params:
+            gate_name = QasmParsingElement.idQasm.parse_string(
+                            gate_def['gate_name'])[0]
+            gate_args = gate_def['gate_reg_list']
+            for ii, sub_gate in enumerate(gate_def['gate_ops_list']):
+                op_name = sub_gate['op']
+                subgate_param_list = self._interpret_subgate_param_list(
+                                            sub_gate['op_param_list'], 
+                                            gate_def['gate_param_list'])
+                subgate_args = sub_gate['op_reg_list']
+                #TO DO:
+                #all of this info needs added to something to create
+                #our function returning an instruction or 
+                #instruction-op tuple. Ops can potentially be combined
+                #via matrix multiplication (using @ operator and taking 
+                #care over the order of operations)
+                
+
+
 def ast2dqc_circuit(ast):
+    #TO DO: potentially add argument 'native_gates' to allow the native gate
+    #set of choice to be specified.
+    native_qasm_gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
     qregs = dict()
     cregs = dict()
-    native_qasm_gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
     ops4circuit = []
     dqc_circuit = DqcCircuit(qregs, cregs, native_qasm_gates, ops4circuit)
-    #implementing functions from <exp> in openQASM 2.0's grammar
+    #implementing functions from <exp> in openQASM 2.0's grammar:
+    #TO DO: ascertaining if any of the items in the following dict are 
+    #superfluous because they will not appear in atst['c_sect']. It think that
+    #this may be the case for ASTType.GATE, as I think this should be parsed
+    #into ast['g_sect']
     ast_types2sim_types_lookup = {ASTType.UNKNOWN : AstUnknown, 
                                   ASTType.COMMENT : AstComment,
                                   ASTType.QREG : AstQreg,
                                   ASTType.CREG : AstCreg,
                                   ASTType.MEASURE : AstMeasure,
                                   ASTType.BARRIER : AstBarrier,
-                                  ASTType.GATE : AstGateDef,
+                                  ASTType.GATE : AstGateDef, #I think this may be superflous and handled in ast['g_sect']
                                   ASTType.OP : AstGate,
                                   ASTType.CTL : AstCtl,
                                   ASTType.CTL_2 : AstCtl2,
                                   ASTType.BLANK : AstBlank,
                                   ASTType.DECLARATION_QASM_2_0 : AstDeclaration_Qasm_2_0,
                                   ASTType.INCLUDE : AstInclude}
+    #implementing everything except gate_declarations
     for ast_c_sect_element in ast['c_sect']:
         ast2sim_readable_converter = ast_types2sim_types_lookup[ast_c_sect_element['type']](ast_c_sect_element, dqc_circuit)  
         #updating dqc_circuit object with new information

@@ -82,7 +82,6 @@ class QasmParsingElement():
     idQasm = pp.Regex(r'[a-z][A-Za-z0-9]*') # id from https://arxiv.org/abs/1707.03429
     real = pp.Regex(r'([0-9]+\.[0-9]*|[0-9]*\.[0-9]+)([eE][-+]?[0-9]+)?')
     nninteger = pp.Regex(r'[1-9]+[0-9]*|0')
-    #bidmas
     number = real | nninteger | pp.Keyword('pi') 
     arith_op = pp.one_of(['+', '-', '*', '/', '^'])
     unaryop = pp.one_of(['sin', 'cos', 'tan', 'exp', 'ln', 'sqrt'])

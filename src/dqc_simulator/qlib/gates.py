@@ -48,17 +48,21 @@ def INSTR_U(theta, phi, lambda_var, controlled=False):
 
     Parameters
     ----------
-    theta : TYPE
-        DESCRIPTION.
-    phi : TYPE
-        DESCRIPTION.
-    lambda_var : TYPE
-        DESCRIPTION.
+    theta : float
+        An angle in radians.
+    phi : float
+        An angle in radians.
+    lambda_var : float
+        An angle in radians.
 
     Returns
     -------
-    instruction : TYPE
-        DESCRIPTION.
+    instructionNop : tuple
+        The NetSquid instruction and operation needed to carry out this gate.
+        Here the instruction essentially indicates all relevant metadata and 
+        can be used to dictate which noise should be applied to the gate, 
+        while the operation is the matrix used to apply the actual quantum 
+        operation defining the gate.
 
     """
     a11 = np.exp(-1j * (phi + lambda_var)/2) * np.cos(theta/2)
@@ -90,7 +94,7 @@ def INSTR_RZ(angle, controlled=False, conjugate=False):
     Parameters
     ----------
     angle : float
-        Angle of rotation.
+        Angle of rotation in radians.
     controlled : bool, optional
         Whether this is implemented as a control gate (CRz) or not. The default
         is False.
@@ -100,7 +104,12 @@ def INSTR_RZ(angle, controlled=False, conjugate=False):
 
     Returns
     -------
-    class: netsquid.components.instructions.Instruction
+    instructionNop : tuple
+        The NetSquid instruction and operation needed to carry out this gate.
+        Here the instruction essentially indicates all relevant metadata and 
+        can be used to dictate which noise should be applied to the gate, 
+        while the operation is the matrix used to apply the actual quantum 
+        operation defining the gate.
 
     """
     op = create_rotation_op(angle, axis=(0, 0, 1))
