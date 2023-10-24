@@ -443,7 +443,7 @@ class AstGate(Ast2SimReadable):
             reg1_size = self.dqc_circuit.qregs[reg1_name]['size']
             reg2_size = self.dqc_circuit.qregs[reg2_name]['size']
             
-            if arg1_type == arg2_type == 'reg':
+            if arg1_type == arg2_type == 'qubit':
                 qubit_index1 = arg1[2]
                 qubit_index2 = arg2[2]
                 gate_args = [qubit_index1, reg1_name, qubit_index2, reg2_name]
@@ -463,11 +463,13 @@ class AstGate(Ast2SimReadable):
                     gate_args = [qubit_index1, reg1_name, qubit_index2,
                                  reg2_name]
                     _add_gate_spec2circuit(*gate_spec_elems, gate_args)
-            elif arg2_type == 'reg' and arg2_type == 'qubit':
-                qubit_index2 = arg2[2]
-                gate_args = [qubit_index1, reg1_name, qubit_index2, reg2_name]
-                _add_gate_spec2circuit(*gate_spec_elems, gate_args)
-                
+            elif arg1_type == 'reg' and arg2_type == 'qubit':
+                for qubit_index1 in range(reg1_size):
+                    qubit_index2 = arg2[2]
+                    gate_args = [qubit_index1, reg1_name, qubit_index2,
+                                 reg2_name]
+                    _add_gate_spec2circuit(*gate_spec_elems, gate_args)
+                    
         return self.dqc_circuit
         
 class AstCtl(Ast2SimReadable):
@@ -575,9 +577,13 @@ class AstGSectInterpreter():
             parameter names which are left for the user to specify untouched.
         """
         param_interpreter = ExpQasmInterpreter().interpret
-        for ii, param in enumerate(sub_gate_param_list):
-            if param not in overall_gate_param_list:
-                sub_gate_param_list[ii] = param_interpreter(param)
+        if (sub_gate_param_list is not None and 
+            overall_gate_param_list is not None):
+            for ii, param in enumerate(sub_gate_param_list):
+                if param not in overall_gate_param_list:
+                    sub_gate_param_list[ii] = param_interpreter(param)
+        else:
+            sub_gate_param_list = None
         return sub_gate_param_list
         
         
