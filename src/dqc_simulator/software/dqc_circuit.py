@@ -6,7 +6,7 @@ Created on Tue Oct 17 14:13:35 2023
 """
 
 class DqcCircuit():
-    def __init__(self, qregs, cregs, defined_gates, ops,
+    def __init__(self, qregs, cregs, native_gates, ops,
                  qreg2node_lookup=None, circuit_type=None):
         """ 
         Parameters
@@ -17,12 +17,9 @@ class DqcCircuit():
                 values for each.
             cregs : dict
                 The classical registers and their associated sizes.
-            defined_gates : dict
-                The gates that are defined (ie, built into QASM or declared with a 
-                <gatedecl> in accordance with the QASM grammar - this includes 
-                gates defined in external files included using an 'include'
-                statement in the .qasm code) and their corresponding instruction
-                defined within NetSquid or dqc_simulator.qlib.gates.
+            native_gates : dict
+                The gates native to the processor upon which the DQC circuit
+                will be enacted.
             ops : list of lists
                 The operations (such as gates, initialisations or measurements)
                 in the quantum circuit written in a way dqc_simulator can 
@@ -38,7 +35,7 @@ class DqcCircuit():
         """
         self.qregs = qregs 
         self.cregs = cregs
-        self.defined_gates = defined_gates
+        self.native_gates = native_gates
         self.ops = ops
         self.qreg2node_lookup = qreg2node_lookup
         self.circuit_type = circuit_type

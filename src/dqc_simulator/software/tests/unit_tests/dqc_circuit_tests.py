@@ -14,11 +14,11 @@ class Test_qregs2nodes(unittest.TestCase):
     def setUp(self):
         self.qregs = {'qreg1' : 1, 'qreg2' : 2}
         self.cregs = dict()
-        self.defined_gates = dict()
+        self.native_gates = dict()
         self.ops = [['u', 0, 'qreg1'],
                ['cx', 0, 'qreg1', 1, 'qreg2']]
     def test_conversion_strategy_monolithic(self):
-        dqc_circuit = DqcCircuit(self.qregs, self.cregs, self.defined_gates,
+        dqc_circuit = DqcCircuit(self.qregs, self.cregs, self.native_gates,
                                  self.ops, qreg2node_lookup=None, 
                                  circuit_type=None)
         dqc_circuit.qregs2nodes('monolithic')
@@ -31,7 +31,7 @@ class Test_qregs2nodes(unittest.TestCase):
             self.assertEqual(dqc_circuit.circuit_type, 'monolithic')
             
     def test_conversion_strategy_auto(self):
-        dqc_circuit = DqcCircuit(self.qregs, self.cregs, self.defined_gates,
+        dqc_circuit = DqcCircuit(self.qregs, self.cregs, self.native_gates,
                                  self.ops, qreg2node_lookup=None, 
                                  circuit_type=None)
         dqc_circuit.qregs2nodes('auto')
@@ -45,7 +45,7 @@ class Test_qregs2nodes(unittest.TestCase):
 
     def test_conversion_strategy_manual(self):
         qreg2node_lookup = {'qreg1' : 'node_0', 'qreg2' : 'node_1'}
-        dqc_circuit = DqcCircuit(self.qregs, self.cregs, self.defined_gates,
+        dqc_circuit = DqcCircuit(self.qregs, self.cregs, self.native_gates,
                                  self.ops, qreg2node_lookup=qreg2node_lookup, 
                                  circuit_type=None)
         dqc_circuit.qregs2nodes('manual')
@@ -57,23 +57,23 @@ class Test_qregs2nodes(unittest.TestCase):
         with self.subTest():
             self.assertEqual(dqc_circuit.circuit_type, 'partitioned')
             
-class Test_add_scheme_to_ops(unittest.TestCase):
+class Test_add_scheme_to_2_qubit_gates(unittest.TestCase):
     def setUp(self):
         qregs = dict()
         cregs = dict()
-        defined_gates = dict()
+        native_gates = dict()
         ops = [['u', 1, 'node_0'], ['cx', 0, 'node_0', 1, 'node_0']]
-        self.dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
+        self.dqc_circuit = DqcCircuit(qregs, cregs, native_gates, ops,
                                  qreg2node_lookup=None, circuit_type=None)
         
     def test_on_adds_to_two_qubit_gate_only(self):
         desired_output = [['u', 1, 'node_0'], ['cx', 0, 'node_0', 1, 'node_0', 
                                                'tp_safe']]
-        self.dqc_circuit.add_scheme_to_ops('tp_safe')
+        self.dqc_circuit.add_scheme_to_2_qubit_gates('tp_safe')
         self.assertEqual(self.dqc_circuit.ops, desired_output)
         
     def test_scheme_attr_updated(self):
-        self.dqc_circuit.add_scheme_to_ops('tp_safe')
+        self.dqc_circuit.add_scheme_to_2_qubit_gates('tp_safe')
         self.assertEqual(self.dqc_circuit.scheme, 'tp_safe')
             
         

@@ -352,18 +352,6 @@ class AstBarrier(Ast2SimReadable):
         print("WARNING: 'barrier' command present in .qasm code but ignored")
         return self.dqc_circuit #FOR NOW THIS DOES NOTHING AND THE BARRIER 
                                 #COMMAND IS SIMPLY IGNORED. 
-class AstGateDef(Ast2SimReadable):
-    def make_sim_readable(self):
-        raise NotImplementedError("Arbitrary gate declarations are not yet "
-                                  "supported. Only the openQASM 2.0 native "
-                                  "gates and standard header gates can "
-                                  "currently be used. I aim to support "
-                                  "arbitrary gates in the future")
-        #To support this you would need to use the ast['g_sect'] which is 
-        #not currently passed to your Ast2SimReadable subclasses. This could 
-        #actually done before any of these subclasses are used as all the 
-        #relevant info is in ast['g_sect'] already. As such you would also not
-        #need to parse the gate info 
         
 class AstGate(Ast2SimReadable):
     def _add_gate_spec_with_params2circuit(self, params, gate_name, gate_args):
@@ -382,7 +370,7 @@ class AstGate(Ast2SimReadable):
             List of form: [qubit_index, qreg_name], where qubit_index is of 
             type int and qreg_name of type str.
         """
-        gate_spec = [self.dqc_circuit.defined_gates[gate_name](*params),
+        gate_spec = [self.dqc_circuit.native_gates[gate_name](*params),
                           *gate_args]
         self.dqc_circuit.ops.append(gate_spec)
         
@@ -398,17 +386,12 @@ class AstGate(Ast2SimReadable):
             List of form: [qubit_index, qreg_name], where qubit_index is of 
             type int and qreg_name of type str.
         """
-        gate_spec = [self.dqc_circuit.defined_gates[gate_name],
+        gate_spec = [self.dqc_circuit.native_gates[gate_name],
                           *gate_args]
         self.dqc_circuit.ops.append(gate_spec)
-    
-    def make_sim_readable(self):
-        arg_interpreter = ArgumentInterpreter().interpret
-        param_interpreter = ExpQasmInterpreter().interpret
-        params = self.ast_c_sect_element['param_list']
-        args = self.ast_c_sect_element['reg_list']
-        gate_name = self.ast_c_sect_element['op']
         
+    def _add_native_gate_call2circuit(self, arg_interpreter, param_interpreter,
+                                      params, args, gate_name):
         for ii, arg in enumerate(args):
             args[ii] = arg_interpreter(arg)
         
@@ -469,8 +452,37 @@ class AstGate(Ast2SimReadable):
                     gate_args = [qubit_index1, reg1_name, qubit_index2,
                                  reg2_name]
                     _add_gate_spec2circuit(*gate_spec_elems, gate_args)
-                    
+    
+    def make_sim_readable(self):
+        arg_interpreter = ArgumentInterpreter().interpret
+        param_interpreter = ExpQasmInterpreter().interpret
+        params = self.ast_c_sect_element['param_list']
+        args = self.ast_c_sect_element['reg_list']
+        gate_name = self.ast_c_sect_element['op']
+        
+        #TO DO: check if gate is macro and add handler for macros? What exists 
+        #currently (see code below) could be 
+        #considered a handler specifically for native gates. The macro handler
+        #would either need to be recursive or the g_sect_interpreter would 
+        #need to be able to expand fully in terms of native gates. 
+        #Could potentially rename the defined_gates attribute of dqc_circuit
+        #as native gates and then have some distinct way of handling macros
+        #which would be expanded into native gates and handled by the native 
+        #gate handler. 
+        
+        #define list of macros
+# =============================================================================
+#         sub_gates = []
+#         if gate_name not in self.dqc_circuit.native_gates:
+#             sub_gates = gate_macros[gate_name]() # gate macros should be dict
+#                                                  #of funcs which return expanded
+#                                                  #macro, generated in InterpretGSect
+# =============================================================================
+        self._add_native_gate_call2circuit(arg_interpreter, param_interpreter,
+                                           params, args, gate_name)
+        
         return self.dqc_circuit
+    
         
 class AstCtl(Ast2SimReadable):
     def make_sim_readable(self):
@@ -529,7 +541,7 @@ class AstInclude(Ast2SimReadable):
                              "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
                              "cp" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True), #alias of cu1
                              "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
-            self.dqc_circuit.defined_gates.update(standard_lib)
+            self.dqc_circuit.native_gates.update(standard_lib)
             return self.dqc_circuit
         else:
             raise NotImplementedError("The inclusion of arbitrary files within"
@@ -596,12 +608,11 @@ class AstGSectInterpreter():
 
         Returns
         -------
-        defined_gates : dict
-            Dictionary of gate names and the functions used to implement them.
-            Each function should return either an instance of 
-            netsquid.components.instructions.Instruction OR a tuple of form
-            (instance of netsquid.components.instructions.Instruction, 
-             instance of netsquid.qubits.operators.Operator). 
+        macros : dict
+            Dictionary of gate names and a functions returning the parameters,
+            arguments and name of the subgates (essentially the crucial info 
+            that would be in the c_sect entry of a native gate). The functions
+            should take the gate_arguments and parameters as its arguments.
         """
         #TO DO:
         #want to take use ast['g_sect'] to define appropriate gate macros. For each
@@ -618,25 +629,19 @@ class AstGSectInterpreter():
         #in the macro and having elements 'op', 'op_param_list', and 'op_reg_list' 
         #which all needed to be converted into the body of a python function, 
         #creating a netsquid composite instruction); 
-        defined_gates = self.native_gates
         for gate_def in ast_g_sect:
             #isolating the gate name from what may be a gate name and 
             #params:
             gate_name = QasmParsingElement.idQasm.parse_string(
                             gate_def['gate_name'])[0]
+            gate_params = gate_def['gate_param_list']
             gate_args = gate_def['gate_reg_list']
-            for ii, sub_gate in enumerate(gate_def['gate_ops_list']):
-                op_name = sub_gate['op']
+            for sub_gate in gate_def['gate_ops_list']:
+                subgate_name = sub_gate['op']
                 subgate_param_list = self._interpret_subgate_param_list(
                                             sub_gate['op_param_list'], 
-                                            gate_def['gate_param_list'])
+                                            gate_params)
                 subgate_args = sub_gate['op_reg_list']
-                #TO DO:
-                #all of this info needs added to something to create
-                #our function returning an instruction or 
-                #instruction-op tuple. Ops can potentially be combined
-                #via matrix multiplication (using @ operator and taking 
-                #care over the order of operations)
                 
 
 
@@ -659,14 +664,14 @@ def ast2dqc_circuit(ast):
                                   ASTType.CREG : AstCreg,
                                   ASTType.MEASURE : AstMeasure,
                                   ASTType.BARRIER : AstBarrier,
-                                  ASTType.GATE : AstGateDef, #I think this may be superflous and handled in ast['g_sect']
                                   ASTType.OP : AstGate,
                                   ASTType.CTL : AstCtl,
                                   ASTType.CTL_2 : AstCtl2,
                                   ASTType.BLANK : AstBlank,
                                   ASTType.DECLARATION_QASM_2_0 : AstDeclaration_Qasm_2_0,
                                   ASTType.INCLUDE : AstInclude}
-    #implementing everything except gate_declarations
+    
+    #implementing everything except gate_declarations:
     for ast_c_sect_element in ast['c_sect']:
         ast2sim_readable_converter = ast_types2sim_types_lookup[ast_c_sect_element['type']](ast_c_sect_element, dqc_circuit)  
         #updating dqc_circuit object with new information

@@ -15,9 +15,9 @@ class Test_bisect_circuit(unittest.TestCase):
         qregs = {'qreg1' : {'size' : 5, 'starting_index' : 0},
                  'qreg2' : {'size' : 6, 'starting_index' : 5}}
         cregs = dict()
-        defined_gates = dict()
+        native_gates = dict()
         ops = [['u', 1, 'qreg1'], ['cx', 3, 'qreg1', 4, 'qreg2']]
-        dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
+        dqc_circuit = DqcCircuit(qregs, cregs, native_gates, ops,
                      qreg2node_lookup=None, circuit_type=None)
         bisect_circuit(dqc_circuit, comm_qubits_per_node=2)
         desired_ops = [['u', 3, 'node_0'], ['cx', 5, 'node_0', 5, 'node_1']]
@@ -28,9 +28,9 @@ class Test_bisect_circuit(unittest.TestCase):
                  'qreg2' : {'size' : 6, 'starting_index' : 5},
                  'qreg3' : {'size' : 3, 'starting_index' : 11}}
         cregs = dict()
-        defined_gates = dict()
+        native_gates = dict()
         ops = [['u', 1, 'qreg1'], ['cx', 0, 'qreg2', 2, 'qreg3']]
-        dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
+        dqc_circuit = DqcCircuit(qregs, cregs, native_gates, ops,
                      qreg2node_lookup=None, circuit_type=None)
         bisect_circuit(dqc_circuit)
         desired_ops = [['u', 3, 'node_0'], ['cx', 7, 'node_0', 8, 'node_1']]
@@ -41,9 +41,9 @@ class Test_bisect_circuit(unittest.TestCase):
                  'qreg2' : {'size' : 6, 'starting_index' : 5},
                  'qreg3' : {'size' : 4, 'starting_index' : 11}}
         cregs = dict()
-        defined_gates = dict()
+        native_gates = dict()
         ops = [['u', 1, 'qreg1'], ['cx', 0, 'qreg2', 3, 'qreg3']]
-        dqc_circuit = DqcCircuit(qregs, cregs, defined_gates, ops,
+        dqc_circuit = DqcCircuit(qregs, cregs, native_gates, ops,
                      qreg2node_lookup=None, circuit_type=None)
         bisect_circuit(dqc_circuit)
         desired_ops = [['u', 3, 'node_0'], ['cx', 7, 'node_0', 8, 'node_1']]
