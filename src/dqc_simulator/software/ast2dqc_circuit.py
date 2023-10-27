@@ -452,7 +452,33 @@ class AstGate(Ast2SimReadable):
                     gate_args = [qubit_index1, reg1_name, qubit_index2,
                                  reg2_name]
                     _add_gate_spec2circuit(*gate_spec_elems, gate_args)
-    
+                    
+    def _replace_macro_subgate_paramsNargs_with_values(
+                                    self, gate_name, param_values, arg_values):
+        #each term in dqc_circuit.gate_macros has form
+        # gate_name : {'gate_params' : gate_params, gate_args' : gate_args, 
+        #'subgates': macro_subgates}. Be careful with your terminology here
+        #the gate_params and gate_args in the prev sentence are strings 
+        #based on what what declared when defining the gate macro in the .qasm
+        #file. They are distinct from the values of the parameters in the 
+        #ast['c_sect'] which are (not yet interpretted) numerical values (so 
+        #still strings at this point but not the same strings as in the gate
+        #declaration)
+        for macro in self.dqc_circuit.gate_macros[gate_name]:
+            param_key_value_pairs = zip(macro['params'], param_values)
+            param_lookup = {key:value for (key, value) in param_key_value_pairs}
+            arg_key_value_pairs = zip(macro['args'], arg_values)
+            arg_lookup = {key:value for (key, value) in arg_key_value_pairs}
+            for subgate in macro['subgates']:
+                for ii, param in enumerate(subgate['op_param_list']):
+                    if param in param_lookup:
+                        subgate['op_param_list'][ii] = param_lookup(param)
+                    #else the param should already be a maths expression or 
+                    #numerical string
+                for ii, arg in enumerate(subgate['op_reg_list']):
+                    if arg in arg_lookup:
+                        subgate['op_reg_list'][ii] = arg_lookup(arg)
+        
     def make_sim_readable(self):
         arg_interpreter = ArgumentInterpreter().interpret
         param_interpreter = ExpQasmInterpreter().interpret
@@ -470,14 +496,22 @@ class AstGate(Ast2SimReadable):
         #which would be expanded into native gates and handled by the native 
         #gate handler. 
         
-        #define list of macros
 # =============================================================================
-#         sub_gates = []
-#         if gate_name not in self.dqc_circuit.native_gates:
-#             sub_gates = gate_macros[gate_name]() # gate macros should be dict
+#         #define list of macros
+#         if gate_name in self.dqc_circuit.gate_macros:
+#             sub_gates = self.dqc_circuit.gate_macros[gate_name](params, args) 
+#                                                 # gate macros should be dict
 #                                                  #of funcs which return expanded
 #                                                  #macro, generated in InterpretGSect
+#             #maybe add recursive call here. The end goal is a list of subgates
+#             #where all subgates have been expanded fully in terms of native 
+#             #gates.
+#             for sub_gate in sub_gates:
+#                 self._add_native_gate_call2circuit(arg_interpreter, param_interpreter,
+#                                                    params, args, gate_name)
 # =============================================================================
+        
+        #else: would go here with following line indented
         self._add_native_gate_call2circuit(arg_interpreter, param_interpreter,
                                            params, args, gate_name)
         
@@ -547,136 +581,157 @@ class AstInclude(Ast2SimReadable):
             raise NotImplementedError("The inclusion of arbitrary files within"
                                       " the QASM code is not yet supported")
 
+        
 
-class AstGSectInterpreter():
-    """Interprets the 'g_sect' of an AST generated with 
-    dqc_simulator.software.qasm2ast.qasm2ast(filepath). The 'g_sect' contains
-    all of the parsed information about gate definitions <gatedecl> in the
-    qasm grammar, whether they are in the main .qasm file or another file 
-    included using the 'include' command in the main .qasm file """
-    def __init__(self, native_gates):
-        """
-        Parameters
-        ----------
-        native_gates : dict
-            The native gate names and the functions used to run them on 
-            dqc_simulator. Each function should return either an instance of 
-            netsquid.components.instructions.Instruction OR a tuple of form
-            (instance of netsquid.components.instructions.Instruction, 
-             instance of netsquid.qubits.operators.Operator). 
-        """
+
+
+class QasmTwoUniversalSet():
+    """The native gates for openQASM 2.0 (see 
+    https://arxiv.org/abs/1707.03429 )"""
+    gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
+
+
+class Ast2DqcCircuitTranslator():
+    def __init__(self, ast, native_gates=QasmTwoUniversalSet.gates):
+        self.ast = ast
         self.native_gates = native_gates
         
-    def _interpret_subgate_param_list(self, sub_gate_param_list, 
-                               overall_gate_param_list):
+    def _protect_param_inheritance(self, gate_name, param_values, arg_values):
+        #each term in dqc_circuit.gate_macros has form
+        # gate_name : {'gate_params' : gate_params, gate_args' : gate_args, 
+        #'subgates': macro_subgates}. Be careful with your terminology here
+        #the gate_params and gate_args in the prev sentence are strings 
+        #based on what what declared when defining the gate macro in the .qasm
+        #file. They are distinct from the values of the parameters in the 
+        #ast['c_sect'] which are (not yet interpretted) numerical values (so 
+        #still strings at this point but not the same strings as in the gate
+        #declaration)
+        for macro in self.dqc_circuit.gate_macros[gate_name]:
+            param_key_value_pairs = zip(macro['params'], param_values)
+            param_lookup = {key:value for (key, value) in param_key_value_pairs}
+            arg_key_value_pairs = zip(macro['args'], arg_values)
+            arg_lookup = {key:value for (key, value) in arg_key_value_pairs}
+            for subgate in macro['subgates']:
+                for ii, param in enumerate(subgate['op_param_list']):
+                    if param in param_lookup:
+                        subgate['op_param_list'][ii] = param_lookup(param)
+                    #else the param should already be a maths expression or 
+                    #numerical string
+                for ii, arg in enumerate(subgate['op_reg_list']):
+                    if arg in arg_lookup:
+                        subgate['op_reg_list'][ii] = arg_lookup(arg)
+                        
+    def _interpret_ast_g_sect(self, dqc_circuit):
         """
-        Interprets numerical parameters and leaves user-specifiable parameter
-        names unchanged for subgates in an overall gate macro definition.
-
-        Parameters
-        ----------
-        sub_gate_param_list : list of str
-            The parsed parameters for a subgate in the macro.
-        overall_gate_param_list : list of str
-            The parameter names for the overall gate being defined by macro.
-            These are the names of the parameters which the user will specify
-            when calling this macro.
-
-        Returns
-        -------
-        sub_gate_param_list : list of str and/or float
-            The parameters with numerical parameters interpretted and 
-            parameter names which are left for the user to specify untouched.
+        filtering ast['g_sect'] to see if each gate is a macro or a native gate
+        and for macros, expanding them to be in terms of native gates only.
         """
         param_interpreter = ExpQasmInterpreter().interpret
-        if (sub_gate_param_list is not None and 
-            overall_gate_param_list is not None):
-            for ii, param in enumerate(sub_gate_param_list):
-                if param not in overall_gate_param_list:
-                    sub_gate_param_list[ii] = param_interpreter(param)
-        else:
-            sub_gate_param_list = None
-        return sub_gate_param_list
-        
-        
-    def interpret(self, ast_g_sect):
-        """
-        Parameters
-        ----------
-        ast_g_sect : list of dict
-            The g_sect of the AST (ie, ast['g_sect']).
-
-        Returns
-        -------
-        macros : dict
-            Dictionary of gate names and a functions returning the parameters,
-            arguments and name of the subgates (essentially the crucial info 
-            that would be in the c_sect entry of a native gate). The functions
-            should take the gate_arguments and parameters as its arguments.
-        """
-        #TO DO:
-        #want to take use ast['g_sect'] to define appropriate gate macros. For each
-        #element, I want to identify whether the gate definition corresponds to 
-        #something that I have already defined a native gate for and if not,
-        #it should create an appropriate macro. This should be generalised
-        #so that any set of native gates could be used and the macro built
-        #in terms of these native gates, as it would if these were gates
-        #previously defined in the QASM code. I think the relevant fields of each 
-        #element to parse are 'gate_name' (this needs to be split into name and params
-        #and the params can be disregarded, as they are stored in 'gate_param_list'); 
-        #'gate_param_list' (needs to be converted into arguments of a function);
-        #'gate_ops_list' (this is a list of dicts with each dict describing a gate used
-        #in the macro and having elements 'op', 'op_param_list', and 'op_reg_list' 
-        #which all needed to be converted into the body of a python function, 
-        #creating a netsquid composite instruction); 
-        for gate_def in ast_g_sect:
+        for gate_def in self.ast['g_sect']:
             #isolating the gate name from what may be a gate name and 
             #params:
             gate_name = QasmParsingElement.idQasm.parse_string(
                             gate_def['gate_name'])[0]
             gate_params = gate_def['gate_param_list']
             gate_args = gate_def['gate_reg_list']
-            for sub_gate in gate_def['gate_ops_list']:
-                subgate_name = sub_gate['op']
-                subgate_param_list = self._interpret_subgate_param_list(
-                                            sub_gate['op_param_list'], 
-                                            gate_params)
-                subgate_args = sub_gate['op_reg_list']
-                
+            if (gate_name not in dqc_circuit.native_gates and 
+                gate_name not in dqc_circuit.gate_macros):
+            #if gate is non-native AND hasn't already been added to the dict
+            #of macros:
+                subgates = gate_def['gate_ops_list']
+                macro_subgates = []
+# =============================================================================
+#                 if len(subgates) == 1:
+#                 #if subgate is just alias of native gate or native gate with
+#                 #some of the parameters fixed:
+#                     subgate = subgates[0]
+#                     subgate_name = subgate['op']
+#                     interpretted_params = []
+#                     interpretted_param_indices = []
+#                     for ii, subgate_param in enumerate(subgate['op_param_list']):
+#                         if subgate_param not in gate_params:
+#                             interpretted_param = param_interpreter(
+#                                                             subgate_param)
+#                             interpretted_params.append(interpretted_param)
+#                             interpretted_param_indices.append(ii)
+#                             
+#                     total_num_params = len(subgate['op_param_list'])
+#                     num_anon_args = len(interpretted_params)
+#                     
+#                     alias_func = dqc_circuit.native_gates[subgate_name] 
+#                     gate_func = lambda  : 
+#                     dqc_circuit.native_gates.append(subgate['op_param_list'])
+#                 elif len(subgates) > 1:
+# =============================================================================
+                for subgate in subgates:
+                    subgate_name = subgate['op']
+                    
+                    if subgate_name in dqc_circuit.native_gates:
+                        macro_subgates.append(subgate) 
+                        
+                    elif subgate_name in dqc_circuit.gate_macros:
+                        macro_subgates.extend(dqc_circuit.gate_macros[
+                            subgate_name]['subgates'])
+                        #BUG: aliases provide the params for the macro not the 
+                        #params from subgate['op_param_list']. Ie, numerical
+                        #strings are overwritten. See for example what happens
+                        #to 'rx'. Maybe the trick may be to gate declarations
+                        #with only one subgate to dqc_circuit.native_gates, 
+                        #as they are just aliases or calls of the native gate.
+                        #The one thing to be careful of is that the instruction
+                        #name is unchanged. See begins of attempt in commented 
+                        #out block above
+                    else:
+                        raise ValueError(f"Subgate {subgate_name} has not "
+                                         "previously been defined as a native "
+                                         "gate or circuit identity (macro)")
+                dqc_circuit.gate_macros[gate_name] = {'params' : gate_params,
+                                                      'args' : gate_args,
+                                                      'subgates': macro_subgates}
 
-
-def ast2dqc_circuit(ast):
-    #TO DO: potentially add argument 'native_gates' to allow the native gate
-    #set of choice to be specified.
-    native_qasm_gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
-    qregs = dict()
-    cregs = dict()
-    ops4circuit = []
-    dqc_circuit = DqcCircuit(qregs, cregs, native_qasm_gates, ops4circuit)
-    #implementing functions from <exp> in openQASM 2.0's grammar:
-    #TO DO: ascertaining if any of the items in the following dict are 
-    #superfluous because they will not appear in atst['c_sect']. It think that
-    #this may be the case for ASTType.GATE, as I think this should be parsed
-    #into ast['g_sect']
-    ast_types2sim_types_lookup = {ASTType.UNKNOWN : AstUnknown, 
-                                  ASTType.COMMENT : AstComment,
-                                  ASTType.QREG : AstQreg,
-                                  ASTType.CREG : AstCreg,
-                                  ASTType.MEASURE : AstMeasure,
-                                  ASTType.BARRIER : AstBarrier,
-                                  ASTType.OP : AstGate,
-                                  ASTType.CTL : AstCtl,
-                                  ASTType.CTL_2 : AstCtl2,
-                                  ASTType.BLANK : AstBlank,
-                                  ASTType.DECLARATION_QASM_2_0 : AstDeclaration_Qasm_2_0,
-                                  ASTType.INCLUDE : AstInclude}
+    def ast2dqc_circuit(self):
+        """
+        
     
-    #implementing everything except gate_declarations:
-    for ast_c_sect_element in ast['c_sect']:
-        ast2sim_readable_converter = ast_types2sim_types_lookup[ast_c_sect_element['type']](ast_c_sect_element, dqc_circuit)  
-        #updating dqc_circuit object with new information
-        dqc_circuit = ast2sim_readable_converter.make_sim_readable() 
-    return dqc_circuit
+        Parameters
+        ----------
+        ast : dict of nested dicts and lists
+            Abstract syntax tree of the form produced by 
+            dqc_simulator.software.qasm2ast.qasm2ast(filepath) and detailed in 
+            https://github.com/jwoehr/nuqasm2/blob/main/doc/nuqasm_ast.md.
+            TO DO: add to documentation for this project.
+        native_gates : dict, optional
+            The native gates for the physical hardware. The default is 
+            QasmTwoUniversalSet.gates.
+    
+        """
+
+        #implementing functions from <exp> in openQASM 2.0's grammar:
+        #TO DO: ascertaining if any of the items in the following dict are 
+        #superfluous because they will not appear in ast['c_sect']. 
+        qregs = dict()
+        cregs = dict()
+        ops4circuit = []
+        dqc_circuit = DqcCircuit(qregs, cregs, self.native_gates, ops4circuit)
+        self._interpret_ast_g_sect(dqc_circuit)
+        ast_types2sim_types_lookup = {ASTType.UNKNOWN : AstUnknown,         
+                                      ASTType.COMMENT : AstComment,
+                                      ASTType.QREG : AstQreg,
+                                      ASTType.CREG : AstCreg,
+                                      ASTType.MEASURE : AstMeasure,
+                                      ASTType.BARRIER : AstBarrier,
+                                      ASTType.OP : AstGate,
+                                      ASTType.CTL : AstCtl,
+                                      ASTType.CTL_2 : AstCtl2,
+                                      ASTType.BLANK : AstBlank,
+                                      ASTType.DECLARATION_QASM_2_0 : AstDeclaration_Qasm_2_0,
+                                      ASTType.INCLUDE : AstInclude}
+        
+        for ast_c_sect_element in self.ast['c_sect']:
+            ast2sim_readable_converter = ast_types2sim_types_lookup[ast_c_sect_element['type']](ast_c_sect_element, dqc_circuit)  
+            #updating dqc_circuit object with new information
+            dqc_circuit = ast2sim_readable_converter.make_sim_readable()
+        return dqc_circuit
 
 
 
