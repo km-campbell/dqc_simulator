@@ -25,3 +25,29 @@ def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
         node_init_commands.append(new_commands)
     dqc_circuit.ops = node_init_commands + dqc_circuit.ops
     return dqc_circuit
+
+def preprocess_qasm_to_compilable_monolithic(filepath, include_path='.'):
+    ast = qasm2ast(filepath, include_path=include_path)
+    dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+    #TO DO: add change node name and qubit indices of dqc_circuit.ops
+    for ii, gate_spec in enumerate(dqc_circuit.ops):
+        qreg1 = dqc_circuit.qregs[gate_spec[2]]
+        index1 = gate_spec[1] + qreg1['starting_index']
+        gate_spec[1] = index1
+        if len(gate_spec) >= 5:
+            qreg2 = dqc_circuit.qregs[gate_spec[4]]
+            index2 = gate_spec[3] + qreg2['starting_index']
+            gate_spec[3] = index2
+        dqc_circuit.ops[ii] = gate_spec
+
+    dqc_circuit.replace_qreg_names(node_0_name='monolithic_qc',
+                                   node_1_name='monolithic_qc')
+
+    total_num_qubits = 0
+    for qreg_name in dqc_circuit.qregs:
+        qreg = dqc_circuit.qregs[qreg_name]
+        total_num_qubits = qreg['size'] + total_num_qubits
+    node_init_cmd = [(instr.INSTR_INIT, list(range(total_num_qubits)), 
+                      'monolithic_qc')]
+    dqc_circuit.ops = node_init_cmd + dqc_circuit.ops
+    return dqc_circuit

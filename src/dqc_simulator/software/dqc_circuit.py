@@ -61,53 +61,55 @@ class DqcCircuit():
             if len(gate_spec) >= 5:
                 gate_spec[4] = node_1_name
                 
-    def _replace_qreg_names_with_placeholder(self):
-        self.replace_qreg_names(node_0_name='placeholder',
-                                 node_1_name='placeholder')
-        self.circuit_type = 'prepped4partitioning'
-            
-    def _convert2monolithic(self):
-        """Replaces node names in each gate_spec in ops the name monolithic
-           processor"""
-        self.replace_qreg_names(node_0_name='monolithic_processor',
-                                 node_1_name='monolithic_processor')
-        self.circuit_type = 'monolithic'
-        
-    def _specify_partition_manually(self):
-        for gate_spec in self.ops:
-            gate_spec[2] = self.qreg2node_lookup[gate_spec[2]]
-            if len(gate_spec) >= 5:
-                gate_spec[4] = self.qreg2node_lookup[gate_spec[4]]
-        self.circuit_type = 'partitioned'
-
-        
-    def qregs2nodes(self, conversion_strategy):
-        """
-        Converts qreg names to node names for all gate_spec elements of 
-        self.ops.
-
-        Parameters
-        ----------
-        conversion_strategy : str or None, optional
-            How to partition the circuit. This is used by the to ascertain how 
-            to convert the qreg names to node names. Can be 'monolithic', 
-            'manual', or 'auto'. 
-                'monolithic' : all gate_spec elements in self.ops have 
-                               all node names set to "monolithic_processor"
-                'manual' : the node names in all gate_spec elements will be 
-                           specified by the qreg2node_lookup. This 
-                           corresponds to a user-specified partitioning of 
-                           the circuit
-                'auto' : all node names are replaced with 'placeholder', 
-                        awaiting automated partitioning. MAY BE SUPERFLUOUS
-        """
-        circuit_type_converters = {
-                   'auto' : self._replace_qreg_names_with_placeholder, #MAY BE SUPERFLUOUS
-                   'monolithic' : self._convert2monolithic,
-                   'manual' : self._specify_partition_manually
-                   }
-        converter_subroutine = circuit_type_converters[conversion_strategy]
-        converter_subroutine()
+# =============================================================================
+#     def _replace_qreg_names_with_placeholder(self):
+#         self.replace_qreg_names(node_0_name='placeholder',
+#                                  node_1_name='placeholder')
+#         self.circuit_type = 'prepped4partitioning'
+#             
+#     def _convert2monolithic(self):
+#         """Replaces node names in each gate_spec in ops with the name of
+#            monolithic processor""" 
+#         self.replace_qreg_names(node_0_name='monolithic_processor',
+#                                  node_1_name='monolithic_processor')
+#         self.circuit_type = 'monolithic'
+#         
+#     def _specify_partition_manually(self):
+#         for gate_spec in self.ops:
+#             gate_spec[2] = self.qreg2node_lookup[gate_spec[2]]
+#             if len(gate_spec) >= 5:
+#                 gate_spec[4] = self.qreg2node_lookup[gate_spec[4]]
+#         self.circuit_type = 'partitioned'
+# 
+#         
+#     def qregs2nodes(self, conversion_strategy):
+#         """
+#         Converts qreg names to node names for all gate_spec elements of 
+#         self.ops.
+# 
+#         Parameters
+#         ----------
+#         conversion_strategy : str or None, optional
+#             How to partition the circuit. This is used by the to ascertain how 
+#             to convert the qreg names to node names. Can be 'monolithic', 
+#             'manual', or 'auto'. 
+#                 'monolithic' : all gate_spec elements in self.ops have 
+#                                all node names set to "monolithic_processor"
+#                 'manual' : the node names in all gate_spec elements will be 
+#                            specified by the qreg2node_lookup. This 
+#                            corresponds to a user-specified partitioning of 
+#                            the circuit
+#                 'auto' : all node names are replaced with 'placeholder', 
+#                         awaiting automated partitioning. MAY BE SUPERFLUOUS
+#         """
+#         circuit_type_converters = {
+#                    'auto' : self._replace_qreg_names_with_placeholder, #MAY BE SUPERFLUOUS
+#                    'monolithic' : self._convert2monolithic,
+#                    'manual' : self._specify_partition_manually
+#                    }
+#         converter_subroutine = circuit_type_converters[conversion_strategy]
+#         converter_subroutine()
+# =============================================================================
         
     def add_scheme_to_2_qubit_gates(self, scheme):
         """
