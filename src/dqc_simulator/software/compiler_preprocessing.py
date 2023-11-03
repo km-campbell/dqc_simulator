@@ -8,13 +8,13 @@ Created on Thu Oct 19 09:08:30 2023
 from netsquid.components import instructions as instr
 
 from dqc_simulator.software.qasm2ast import qasm2ast
-from dqc_simulator.software.ast2dqc_circuit import ast2dqc_circuit
+from dqc_simulator.software.ast2dqc_circuit import Ast2DqcCircuitTranslator
 from dqc_simulator.software.partitioner import bisect_circuit
 
 def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
                                                 include_path='.'):
     ast = qasm2ast(filepath, include_path=include_path)
-    dqc_circuit = ast2dqc_circuit(ast)
+    dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
     bisect_circuit(dqc_circuit)
     dqc_circuit.add_scheme_to_2_qubit_gates(scheme)
     node_init_commands = []

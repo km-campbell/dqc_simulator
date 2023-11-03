@@ -16,7 +16,10 @@ from dqc_simulator.software.ast2dqc_circuit import (
                                                  ArgumentInterpreter,
                                                  AstComment,
                                                  AstCreg, AstGate, AstQreg,
-                                                 AstUnknown, ast2dqc_circuit)
+                                                 AstUnknown,
+                                                 QasmTwoUniversalSet,
+                                                 #, ast2dqc_circuit
+                                                 Ast2DqcCircuitTranslator)
 from dqc_simulator.qlib import gates
 
 
@@ -44,7 +47,7 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
     def setUp(self):
         self.qregs = dict()
         self.cregs = dict()
-        self.defined_gates = {  
+        self.native_gates = {  
                             "U" : gates.INSTR_U,
                             "CX" : instr.INSTR_CNOT,
                             "u3" : gates.INSTR_U,
@@ -72,7 +75,7 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
                             "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
         self.gates4circuit = []
         self.dqc_circuit = DqcCircuit(self.qregs, self.cregs, 
-                                      self.defined_gates, self.gates4circuit)
+                                      self.native_gates, self.gates4circuit)
         
     def test_AstComment_does_not_raise_error_when_make_sim_readable_called(self):
         mock_ast_c_sect_element = {}
@@ -192,112 +195,135 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
                               [instr.INSTR_CNOT, 2, 'qr1', 1, 'qr2']]
         self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
 
-
 # =============================================================================
-# class Test_ast2dqc_circuit(unittest.TestCase):
-#     """Testing using circuits from MQTBench. The following aren't currently
-#     proper tests, they just confirm that no errors are raised"""
+# 
+# class TestAstGateWithNonNativeGates(unittest.TestCase):
 #     def setUp(self):
-#         self.directory_path = ('/home/kenny/coding_projects/dqc_simulation/' + 
-#                           'MQT_benchmarking_circuits/scalable_5to10_qubits/')
-#         
-#     def _get_dqc_circuit(self, filename):
+#         self.native_gates = QasmTwoUniversalSet.gates
+#         qregs = dict()
+#         cregs = dict()
+#         ops4circuit = []
 #         filepath = self.directory_path + filename
 #         ast = qasm2ast(filepath)
 #         dqc_circuit = ast2dqc_circuit(ast)
-#         print(dqc_circuit.ops)
-#         return dqc_circuit
-#     def test_with_ae_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('ae_indep_qiskit_5.qasm')
-#         
-#     def test_with_dj_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('dj_indep_qiskit_5.qasm')
-#         
-#     def test_with_ghz_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('ghz_indep_qiskit_5.qasm')
-#         
-#     def test_with_graphstate_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('graphstate_indep_qiskit_5.qasm')
 # 
-#     def test_with_grover_noancilla_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('grover-noancilla_indep_qiskit_5.qasm')
+#     def test_replace_macro_subgate_paramsNargs_with_values_rx(self):
+#         self.dqc_circuit.gate_macros = {'params': ['theta'],
+#                                         'args': ['a'],
+#                                         'subgates': [{'op': 'U',
+#                                         'op_param_list': ['theta', 'phi',
+#                                                           'lambda'],
+#                                         'op_reg_list': ['q']}]}
+#         mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
+#                                    'reg_list' : ['qr1']}
 #         
-#     def test_portfolioqaoa_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('portfolioqaoa_indep_qiskit_5.qasm')
-#         #RAISES ERROR because rzz is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#     def test_portfoliovqe_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('portfoliovqe_indep_qiskit_5.qasm')
-#     
-#     def test_qaoa_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qaoa_indep_qiskit_5.qasm')
-#         #RAISES ERROR because rzz is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#         
-#     def test_qft_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qft_indep_qiskit_5.qasm')
-#         #RAISES ERROR because swap gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#     
-#     def test_qftentangled_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qftentangled_indep_qiskit_5.qasm')
-#         #RAISES ERROR because swap gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#         
-#     def test_qnn_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qnn_indep_qiskit_5.qasm')
-# 
-#     def test_qpeexact_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qpeexact_indep_qiskit_5.qasm')
-#         #RAISES ERROR because swap gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#         
-#     def test_qpeinexact_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qpeinexact_indep_qiskit_5.qasm')
-#         #RAISES ERROR because swap gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#         
-#     def test_qwalk_noancilla_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qwalk-noancilla_indep_qiskit_5.qasm')
-#         #RAISES ERROR because ccx gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#         
-#     def test_qwalk_v_chain_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('qwalk-v-chain_indep_qiskit_5.qasm')
-#         #RAISES ERROR because rccx gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-#         
-#     def test_random_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('random_indep_qiskit_5.qasm')
-#         #RAISES ERROR because rzz gate is not defined in your standard library.
-#         #I think I will wait until I can define macros with a <gatedecl> to 
-#         #fix this
-# 
-#     def test_realamprandom_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('realamprandom_indep_qiskit_5.qasm')
-# 
-#     def test_su2random_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('su2random_indep_qiskit_5.qasm')
-# 
-#     def test_twolocalrandom_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('twolocalrandom_indep_qiskit_5.qasm')
-# 
-#     def test_vqe_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('vqe_indep_qiskit_5.qasm')
-# 
-#     def test_wstate_indep_qiskit_5(self):
-#         dqc_circuit = self._get_dqc_circuit('wstate_indep_qiskit_5.qasm')
-# 
-#     #13 of the circuits can run as-is
 # =============================================================================
+        
+    
+
+
+class Test_ast2dqc_circuit(unittest.TestCase):
+    """Testing using circuits from MQTBench. The following aren't currently
+    proper tests, they just confirm that no errors are raised"""
+    def setUp(self):
+        self.directory_path = ('/home/kenny/coding_projects/dqc_simulation/' + 
+                          'MQT_benchmarking_circuits/scalable_5to10_qubits/')
+        
+    def _get_dqc_circuit(self, filename):
+        filepath = self.directory_path + filename
+        ast = qasm2ast(filepath)
+        dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+        return dqc_circuit
+    def test_with_ae_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('ae_indep_qiskit_5.qasm')
+        
+    def test_with_dj_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('dj_indep_qiskit_5.qasm')
+        
+    def test_with_ghz_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('ghz_indep_qiskit_5.qasm')
+        
+    def test_with_graphstate_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('graphstate_indep_qiskit_5.qasm')
+
+    def test_with_grover_noancilla_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('grover-noancilla_indep_qiskit_5.qasm')
+        
+    def test_portfolioqaoa_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('portfolioqaoa_indep_qiskit_5.qasm')
+        #RAISES ERROR because rzz is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+    def test_portfoliovqe_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('portfoliovqe_indep_qiskit_5.qasm')
+    
+    def test_qaoa_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qaoa_indep_qiskit_5.qasm')
+        #RAISES ERROR because rzz is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+        
+    def test_qft_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qft_indep_qiskit_5.qasm')
+        #RAISES ERROR because swap gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+    
+    def test_qftentangled_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qftentangled_indep_qiskit_5.qasm')
+        #RAISES ERROR because swap gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+        
+    def test_qnn_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qnn_indep_qiskit_5.qasm')
+
+    def test_qpeexact_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qpeexact_indep_qiskit_5.qasm')
+        #RAISES ERROR because swap gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+        
+    def test_qpeinexact_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qpeinexact_indep_qiskit_5.qasm')
+        #RAISES ERROR because swap gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+        
+    def test_qwalk_noancilla_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qwalk-noancilla_indep_qiskit_5.qasm')
+        #RAISES ERROR because ccx gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+        
+    def test_qwalk_v_chain_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('qwalk-v-chain_indep_qiskit_5.qasm')
+        #RAISES ERROR because rccx gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+        
+    def test_random_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('random_indep_qiskit_5.qasm')
+        #RAISES ERROR because rzz gate is not defined in your standard library.
+        #I think I will wait until I can define macros with a <gatedecl> to 
+        #fix this
+
+    def test_realamprandom_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('realamprandom_indep_qiskit_5.qasm')
+
+    def test_su2random_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('su2random_indep_qiskit_5.qasm')
+
+    def test_twolocalrandom_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('twolocalrandom_indep_qiskit_5.qasm')
+
+    def test_vqe_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('vqe_indep_qiskit_5.qasm')
+
+    def test_wstate_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('wstate_indep_qiskit_5.qasm')
+
+    #13 of the circuits can run as-is
 
 
 if __name__ == '__main__':

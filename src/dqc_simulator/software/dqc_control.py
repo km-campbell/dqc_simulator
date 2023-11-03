@@ -87,7 +87,7 @@ class EntangleLinkedNodesProtocol(NodeProtocol):
                     m2 = msg
                     m2_defined = True
             
-            if type(msg) is tuple:
+            if type(msg) == tuple:
                 m1 = msg[0]
                 m2 = msg[1]
                 route_based_on_m1_m2(m1, m2)
@@ -628,7 +628,6 @@ class dqcMasterProtocol(Protocol):
         
     def run(self):
         node_op_dict = self.compiler_func(self.gate_tuples)
-        print(f"node_op_dict is {node_op_dict}")
         node_dict = {}
         for node_key in node_op_dict:
             node_dict[node_key] = self.network.get_node(node_key)

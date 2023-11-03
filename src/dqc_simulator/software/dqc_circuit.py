@@ -43,7 +43,8 @@ class DqcCircuit():
         self.scheme = None #if this is a str, then it is the scheme all 
                            #two-qubit gates will be conducted using
         self.node_sizes = dict() #when processed should be dict with entries of 
-                                 #form 'node_name' : integer value 
+                                 #form node_name : integer value 
+        self.gate_macros = dict() 
 
     def replace_qreg_names(self, node_0_name='placeholder',
                             node_1_name='placeholder'):

@@ -258,6 +258,8 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             PhysicalInstruction(INSTR_T_DAGGER, duration=single_qubit_gate_time,
                                 parallel=True,
                                 topology=None),
+            PhysicalInstruction(instr.INSTR_CZ, duration=two_qubit_gate_time,
+                                parallel=True),
             PhysicalInstruction(INSTR_SINGLE_QUBIT_UNITARY, 
                                 duration=single_qubit_gate_time,
                                 parallel=True, topology=None),
