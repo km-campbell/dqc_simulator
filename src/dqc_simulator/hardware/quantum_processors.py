@@ -16,7 +16,7 @@ from netsquid.components.models.delaymodels import (FibreDelayModel,
 
 from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
-                                      INSTR_T_DAGGER, INSTR_U,
+                                      INSTR_T_DAGGER,
                                       INSTR_SINGLE_QUBIT_UNITARY, 
                                       INSTR_TWO_QUBIT_UNITARY)
 

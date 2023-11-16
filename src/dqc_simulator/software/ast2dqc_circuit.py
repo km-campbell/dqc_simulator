@@ -500,19 +500,21 @@ class AstGate(Ast2SimReadable):
 # =============================================================================
 #         #define list of macros
 #         if gate_name in self.dqc_circuit.gate_macros:
-#             sub_gates = self.dqc_circuit.gate_macros[gate_name](params, args) 
-#                                                 # gate macros should be dict
+#             subgates = self.dqc_circuit.gate_macros[gate_name](*params, *args) 
+#                                                  #gate macros should be dict
 #                                                  #of funcs which return expanded
 #                                                  #macro, generated in InterpretGSect
 #             #maybe add recursive call here. The end goal is a list of subgates
 #             #where all subgates have been expanded fully in terms of native 
 #             #gates.
-#             for sub_gate in sub_gates:
+#             for subgate in subgates:
 #                 self._add_gate_call2circuit(arg_interpreter, param_interpreter,
-#                                                    params, args, gate_name)
+#                                             subgate['params'], 
+#                                             subgate['args'],
+#                                             subgate['name'])
 # =============================================================================
         
-        #else: would go here with following line indented
+        #else: would go here with following line indented (this is the case where the gate is native)
         self._add_gate_call2circuit(arg_interpreter, param_interpreter,
                                            params, args, gate_name)
         
@@ -555,6 +557,7 @@ class AstInclude(Ast2SimReadable):
                              "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
                              "cx" : instr.INSTR_CNOT,
                              "id" : gates.INSTR_IDENTITY,
+                             "u0" : gates.INSTR_U(0, 0, 0), #recently added COMMENT out if causes issues
                              "u" : gates.INSTR_U, #alias of U and u3
                              "p" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var), #alias of u1
                              "x" : instr.INSTR_X,
@@ -567,12 +570,12 @@ class AstInclude(Ast2SimReadable):
                              "tdg" : gates.INSTR_T_DAGGER,
                              "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
                              "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
-                             "rz" : gates.INSTR_RZ,
+                             "rz" : gates.instrNop_RZ,
                              "cz" : instr.INSTR_CZ,
                              "cy" : gates.INSTR_CY,
                              "ch" : gates.INSTR_CH,
                              #"ccx" : instr.INSTR_CCX,
-                             "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
+                             "crz" : lambda angle : gates.instrNop_RZ(angle, controlled=True),
                              "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
                              "cp" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True), #alias of cu1
                              "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
@@ -646,6 +649,43 @@ class Ast2DqcCircuitTranslator():
                     del subgate['op_param_list'][ii] #so that only non numerical
                                                      #arguments are left
         return interpretted_params               
+    
+# =============================================================================
+#     def _ast_g_sect2macros(self, dqc_circuit):
+#         param_interpreter = ExpQasmInterpreter().interpret
+#         for gate_def in self.ast['g_sect']:
+#             gate_name = QasmParsingElement.idQasm.parse_string(
+#                             gate_def['gate_name'])[0]
+#             gate_params = gate_def['gate_param_list']
+#             gate_args = gate_def['gate_reg_list']
+#             if gate_name not in dqc_circuit.native_gates:
+#                 #creating macro:
+#                 subgates = []
+#                 for subgate in gate_def['gate_ops_list']:
+#                     subgate_name = subgate['op']
+#                     if subgate_name in dqc_circuit.gate_macros:
+#                         subgate_params = subgate['op_param_list']
+#                         subgate_args = subgate['op_reg_list']
+#                         if subgate_params is not None:
+#                             expanded_subgate = dqc_circuit.gate_macros[
+#                                 subgate_name](*subgate_params, *subgate_args)
+#                                 #should be list
+#                         else:
+#                             expanded_subgate = dqc_circuit.gate_macros[
+#                                 subgate_name](*subgate_args) #should be list
+#                         subgates = subgates + expanded_subgate #concatenating 
+#                                                                #lists
+#                     elif subgate_name in dqc_circuit.native_gates:
+#                         subgates.append(subgate) #appending dict
+#                     else:
+#                         raise ValueError(f'{subgate} not in '
+#                                          'dqc_circuit.gate_macros or '
+#                                          'dqc_circuit.native_gates and so is' 
+#                                          'not defined.')
+#                 if gate_params is not None:
+#                     dqc_circuit.gate_macros[gate_name] = lambda gate_params, gate_args : 
+# =============================================================================
+                
         
     def _interpret_ast_g_sect(self, dqc_circuit):
         """

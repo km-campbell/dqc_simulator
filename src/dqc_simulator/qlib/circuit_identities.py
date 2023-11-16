@@ -46,3 +46,157 @@ def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, ctrl_qubi
                 sub_ops[ii] = (*element, scheme)
     return sub_ops
 
+
+#For QASM circuits:
+
+# =============================================================================
+# #copy and paste into AstInclude and appropriate places in ast2dqc_circuit_tests
+# # then DELETE standard lib when finished making 
+# #macros for gates not in it
+# standard_lib = {"u3" : gates.INSTR_U, #alias of U native gate
+#                  "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
+#                  "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
+#                  "cx" : instr.INSTR_CNOT,
+#                  "id" : gates.INSTR_IDENTITY,
+#                  "u0" : gates.INSTR_U(0, 0, 0),
+#                  "u" : gates.INSTR_U, #alias of U and u3
+#                  "p" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var), #alias of u1
+#                  "x" : instr.INSTR_X,
+#                  "y" : instr.INSTR_Y,
+#                  "z" : instr.INSTR_Z,
+#                  "h" : instr.INSTR_H,
+#                  "s" : instr.INSTR_S,
+#                  "sdg" : gates.INSTR_S_DAGGER,
+#                  "t" : instr.INSTR_T,
+#                  "tdg" : gates.INSTR_T_DAGGER,
+#                  "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
+#                  "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
+#                  "rz" : gates.instrNop_RZ,
+#                  "sx" : gates.instrNop_SX,
+#                  "sxdg" : gates.instrNop_SXDG,
+#                  "cz" : instr.INSTR_CZ,
+#                  "cy" : gates.INSTR_CY,
+#                  "ch" : gates.INSTR_CH,
+#                  "crx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2,
+#                                        controlled=True),
+#                  "cry" : lambda theta : gates.INSTR_U(theta, 0, 0, 
+#                                                       controlled=True),
+#                  "crz" : lambda angle : gates.instrNop_RZ(angle, 
+#                                                           controlled=True),
+#                  "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, 
+#                                                            controlled=True),
+#                  "cp" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var,
+#                                                           controlled=True), #alias of cu1
+#                  "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(
+#                                      theta, phi, lambda_var, controlled=True),
+#                  "csx" : gates.instrNop_CSX}
+# =============================================================================
+
+
+
+#BELOW are for the U, CU universal set
+
+#added u0, sx, sxdg, csx
+
+#to add: swap, ccx, cswap, rxx, 
+
+# =============================================================================
+# class StandardLibMacros():
+#     """ Macros for the gates in the openQASM 2.0 standard library (using the
+#         library defined in MQT bench as of November 2023 rather than the less 
+#         extensive library defined in the original propasal for openQASM 2.0),
+#         which are not in 
+#         the {U, CU} set, (ie, not 1 or 2-qubit gates). I am using this under the 
+#         assumption that the gate times and error will not be that different between
+#         different single qubit gates and that the difference between a CX and 
+#         CU gate will be negligible relative to the difference between a single
+#         -qubit gate and a two-qubit gate.
+#     """
+#     
+# =============================================================================
+
+#want list of dicts with entries 'subgate_name', 'subgate_params', 'subgate_args'
+
+def swap_macro(parent_arg1, parent_arg2):
+    """
+    Macro for swap gate in terms of CNOT gates.
+
+    Parameters
+    ----------
+    parent_arg1 : str
+        The first of the arguments provided in the call of the SWAP gate.
+    parent_arg2 : str
+        The second argument provided in the call of the SWAP gate.
+
+    Returns
+    -------
+    list of dict
+        List of the subgates in the macro.
+
+    """
+    common_entries = {'name' : 'cx', 'params' : None}
+    subgate1 = {**common_entries,
+                'args' : [parent_arg1, parent_arg2]}
+    subgate2 = {**common_entries,
+                'args' : [parent_arg2, parent_arg1]}
+    return [subgate1, subgate2, subgate1]
+
+def ccx_macro(a, b, c):
+    """
+    macro for ccx gate, as defined in MQT bench's version of the openQASM 2.0
+    standard library (qelib1.inc)
+
+    Parameters
+    ----------
+    a : str
+        First uninterpretted argument of parent gate.
+    b : str
+        Second uninterpretted argument of parent gate.
+    c : str
+        Third uninterpretted argument of parent gate.
+
+    Returns
+    -------
+    None.
+
+    """
+    cx_common_entries = {'name' : 'cx', 'params' : None}
+    subgates = [{'name' : 'h', 'params' : None, 'args' : [c]}, 
+                {**cx_common_entries, 'args' : [b, c]},
+                {'name' : 'tdg', 'params' : None, 'args' : [c]},
+                {**cx_common_entries, 'args' : [a, c]},
+                {'name' : 't', 'params' : None, 'args' : [c]},
+                {**cx_common_entries, 'args' : [b, c]},
+                {'name' : 'tdg', 'params' : None, 'args' : [c]},
+                {**cx_common_entries, 'args' : [a, c]},
+                {'name' : 't', 'params' : None, 'args' : [b]},
+                {'name' : 't', 'params' : None, 'args' : [c]},
+                {'name' : 'h', 'params' : None, 'args' : [c]},
+                {**cx_common_entries, 'args' : [a, b]},
+                {'name' : 't', 'params' : None, 'args' : [a]},
+                {'name' : 'tdg', 'params' : None, 'args' : [b]},
+                {**cx_common_entries, 'args' : [a, b]}]
+    return subgates #TO DO: change this so that its universal set is 
+    #consistent with the other expressions. This uses {U, CX}
+    
+def cswap_macro(a, b, c):
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [c, b]}
+    subgates = [cx_gate, *ccx_macro(a, b, c), cx_gate]
+    return subgates
+
+def rxx_macro(theta, a, b):
+    #
+    h_gate = {'name' : 'h', 'params' : None, 'args' : b}
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
+    subgates = [{'name' : 'u3', 'params' : ['pi/2', theta, '0'],
+                 'args' : [a]},
+                h_gate, cx_gate,
+                {'name' : 'u1', 'params' : ['-' + theta], 'args' : [b]},
+                cx_gate, h_gate,
+                {'name' : 'u2', 'params' : ['-pi', 'pi-' + theta],
+                 'args' : [a]}]
+    return subgates #TO DO: change this so that its universal set is 
+    #consistent with the other expressions. This uses {U, CX}
+
+    
+    

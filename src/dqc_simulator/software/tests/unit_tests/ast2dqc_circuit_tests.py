@@ -65,12 +65,12 @@ class TestAst2SimReadableSubclasses(unittest.TestCase):
                             "tdg" : gates.INSTR_T_DAGGER,
                             "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
                             "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
-                            "rz" : gates.INSTR_RZ,
+                            "rz" : gates.instrNop_RZ,
                             "cz" : instr.INSTR_CZ,
                             "cy" : gates.INSTR_CY,
                             "ch" : gates.INSTR_CH,
                             "ccx" : instr.INSTR_CCX,
-                            "crz" : lambda angle : gates.INSTR_RZ(angle, controlled=True),
+                            "crz" : lambda angle : gates.instrNop_RZ(angle, controlled=True),
                             "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
                             "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
         self.gates4circuit = []

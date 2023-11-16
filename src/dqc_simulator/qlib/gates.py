@@ -39,7 +39,9 @@ INSTR_T_DAGGER = instr.IGate("T_dagger", operator=T.conj)
 INSTR_S_DAGGER = instr.IGate("S_dagger", operator=S.conj)
 
 
-INSTR_SINGLE_QUBIT_UNITARY = instr.IGate('single_qubit_unitary', num_positions=1)
+
+INSTR_SINGLE_QUBIT_UNITARY = instr.IGate('single_qubit_unitary',
+                                         num_positions=1)
 INSTR_TWO_QUBIT_UNITARY = instr.IGate('two_qubit_unitary', num_positions=2)
 
 def INSTR_U(theta, phi, lambda_var, controlled=False):
@@ -85,9 +87,24 @@ def INSTR_U(theta, phi, lambda_var, controlled=False):
 INSTR_CY = instr.IGate("CY", operator=Y.ctrl)
 
 
+def _add_options2single_qubit_gate(op, controlled, conjugate):
+    instruction = INSTR_SINGLE_QUBIT_UNITARY
+    if controlled == True:
+        op = op.ctrl
+        instruction = INSTR_TWO_QUBIT_UNITARY
+    elif type(controlled) != bool:
+        raise TypeError("{controlled} is not of type `bool' ")
+        
+    if conjugate == True:
+        op = op.conj
+    elif type(conjugate) != False:
+        raise TypeError("{conjugate} is not of type `bool' ")
+    
+    return (instruction, op)
+        
 
 
-def INSTR_RZ(angle, controlled=False, conjugate=False):
+def instrNop_RZ(angle, controlled=False, conjugate=False):
     """
     
 
@@ -113,22 +130,21 @@ def INSTR_RZ(angle, controlled=False, conjugate=False):
 
     """
     op = create_rotation_op(angle, axis=(0, 0, 1))
-    
-    if controlled == True:
-        op = op.ctrl
-    elif type(controlled) != bool:
-        raise TypeError("{controlled} is not of type `bool' ")
-        
-    if conjugate == True:
-        op = op.conj
-    elif type(conjugate) != False:
-        raise TypeError("{conjugate} is not of type `bool' ")
-        
-    instructionNop = (INSTR_SINGLE_QUBIT_UNITARY, op)
+    instructionNop = _add_options2single_qubit_gate(op, controlled, conjugate)
     return instructionNop
 
 
-        
+
+instrNop_SX = (INSTR_SINGLE_QUBIT_UNITARY, 
+            Operator('SX', S.conj.arr @ H.arr @ S.conj.arr))
+
+instrNop_SXDG = (INSTR_SINGLE_QUBIT_UNITARY,
+              Operator('SXDG', S.arr @ H.arr @ S.arr))
+
+instrNop_CSX = (INSTR_TWO_QUBIT_UNITARY, instrNop_SX[1].ctrl)
+
+
+
         
     
         
