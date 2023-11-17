@@ -551,7 +551,28 @@ class AstInclude(Ast2SimReadable):
         if self.ast_c_sect_element['include'] is None:
             return self.dqc_circuit
         elif self.ast_c_sect_element['include'] == 'qelib1.inc':
-            #merging existing dictionary with standard lib ones
+# =============================================================================
+#             standard_lib_aliases4_native_gates = {
+#                              "u3" : gates.INSTR_U, #alias of U native gate
+#                              "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
+#                              "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
+#                              "cx" : instr.INSTR_CNOT,
+#                              "id" : gates.INSTR_IDENTITY,
+#                              "u0" : gates.INSTR_U(0, 0, 0), #recently added COMMENT out if causes issues
+#                              "u" : gates.INSTR_U, #alias of U and u3
+#                              "p" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var), #alias of u1
+#                              "x" : instr.INSTR_X,
+#                              "y" : instr.INSTR_Y,
+#                              "z" : instr.INSTR_Z,
+#                              "h" : instr.INSTR_H,
+#                              "s" : instr.INSTR_S,
+#                              "sdg" : gates.INSTR_S_DAGGER,
+#                              "t" : instr.INSTR_T,
+#                              "tdg" : gates.INSTR_T_DAGGER,
+#                              "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
+#                              "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
+#                              "rz" : gates.instrNop_RZ}
+# =============================================================================
             standard_lib = {"u3" : gates.INSTR_U, #alias of U native gate
                              "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
                              "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
@@ -580,6 +601,9 @@ class AstInclude(Ast2SimReadable):
                              "cp" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True), #alias of cu1
                              "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
             self.dqc_circuit.native_gates.update(standard_lib)
+# =============================================================================
+#             standard_lib_macros = {}
+# =============================================================================
             return self.dqc_circuit
         else:
             raise NotImplementedError("The inclusion of arbitrary files within"
@@ -685,13 +709,32 @@ class Ast2DqcCircuitTranslator():
 #                 if gate_params is not None:
 #                     dqc_circuit.gate_macros[gate_name] = lambda gate_params, gate_args : 
 # =============================================================================
-                
-        
+
+    def _make_alias_func(subgate_name, all_subgate_params, interpreted_params,
+                         dqc_circuit):
+            def alias_func(*alias_params):
+                jj = 0
+                kk = 0
+                numerical_subgate_params = []
+                for subgate_param in all_subgate_params:
+                    if subgate_param in interpreted_params:
+                        numerical_subgate_params.append(
+                            interpreted_params[jj])
+                        jj = jj + 1
+                    else:
+                        numerical_subgate_params.append(alias_params[kk])
+                        kk = kk + 1
+                    print(numerical_subgate_params)
+                return dqc_circuit.native_gates[subgate_name](
+                    *numerical_subgate_params)
+            return alias_func
+
     def _interpret_ast_g_sect(self, dqc_circuit):
         """
         filtering ast['g_sect'] to see if each gate is a macro or a native gate
         and for macros, expanding them to be in terms of native gates only.
         """
+
         param_interpreter = ExpQasmInterpreter().interpret
         for gate_def in self.ast['g_sect']:
             #isolating the gate name from what may be a gate name and 
@@ -700,107 +743,193 @@ class Ast2DqcCircuitTranslator():
                             gate_def['gate_name'])[0]
             gate_params = gate_def['gate_param_list']
             gate_args = gate_def['gate_reg_list']
-            if (gate_name not in dqc_circuit.native_gates and 
-                gate_name not in dqc_circuit.gate_macros):
-            #if gate is non-native AND hasn't already been added to the dict
-            #of macros:
-                subgates = gate_def['gate_ops_list']
-                macro_subgates = []
+            subgates = gate_def['gate_ops_list']
+            if len(subgates) == 1: #if alias of native gate (potentially with
+                                   #some parameters fixed):
+                subgate = subgates[0]
+                subgate_name = subgate['op']
+                subgate_params = subgate['op_param_list']
+                interpreted_params = []
+                all_subgate_params = []
+                if subgate_params == None:
+                    dqc_circuit.native_gates[gate_name] = ( 
+                        dqc_circuit.native_gates[subgate_name])
+                else:
+                    for ii, subgate_param in enumerate(subgate_params):
+                        try: #if param is interpretable maths expression or number:
+                            interpreted_param = param_interpreter(subgate_param)
+                            interpreted_params.append(interpreted_param)
+                            all_subgate_params.append(interpreted_param)
+                        except Exception: #elif just string indicating some parameter name:
+                            all_subgate_params.append(subgate_param)
 # =============================================================================
-#                 if len(subgates) == 1 and subgates[0]['op_param_list'] is not None:
-#                 #if subgate is just alias of native gate or native gate with
-#                 #some of the parameters fixed:
-#                     subgate = subgates[0]
-#                     subgate_name = subgate['op']
-#                     interpretted_params = dict()
-#                     if gate_params != None:
-#                         for ii, subgate_param in enumerate(subgate['op_param_list']):
-#                             if subgate_param not in gate_params:
-#                                 interpretted_param = param_interpreter(
-#                                                                 subgate_param)
-#                                 interpretted_params[ii] = interpretted_param
-#                                 
-#                         native_gate_func = dqc_circuit.native_gates[subgate_name]
-#                         wrapper = create_wrapper_with_some_args_fixed(
-#                                                             native_gate_func,
-#                                                             interpretted_params)
-#                         dqc_circuit.native_gates[subgate_name] = wrapper
-#                     elif gate_params == None:
-#                         for subgate_param in subgate['op_param_list']:
-#                             subgate_param = param_interpreter(subgate_param)
-#                         dqc_circuit.native_gates[subgate_name] = dqc_circuit.native_gates[subgate_name]
-#                         
+#                     #Taking snapshot of relevant info for alias_func definition
+#                     #to avoid recursive entry to namespace
+#                     gate_subgate_info = {}
+#                     gate_subgate_info[gate_name + subgate_name] = {
+#                         'subgate_params' : list(subgate_params),
+#                         'uninterpretable_params' : list(uninterpretable_params)}
 # =============================================================================
-# =============================================================================
-#                 elif len(subgates) > 1:
-# =============================================================================
+                    dqc_circuit.native_gates[gate_name] = self._make_alias_func(
+                            subgate_name, all_subgate_params,
+                            interpreted_params, dqc_circuit)
+                #Note: it does not matter that the name 'alias_func'
+                #is re-used, the correct definition is retained
+            elif len(subgates) > 1: #if macro of native gates:
+                #TO DO: finish below:
                 for subgate in subgates:
                     subgate_name = subgate['op']
-                    
-                    if subgate_name in dqc_circuit.native_gates:
-                        interpret = self._interpret_fixed_subgate_params
-                        interpretted_params = interpret(subgate, gate_params,
-                                                        param_interpreter)
-                        #note the above removes the interpretted params from 
-                        #the subgate's 'op_param_list'
-                        native_gate_func = dqc_circuit.native_gates[
-                                                                subgate_name]
-                        subgate_func = create_wrapper_with_some_args_fixed(
-                                                            native_gate_func,
-                                                            interpretted_params)
-                        subgate_info = {'subgate_func' : subgate_func,
-                                        'op_param_list' : subgate['op_param_list'],
-                                        'op_reg_list' : subgate['op_reg_list']}
-                        macro_subgates.append(subgate_info)
-                    elif subgate_name in dqc_circuit.gate_macros:
-                        interpret = self._interpret_fixed_subgate_params
-                        interpretted_params = interpret(subgate, gate_params,
-                                                        param_interpreter)
-                        subgate_params = subgate['op_param_list']
-                        #copying the macros for this subgate:
-                        #TO DO: instead make each entry in dqc_circuit.gate_macros
-                        #a dictionary containing, the gate_params, gate_args 
-                        #and a function, which should take in the gate_params
-                        #and gate_args (once they have been swapped with their 
-                        #numerical values inside AstGate) and then return a 
-                        #list of gate_specs? 
-                        general_gate_func = dqc_circuit.gate_macros[subgate_name]
-                        subgate_func = create_wrapper_with_some_args_fixed(
-                                                            general_gate_func,
-                                                            interpretted_params)
-                        subgate_info = {'subgate_func' : subgate_func,
-                                        'op_param_list' : subgate['op_param_list'],
-                                        'op_reg_list' : subgate['op_reg_list']}
-                        macro_subgates.append(subgate_info)
-
+                    subgate_params = subgate['op_param_list']
+                    subgate_args = subgate['op_reg_list']
+                    for ii, subgate_param in enumerate(subgate_params):
+                        if subgate_param not in gate_params or subgate_param == None:
+                            interpreted_param = param_interpreter(subgate_param)
+                            interpreted_params.append(interpreted_param)
+                            subgate_params[ii] = interpreted_param
+                    macro = []
+                    if subgate in dqc_circuit.native_gates:
+                        macro_subgate = {
+                            'name' : subgate_name,
+                            'params' : subgate_params,
+                            'args' : subgate_args}
+                        macro.append(macro_subgate)
+                    elif subgate in dqc_circuit.gate_macros:
+                        list_of_subgates = ( 
+                            dqc_circuit.gate_macros[subgate_name](
+                                *gate_params, *gate_args))
+                        macro.append(*list_of_subgates)
+                interpreted_params = []
+                uninterpretable_params = []
+                for ii, subgate_param in enumerate(subgate_params):
+                    try: #if param is interpretable maths expression or number:
+                        interpreted_param = param_interpreter(subgate_param)
+                        interpreted_params.append(interpreted_param)
+                        subgate_params[ii] = interpreted_param
+                    except: #elif just string indicating some parameter name:
+                        uninterpretable_params.append(subgate_param)
 # =============================================================================
-#                             #To avoid having subgate_params overwritten when 
-#                             #a gate macro is simply a call of a native gate with 
-#                             #some parameters fixed:
-#                             if len(subgate_macros) == 1:
-#                                 print(f"for gate {gate_name} with subgate {subgate_name}")
-#                                 print("subgate_macros[0]['op_param_list'] is "
-#                                       f"{subgate_macros[0]['op_param_list']}")
-#                                 print(f"this is replaced with {subgate_params}")
-#     # =============================================================================
-#     #                             subgate_macros[0]['op_param_list'] = subgate_params
-#     # =============================================================================
-#                                 #BUG: this is replacing too much and changing the 
-#                                 #number of params. The issue is that the params are 
-#                                 #right for inserting into the macro but not for the
-#                                 #underlying native gatea represented by the macro.
+#                 dqc_circuit.gate_macros[gate_name] = 
 # =============================================================================
-
                         
-                    else:
-                        raise ValueError(f"Subgate {subgate_name} has not "
-                                         "previously been defined as a native "
-                                         "gate or circuit identity (macro)")
-                dqc_circuit.gate_macros[gate_name] = {'params' : gate_params,
-                                                      'args' : gate_args,
-                                                      'subgates': macro_subgates}
+                
                 #should macro_subgates be list of functions with any constant
                 #values already incorporated
+# =============================================================================
+#     def _interpret_ast_g_sect(self, dqc_circuit):
+#         """
+#         filtering ast['g_sect'] to see if each gate is a macro or a native gate
+#         and for macros, expanding them to be in terms of native gates only.
+#         """
+#         param_interpreter = ExpQasmInterpreter().interpret
+#         for gate_def in self.ast['g_sect']:
+#             #isolating the gate name from what may be a gate name and 
+#             #params:
+#             gate_name = QasmParsingElement.idQasm.parse_string(
+#                             gate_def['gate_name'])[0]
+#             gate_params = gate_def['gate_param_list']
+#             gate_args = gate_def['gate_reg_list']
+#             if (gate_name not in dqc_circuit.native_gates and 
+#                 gate_name not in dqc_circuit.gate_macros):
+#             #if gate is non-native AND hasn't already been added to the dict
+#             #of macros:
+#                 subgates = gate_def['gate_ops_list']
+#                 macro_subgates = []
+# # =============================================================================
+# #                 if len(subgates) == 1 and subgates[0]['op_param_list'] is not None:
+# #                 #if subgate is just alias of native gate or native gate with
+# #                 #some of the parameters fixed:
+# #                     subgate = subgates[0]
+# #                     subgate_name = subgate['op']
+# #                     interpretted_params = dict()
+# #                     if gate_params != None:
+# #                         for ii, subgate_param in enumerate(subgate['op_param_list']):
+# #                             if subgate_param not in gate_params:
+# #                                 interpretted_param = param_interpreter(
+# #                                                                 subgate_param)
+# #                                 interpretted_params[ii] = interpretted_param
+# #                                 
+# #                         native_gate_func = dqc_circuit.native_gates[subgate_name]
+# #                         wrapper = create_wrapper_with_some_args_fixed(
+# #                                                             native_gate_func,
+# #                                                             interpretted_params)
+# #                         dqc_circuit.native_gates[subgate_name] = wrapper
+# #                     elif gate_params == None:
+# #                         for subgate_param in subgate['op_param_list']:
+# #                             subgate_param = param_interpreter(subgate_param)
+# #                         dqc_circuit.native_gates[subgate_name] = dqc_circuit.native_gates[subgate_name]
+# #                         
+# # =============================================================================
+# # =============================================================================
+# #                 elif len(subgates) > 1:
+# # =============================================================================
+#                 for subgate in subgates:
+#                     subgate_name = subgate['op']
+#                     
+#                     if subgate_name in dqc_circuit.native_gates:
+#                         interpret = self._interpret_fixed_subgate_params
+#                         interpretted_params = interpret(subgate, gate_params,
+#                                                         param_interpreter)
+#                         #note the above removes the interpretted params from 
+#                         #the subgate's 'op_param_list'
+#                         native_gate_func = dqc_circuit.native_gates[
+#                                                                 subgate_name]
+#                         subgate_func = create_wrapper_with_some_args_fixed(
+#                                                             native_gate_func,
+#                                                             interpretted_params)
+#                         subgate_info = {'subgate_func' : subgate_func,
+#                                         'op_param_list' : subgate['op_param_list'],
+#                                         'op_reg_list' : subgate['op_reg_list']}
+#                         macro_subgates.append(subgate_info)
+#                     elif subgate_name in dqc_circuit.gate_macros:
+#                         interpret = self._interpret_fixed_subgate_params
+#                         interpretted_params = interpret(subgate, gate_params,
+#                                                         param_interpreter)
+#                         subgate_params = subgate['op_param_list']
+#                         #copying the macros for this subgate:
+#                         #TO DO: instead make each entry in dqc_circuit.gate_macros
+#                         #a dictionary containing, the gate_params, gate_args 
+#                         #and a function, which should take in the gate_params
+#                         #and gate_args (once they have been swapped with their 
+#                         #numerical values inside AstGate) and then return a 
+#                         #list of gate_specs? 
+#                         general_gate_func = dqc_circuit.gate_macros[subgate_name]
+#                         subgate_func = create_wrapper_with_some_args_fixed(
+#                                                             general_gate_func,
+#                                                             interpretted_params)
+#                         subgate_info = {'subgate_func' : subgate_func,
+#                                         'op_param_list' : subgate['op_param_list'],
+#                                         'op_reg_list' : subgate['op_reg_list']}
+#                         macro_subgates.append(subgate_info)
+# 
+# # =============================================================================
+# #                             #To avoid having subgate_params overwritten when 
+# #                             #a gate macro is simply a call of a native gate with 
+# #                             #some parameters fixed:
+# #                             if len(subgate_macros) == 1:
+# #                                 print(f"for gate {gate_name} with subgate {subgate_name}")
+# #                                 print("subgate_macros[0]['op_param_list'] is "
+# #                                       f"{subgate_macros[0]['op_param_list']}")
+# #                                 print(f"this is replaced with {subgate_params}")
+# #     # =============================================================================
+# #     #                             subgate_macros[0]['op_param_list'] = subgate_params
+# #     # =============================================================================
+# #                                 #BUG: this is replacing too much and changing the 
+# #                                 #number of params. The issue is that the params are 
+# #                                 #right for inserting into the macro but not for the
+# #                                 #underlying native gatea represented by the macro.
+# # =============================================================================
+# 
+#                         
+#                     else:
+#                         raise ValueError(f"Subgate {subgate_name} has not "
+#                                          "previously been defined as a native "
+#                                          "gate or circuit identity (macro)")
+#                 dqc_circuit.gate_macros[gate_name] = {'params' : gate_params,
+#                                                       'args' : gate_args,
+#                                                       'subgates': macro_subgates}
+#                 #should macro_subgates be list of functions with any constant
+#                 #values already incorporated
+# =============================================================================
                 
     def ast2dqc_circuit(self):
         """
