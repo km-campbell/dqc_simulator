@@ -711,23 +711,61 @@ class Ast2DqcCircuitTranslator():
 # =============================================================================
 
     def _make_alias_func(subgate_name, all_subgate_params, interpreted_params,
-                         dqc_circuit):
+                         uninterpreted_params, dqc_circuit):
+            #TO DO: add back in uninterpreted_params argument, then for each
+            #uninterpreted arg replace only part of it with the alias_param
+            #as a numerical string and then interpret the whole thing inside 
+            #the alias_func. You can USE 
+            #QasmParsingElement.idQasm.search_string to find all instances of
+            #words with no mathematical relevance. Note that for each element in
+            #the resulting list the first sub-element of that element is the 
+            #desired string.
             def alias_func(*alias_params):
+                ii = 0
                 jj = 0
                 kk = 0
                 numerical_subgate_params = []
                 for subgate_param in all_subgate_params:
                     if subgate_param in interpreted_params:
                         numerical_subgate_params.append(
-                            interpreted_params[jj])
-                        jj = jj + 1
+                            interpreted_params[ii])
+                        ii = ii + 1
                     else:
-                        numerical_subgate_params.append(alias_params[kk])
-                        kk = kk + 1
-                    print(numerical_subgate_params)
+                        #this block replaces an uninterpreted parameter with
+                        #a string of its numerical value and then interprets
+                        #the new string as maths. This allows expressions like
+                        #'lambda/2', for which part of the string is already
+                        #numerical and part of the string will be replaced by
+                        #a number when the alias_func is called, to be handled
+                        uninterpreted_param = str(uninterpreted_params[jj])
+                        #str used above to make copy rather than changing
+                        #uninterpreted_params[jj]
+                        unknown_pes = QasmParsingElement.idQasm.search_string( 
+                            uninterpreted_param)
+                        num_unknown_strings = len(unknown_pes)
+                        partially_interpreted_param = uninterpreted_param
+                        for unknown_pe in unknown_pes:
+                            #getting string from parsing element
+                            unknown_string = unknown_pe[0]
+                            partially_interpreted_param = ( 
+                                partially_interpreted_param.replace(unknown_string,
+                                                        str(alias_params[kk])))
+                        interpreted_param = ExpQasmInterpreter().interpret(
+                                                partially_interpreted_param)
+                        numerical_subgate_params.append(interpreted_param)
+                        jj = jj + 1
+                        kk = kk + num_unknown_strings
                 return dqc_circuit.native_gates[subgate_name](
                     *numerical_subgate_params)
             return alias_func
+        
+# =============================================================================
+#     def _make_macro_func():
+#         def anom_func(gate_params)
+#             anom_subgate_funcs = []
+#             
+# =============================================================================
+        
 
     def _interpret_ast_g_sect(self, dqc_circuit):
         """
@@ -750,6 +788,7 @@ class Ast2DqcCircuitTranslator():
                 subgate_name = subgate['op']
                 subgate_params = subgate['op_param_list']
                 interpreted_params = []
+                uninterpreted_params = []
                 all_subgate_params = []
                 if subgate_params == None:
                     dqc_circuit.native_gates[gate_name] = ( 
@@ -761,6 +800,7 @@ class Ast2DqcCircuitTranslator():
                             interpreted_params.append(interpreted_param)
                             all_subgate_params.append(interpreted_param)
                         except Exception: #elif just string indicating some parameter name:
+                            uninterpreted_params.append(subgate_param)
                             all_subgate_params.append(subgate_param)
 # =============================================================================
 #                     #Taking snapshot of relevant info for alias_func definition
@@ -772,48 +812,83 @@ class Ast2DqcCircuitTranslator():
 # =============================================================================
                     dqc_circuit.native_gates[gate_name] = self._make_alias_func(
                             subgate_name, all_subgate_params,
-                            interpreted_params, dqc_circuit)
+                            interpreted_params, uninterpreted_params,
+                            dqc_circuit)
                 #Note: it does not matter that the name 'alias_func'
                 #is re-used, the correct definition is retained
-            elif len(subgates) > 1: #if macro of native gates:
+            elif len(subgates) > 1: #if macro of previously defined gates:
                 #TO DO: finish below:
+                macro = []
                 for subgate in subgates:
                     subgate_name = subgate['op']
                     subgate_params = subgate['op_param_list']
                     subgate_args = subgate['op_reg_list']
-                    for ii, subgate_param in enumerate(subgate_params):
-                        if subgate_param not in gate_params or subgate_param == None:
-                            interpreted_param = param_interpreter(subgate_param)
-                            interpreted_params.append(interpreted_param)
-                            subgate_params[ii] = interpreted_param
-                    macro = []
+                    interpreted_params = []
+                    uninterpretable_params = []
+                    all_subgate_params = []
+                    if subgate_params != None:
+                        for subgate_param in subgate_params:
+                            if subgate_param not in gate_params:
+                                interpreted_param = param_interpreter(subgate_param)
+                                interpreted_params.append(interpreted_param)
+                                all_subgate_params.append(interpreted_param)
+                            elif subgate_param in gate_params:
+                                uninterpretable_params.append(subgate_param)
                     if subgate in dqc_circuit.native_gates:
-                        macro_subgate = {
-                            'name' : subgate_name,
-                            'params' : subgate_params,
-                            'args' : subgate_args}
+                        #TO DO:
+                        #define macro subgate using _create_macro_entry function?
+                        #I think I need each macro entry to be a function carrying
+                        #out the gate but with some parameters (the interpreted
+                        #ones) baked in. Ie, if the subgate was 'u2', I need
+                        #to define a local version of 'u2' with some parameters
+                        #baked in (the rest will be defined) when the gate 
+                        #parameters are inputted.
+                        if subgate_params == None:
+                            macro_subgate = {
+                                'name' : subgate_name,
+                                'params' : subgate_params,
+                                'args' : subgate_args}
+                        else:
+                            #making single-use function which is subgate but 
+                            #with some params baked into it:
+                            baked_func_key = gate_name + '_' + subgate_name
+                            dqc_circuit.native_gates[baked_func_key] = ( 
+                                    self._make_alias_func(
+                                        subgate_name, all_subgate_params,
+                                        interpreted_params, dqc_circuit))
+                            macro_subgate = {
+                                'name' : baked_func_key,
+                                'params' : subgate_params,
+                                'args' : subgate_args}
                         macro.append(macro_subgate)
                     elif subgate in dqc_circuit.gate_macros:
+                        #TO DO: fix this. It will just sub in gate params
+                        #See above block. Again, I think that I need to bake in
+                        #some of the parameters
                         list_of_subgates = ( 
                             dqc_circuit.gate_macros[subgate_name](
                                 *gate_params, *gate_args))
                         macro.append(*list_of_subgates)
-                interpreted_params = []
-                uninterpretable_params = []
-                for ii, subgate_param in enumerate(subgate_params):
-                    try: #if param is interpretable maths expression or number:
-                        interpreted_param = param_interpreter(subgate_param)
-                        interpreted_params.append(interpreted_param)
-                        subgate_params[ii] = interpreted_param
-                    except: #elif just string indicating some parameter name:
-                        uninterpretable_params.append(subgate_param)
+                        
+                    
+# =============================================================================
+#                 interpreted_params = []
+#                 uninterpretable_params = []
+#                 for ii, subgate_param in enumerate(subgate_params):
+#                     try: #if param is interpretable maths expression or number:
+#                         interpreted_param = param_interpreter(subgate_param)
+#                         interpreted_params.append(interpreted_param)
+#                         subgate_params[ii] = interpreted_param
+#                     except: #elif just string indicating some parameter name:
+#                         uninterpretable_params.append(subgate_param)
+# =============================================================================
 # =============================================================================
 #                 dqc_circuit.gate_macros[gate_name] = 
 # =============================================================================
-                        
                 
-                #should macro_subgates be list of functions with any constant
-                #values already incorporated
+                #should macro be list of functions with any constant
+                #values already incorporated?
+                
 # =============================================================================
 #     def _interpret_ast_g_sect(self, dqc_circuit):
 #         """
