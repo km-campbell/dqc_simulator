@@ -454,31 +454,6 @@ class AstGate(Ast2SimReadable):
                                  reg2_name]
                     _add_gate_spec2circuit(*gate_spec_elems, gate_args)
                     
-    def _replace_macro_subgate_paramsNargs_with_values(
-                                    self, gate_name, param_values, arg_values):
-        #each term in dqc_circuit.gate_macros has form
-        # gate_name : {'gate_params' : gate_params, gate_args' : gate_args, 
-        #'subgates': macro_subgates}. Be careful with your terminology here
-        #the gate_params and gate_args in the prev sentence are strings 
-        #based on what what declared when defining the gate macro in the .qasm
-        #file. They are distinct from the values of the parameters in the 
-        #ast['c_sect'] which are (not yet interpretted) numerical values (so 
-        #still strings at this point but not the same strings as in the gate
-        #declaration)
-        for macro in self.dqc_circuit.gate_macros[gate_name]:
-            param_key_value_pairs = zip(macro['params'], param_values)
-            param_lookup = {key:value for (key, value) in param_key_value_pairs}
-            arg_key_value_pairs = zip(macro['args'], arg_values)
-            arg_lookup = {key:value for (key, value) in arg_key_value_pairs}
-            for subgate in macro['subgates']:
-                for ii, param in enumerate(subgate['op_param_list']):
-                    if param in param_lookup:
-                        subgate['op_param_list'][ii] = param_lookup(param)
-                    #else the param should already be a maths expression or 
-                    #numerical string
-                for ii, arg in enumerate(subgate['op_reg_list']):
-                    if arg in arg_lookup:
-                        subgate['op_reg_list'][ii] = arg_lookup(arg)
         
     def make_sim_readable(self):
         arg_interpreter = ArgumentInterpreter().interpret
@@ -500,7 +475,7 @@ class AstGate(Ast2SimReadable):
 # =============================================================================
 #         #define list of macros
 #         if gate_name in self.dqc_circuit.gate_macros:
-#             subgates = self.dqc_circuit.gate_macros[gate_name](*params, *args) 
+#             subgates = self.dqc_circuit.gate_macros[gate_name](params, args) 
 #                                                  #gate macros should be dict
 #                                                  #of funcs which return expanded
 #                                                  #macro, generated in InterpretGSect
@@ -710,8 +685,10 @@ class Ast2DqcCircuitTranslator():
 #                     dqc_circuit.gate_macros[gate_name] = lambda gate_params, gate_args : 
 # =============================================================================
 
-    def _make_alias_func(subgate_name, all_subgate_params, interpreted_params,
-                         uninterpreted_params, dqc_circuit):
+
+
+    def _bake_in_params(self, subgate_name, all_subgate_params, interpreted_params,
+                        uninterpreted_params, gate_def_dict):
             #TO DO: add back in uninterpreted_params argument, then for each
             #uninterpreted arg replace only part of it with the alias_param
             #as a numerical string and then interpret the whole thing inside 
@@ -755,16 +732,107 @@ class Ast2DqcCircuitTranslator():
                         numerical_subgate_params.append(interpreted_param)
                         jj = jj + 1
                         kk = kk + num_unknown_strings
-                return dqc_circuit.native_gates[subgate_name](
+                return gate_def_dict[subgate_name](
                     *numerical_subgate_params)
             return alias_func
         
 # =============================================================================
-#     def _make_macro_func():
-#         def anom_func(gate_params)
-#             anom_subgate_funcs = []
-#             
+#     def _replace_macro_subgate_paramsNargs_with_values(
+#                                     self, gate_name, param_values, arg_values):
+#         #each term in dqc_circuit.gate_macros has form
+#         # gate_name : {'gate_params' : gate_params, gate_args' : gate_args, 
+#         #'subgates': macro_subgates}. Be careful with your terminology here
+#         #the gate_params and gate_args in the prev sentence are strings 
+#         #based on what what declared when defining the gate macro in the .qasm
+#         #file. They are distinct from the values of the parameters in the 
+#         #ast['c_sect'] which are (not yet interpretted) numerical values (so 
+#         #still strings at this point but not the same strings as in the gate
+#         #declaration)
+#         for macro in self.dqc_circuit.gate_macros[gate_name]:
+#             param_key_value_pairs = zip(macro['params'], param_values)
+#             param_lookup = {key:value for (key, value) in param_key_value_pairs}
+#             arg_key_value_pairs = zip(macro['args'], arg_values)
+#             arg_lookup = {key:value for (key, value) in arg_key_value_pairs}
+#             for subgate in macro['subgates']:
+#                 for ii, param in enumerate(subgate['op_param_list']):
+#                     if param in param_lookup:
+#                         subgate['op_param_list'][ii] = param_lookup(param)
+#                     #else the param should already be a maths expression or 
+#                     #numerical string
+#                 for ii, arg in enumerate(subgate['op_reg_list']):
+#                     if arg in arg_lookup:
+#                         subgate['op_reg_list'][ii] = arg_lookup(arg)
 # =============================================================================
+#macro maker same as _bake_in_params but does it for args too? Not quite 
+#because args will never be interpreted at this stage. Instead, I probably want
+#to first bake in params by calling _bake_in_params and then have the called
+#arguments relate to the gate arguments. I think the best way to do this is 
+#probably to assign a meaning to each letter
+
+    def _make_macro_func(self, parent_def_params, parent_def_args,
+                         macro_subgates):
+        """
+        Making a macro function which takes in parameters and arguments for 
+        a parent gate (eg, ccx) and outputs the subgates that comprise that 
+        gate with the appropriate parameters and arguments. We are essentially
+        taking in a list of subgates with arguments and params, and linking 
+        those arguments and params to the input to a function to be called 
+        later.
+
+        Parameters
+        ----------
+        parent_def_params : list of str
+            The gate_param_list at macro definition (not call) time.
+        parent_def_args : list of str
+            The gate_reg_list at macro definition (not call) time.
+        macro_subgates : list of dict
+            The subgate specs in the macro. Each subgate has keys
+            ['name', 'params', 'args']
+        Returns
+        -------
+     
+
+        """
+        def macro_func(called_params, called_args):
+            """
+            A gate macro
+
+            Parameters
+            ----------
+            called_params : list of str or None
+                Params which will be called by the user of the macro (eg, 
+                called in AstGate).
+            called_args : list of str
+                Args which will be called by the user of the macro (eg, 
+                called in AstGate)..
+
+            Returns
+            -------
+            macro_subgates : list of dict
+                List of subgate specifications for this macro, each with the 
+                appropriately chosen selection of params and args from the
+                overall params and args in the parent gate definition.
+
+            """
+            param_lookup = None
+            if called_params != None:
+                param_key_value_pairs = zip(parent_def_params, called_params)
+                param_lookup = {key:value for (key, value) in param_key_value_pairs}
+            arg_key_value_pairs = zip(parent_def_args, called_args)
+            arg_lookup = {key:value for (key, value) in arg_key_value_pairs}
+            for subgate in macro_subgates:
+                if subgate['params'] != None:
+                    for ii, param in enumerate(subgate['params']):
+                        if param_lookup != None:
+                            if param in param_lookup:
+                                subgate['params'][ii] = param_lookup[param]
+                        #else the param should already be a maths expression or 
+                        #numerical string
+                for ii, arg in enumerate(subgate['args']):
+                    if arg in arg_lookup:
+                        subgate['args'][ii] = arg_lookup[arg]
+            return macro_subgates
+        return macro_func
         
 
     def _interpret_ast_g_sect(self, dqc_circuit):
@@ -794,7 +862,7 @@ class Ast2DqcCircuitTranslator():
                     dqc_circuit.native_gates[gate_name] = ( 
                         dqc_circuit.native_gates[subgate_name])
                 else:
-                    for ii, subgate_param in enumerate(subgate_params):
+                    for subgate_param in subgate_params:
                         try: #if param is interpretable maths expression or number:
                             interpreted_param = param_interpreter(subgate_param)
                             interpreted_params.append(interpreted_param)
@@ -810,66 +878,67 @@ class Ast2DqcCircuitTranslator():
 #                         'subgate_params' : list(subgate_params),
 #                         'uninterpretable_params' : list(uninterpretable_params)}
 # =============================================================================
-                    dqc_circuit.native_gates[gate_name] = self._make_alias_func(
+                    dqc_circuit.native_gates[gate_name] = self._bake_in_params(
                             subgate_name, all_subgate_params,
                             interpreted_params, uninterpreted_params,
-                            dqc_circuit)
+                            dqc_circuit.native_gates)
                 #Note: it does not matter that the name 'alias_func'
                 #is re-used, the correct definition is retained
             elif len(subgates) > 1: #if macro of previously defined gates:
                 #TO DO: finish below:
-                macro = []
+                macro_subgates = []
                 for subgate in subgates:
                     subgate_name = subgate['op']
                     subgate_params = subgate['op_param_list']
                     subgate_args = subgate['op_reg_list']
-                    interpreted_params = []
-                    uninterpretable_params = []
-                    all_subgate_params = []
-                    if subgate_params != None:
-                        for subgate_param in subgate_params:
-                            if subgate_param not in gate_params:
-                                interpreted_param = param_interpreter(subgate_param)
-                                interpreted_params.append(interpreted_param)
-                                all_subgate_params.append(interpreted_param)
-                            elif subgate_param in gate_params:
-                                uninterpretable_params.append(subgate_param)
-                    if subgate in dqc_circuit.native_gates:
-                        #TO DO:
-                        #define macro subgate using _create_macro_entry function?
-                        #I think I need each macro entry to be a function carrying
-                        #out the gate but with some parameters (the interpreted
-                        #ones) baked in. Ie, if the subgate was 'u2', I need
-                        #to define a local version of 'u2' with some parameters
-                        #baked in (the rest will be defined) when the gate 
-                        #parameters are inputted.
+
+                    if subgate_name in dqc_circuit.native_gates:
                         if subgate_params == None:
                             macro_subgate = {
                                 'name' : subgate_name,
                                 'params' : subgate_params,
                                 'args' : subgate_args}
                         else:
+                            interpreted_params = []
+                            uninterpretable_params = []
+                            all_subgate_params = []
+                            for subgate_param in subgate_params:
+                                try: #if param is interpretable maths expression or number:
+                                    interpreted_param = param_interpreter(subgate_param)
+                                    interpreted_params.append(interpreted_param)
+                                    all_subgate_params.append(interpreted_param)
+                                except Exception: #elif just string indicating some parameter name:
+                                    uninterpreted_params.append(subgate_param)
+                                    all_subgate_params.append(subgate_param)
                             #making single-use function which is subgate but 
                             #with some params baked into it:
                             baked_func_key = gate_name + '_' + subgate_name
+                            #creating single-use function and adding to native
+                            #gates:
                             dqc_circuit.native_gates[baked_func_key] = ( 
-                                    self._make_alias_func(
+                                    self._bake_in_params(
                                         subgate_name, all_subgate_params,
-                                        interpreted_params, dqc_circuit))
+                                        interpreted_params,
+                                        uninterpreted_params,
+                                        dqc_circuit.native_gates))
                             macro_subgate = {
                                 'name' : baked_func_key,
                                 'params' : subgate_params,
                                 'args' : subgate_args}
-                        macro.append(macro_subgate)
-                    elif subgate in dqc_circuit.gate_macros:
-                        #TO DO: fix this. It will just sub in gate params
-                        #See above block. Again, I think that I need to bake in
-                        #some of the parameters
+                        macro_subgates.append(macro_subgate)
+                    elif subgate_name in dqc_circuit.gate_macros: 
+                        #TO DO: think about whether the following is 
+                        #sufficient. I don't think I need to bake in params 
+                        #here because I only want to work with strings.
                         list_of_subgates = ( 
                             dqc_circuit.gate_macros[subgate_name](
-                                *gate_params, *gate_args))
-                        macro.append(*list_of_subgates)
-                        
+                                subgate_params, subgate_args))
+                        macro_subgates = macro_subgates + list_of_subgates
+                dqc_circuit.gate_macros[gate_name] = self._make_macro_func(
+                                                        gate_params,
+                                                        gate_args,
+                                                        macro_subgates)
+                
                     
 # =============================================================================
 #                 interpreted_params = []
