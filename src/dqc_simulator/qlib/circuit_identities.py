@@ -258,7 +258,7 @@ def cu1_macro(lambda_var, a, b):
                              'args' : [b]}]
     return subgates
     
-def cp(lambda_var, a, b):
+def cp_macro(lambda_var, a, b):
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'p', 'params' : [lambda_var + over2], 
                  'args' : [b]},
@@ -270,7 +270,7 @@ def cp(lambda_var, a, b):
                              'args' : [b]}]
     return subgates
     
-def cu3(theta, phi, lambda_var, c, t):
+def cu3_macro(theta, phi, lambda_var, c, t):
     subgates = [{'name' : 'u1', 
                  'params' : [lpar + lambda_var + plus + phi + ')/2'],
                  'args' : [c]},
@@ -293,7 +293,7 @@ def csx_macro(a, b):
     subgates = [h_gate, *cu1_macro('pi/2', a, b), h_gate]
     return subgates
 
-def cu(theta, phi, lambda_var, gamma, c, t):
+def cu_macro(theta, phi, lambda_var, gamma, c, t):
     subgates = [{'name' : 'p', 'params' : [gamma], 'args' : [c]},
                 {'name' : 'p', 
                  'params' : [lpar + lambda_var + plus + phi + rpar + over2],
