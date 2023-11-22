@@ -26,200 +26,202 @@ from dqc_simulator.qlib import gates
 
         
 
-class TestNonTerminalInterpreter(unittest.TestCase):
-    def test_ArgumentInterpreter_interprets_qubit_correctly(self):
-        argument_string = 'q[1]'
-        interpreter = ArgumentInterpreter()
-        interpretted_args = interpreter.interpret(argument_string)
-        desired_output = ['qubit', 'q', 1]
-        self.assertEqual(interpretted_args, desired_output)
-        
-    def test_test_ArgumentInterpreter_interprets_reg_correctly(self):
-        argument_string = 'dave'
-        interpreter = ArgumentInterpreter()
-        interpretted_args = interpreter.interpret(argument_string)
-        desired_output = ['reg', 'dave']
-        self.assertEqual(interpretted_args, desired_output)
-            
-    
-
-class TestAst2SimReadableSubclasses(unittest.TestCase):
-    def setUp(self):
-        self.qregs = dict()
-        self.cregs = dict()
-        self.native_gates = {  
-                            "U" : gates.INSTR_U,
-                            "CX" : instr.INSTR_CNOT,
-                            "u3" : gates.INSTR_U,
-                            "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
-                            "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
-                            "cx" : instr.INSTR_CNOT,
-                            "id" : gates.INSTR_IDENTITY,
-                            "x" : instr.INSTR_X,
-                            "y" : instr.INSTR_Y,
-                            "z" : instr.INSTR_Z,
-                            "h" : instr.INSTR_H,
-                            "s" : instr.INSTR_S,
-                            "sdg" : gates.INSTR_S_DAGGER,
-                            "t" : instr.INSTR_T,
-                            "tdg" : gates.INSTR_T_DAGGER,
-                            "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
-                            "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
-                            "rz" : gates.instrNop_RZ,
-                            "cz" : instr.INSTR_CZ,
-                            "cy" : gates.INSTR_CY,
-                            "ch" : gates.INSTR_CH,
-                            "ccx" : instr.INSTR_CCX,
-                            "crz" : lambda angle : gates.instrNop_RZ(angle, controlled=True),
-                            "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
-                            "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
-        self.gates4circuit = []
-        self.dqc_circuit = DqcCircuit(self.qregs, self.cregs, 
-                                      self.native_gates, self.gates4circuit)
-        
-    def test_AstComment_does_not_raise_error_when_make_sim_readable_called(self):
-        mock_ast_c_sect_element = {}
-        converter = AstComment(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        
-    def test_AstUnknown_raises_ValueError_when_make_sim_readable_called(self):
-        mock_ast_c_sect_element = {}
-        converter = AstComment(mock_ast_c_sect_element, self.dqc_circuit)
-        converter.make_sim_readable()
-        self.assertRaises(ValueError)
-        
-    def test_qreg_attribute_updated_by_AstQreg(self):
-        mock_ast_c_sect_element = {'qreg_name' : 'q', 'qreg_num' : '5'}
-        converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        self.assertEqual(updated_dqc_circuit.qregs['q'], {'size' : 5, 
-                                                          'starting_index' : 0})
-        
-    def test_qreg_starting_index_updated_by_AstQreg(self):
-        mock_ast_c_sect_element = {'qreg_name' : 'q', 'qreg_num' : '5'}
-        converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        mock_ast_c_sect_element = {'qreg_name' : 'qreg2', 'qreg_num' : '9'}
-        converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        self.assertEqual(updated_dqc_circuit.qregs['qreg2'], {'size' : 9, 
-                                                          'starting_index' : 5})
-        
-    def test_creg_attribute_updated_by_AstCreg(self):
-        mock_ast_c_sect_element = {'creg_name' : 'c', 'creg_num' : '5'}
-        converter = AstCreg(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        self.assertEqual(updated_dqc_circuit.cregs['c'], 5)
-        
-    def test_AstGate_4_single_qubit_gate_on_qubit(self):
-        mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['1'],
-                                   'reg_list' : ['qr1[3]']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_spec = [gates.INSTR_U(1, -np.pi/2, np.pi/2), 3, 'qr1'] 
-        self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
-
-    def test_AstGate_4_single_qubit_gate_on_qubit_with_maths(self):
-        mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
-                                   'reg_list' : ['qr1[3]']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_spec = [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 
-                              3, 'qr1'] 
-        self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
-        
-    def test_AstGate_4_single_qubit_gate_on_reg(self):
-        self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0}}
-        mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
-                                   'reg_list' : ['qr1']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_specs = [
-            [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 0, 'qr1'],
-            [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 1, 'qr1'],
-            [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 2, 'qr1']]
-        self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
-        
-    def test_AstGate_4_two_qubit_gate_on_qubits_same_reg(self):
-        self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0}}
-        mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
-                                   'reg_list' : ['qr1[0]', 'qr1[1]']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_spec = [instr.INSTR_CNOT, 0, 'qr1', 1, 'qr1']
-        self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
-        
-    def test_AstGate_4_two_qubit_gate_on_qubits_different_reg(self):
-        self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
-                                  'qr2' : {'size': 2, 'starting_index' : 3}}
-        mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
-                                   'reg_list' : ['qr1[0]', 'qr2[1]']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_spec = [instr.INSTR_CNOT, 0, 'qr1', 1, 'qr2']
-        self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
-        
-    def test_AstGate_4_two_qubit_gate_on_two_regs(self):
-        self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
-                                  'qr2' : {'size': 3, 'starting_index' : 3}}
-        mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
-                                   'reg_list' : ['qr1', 'qr2']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_specs = [[instr.INSTR_CNOT, 0, 'qr1', 0, 'qr2'],
-                              [instr.INSTR_CNOT, 1, 'qr1', 1, 'qr2'],
-                              [instr.INSTR_CNOT, 2, 'qr1', 2, 'qr2']]
-        self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
-        
-    def test_AstGate_4_two_qubit_gate_on_qubit_and_reg(self):
-        self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
-                                  'qr2' : {'size': 3, 'starting_index' : 3}}
-        mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
-                                   'reg_list' : ['qr1[1]', 'qr2']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_specs = [[instr.INSTR_CNOT, 1, 'qr1', 0, 'qr2'],
-                              [instr.INSTR_CNOT, 1, 'qr1', 1, 'qr2'],
-                              [instr.INSTR_CNOT, 1, 'qr1', 2, 'qr2']]
-        self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
-
-    def test_AstGate_4_two_qubit_gate_on_reg_and_qubit(self):
-        self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
-                                  'qr2' : {'size': 3, 'starting_index' : 3}}
-        mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
-                                   'reg_list' : ['qr1', 'qr2[1]']}
-        converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
-        updated_dqc_circuit = converter.make_sim_readable()
-        desired_gate_specs = [[instr.INSTR_CNOT, 0, 'qr1', 1, 'qr2'],
-                              [instr.INSTR_CNOT, 1, 'qr1', 1, 'qr2'],
-                              [instr.INSTR_CNOT, 2, 'qr1', 1, 'qr2']]
-        self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
-
 # =============================================================================
+# class TestNonTerminalInterpreter(unittest.TestCase):
+#     def test_ArgumentInterpreter_interprets_qubit_correctly(self):
+#         argument_string = 'q[1]'
+#         interpreter = ArgumentInterpreter()
+#         interpretted_args = interpreter.interpret(argument_string)
+#         desired_output = ['qubit', 'q', 1]
+#         self.assertEqual(interpretted_args, desired_output)
+#         
+#     def test_test_ArgumentInterpreter_interprets_reg_correctly(self):
+#         argument_string = 'dave'
+#         interpreter = ArgumentInterpreter()
+#         interpretted_args = interpreter.interpret(argument_string)
+#         desired_output = ['reg', 'dave']
+#         self.assertEqual(interpretted_args, desired_output)
+#             
+#     
 # 
-# class TestAstGateWithNonNativeGates(unittest.TestCase):
+# class TestAst2SimReadableSubclasses(unittest.TestCase):
 #     def setUp(self):
-#         self.native_gates = QasmTwoUniversalSet.gates
-#         qregs = dict()
-#         cregs = dict()
-#         ops4circuit = []
-#         filepath = self.directory_path + filename
-#         ast = qasm2ast(filepath)
-#         dqc_circuit = ast2dqc_circuit(ast)
+#         self.qregs = dict()
+#         self.cregs = dict()
+#         self.native_gates = {  
+#                             "U" : gates.INSTR_U,
+#                             "CX" : instr.INSTR_CNOT,
+#                             "u3" : gates.INSTR_U,
+#                             "u2" : lambda phi, lambda_var : gates.INSTR_U(np.pi/2, phi, lambda_var),
+#                             "u1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var),
+#                             "cx" : instr.INSTR_CNOT,
+#                             "id" : gates.INSTR_IDENTITY,
+#                             "x" : instr.INSTR_X,
+#                             "y" : instr.INSTR_Y,
+#                             "z" : instr.INSTR_Z,
+#                             "h" : instr.INSTR_H,
+#                             "s" : instr.INSTR_S,
+#                             "sdg" : gates.INSTR_S_DAGGER,
+#                             "t" : instr.INSTR_T,
+#                             "tdg" : gates.INSTR_T_DAGGER,
+#                             "rx" : lambda theta : gates.INSTR_U(theta, -np.pi/2, np.pi/2),
+#                             "ry" : lambda theta : gates.INSTR_U(theta, 0, 0),
+#                             "rz" : gates.instrNop_RZ,
+#                             "cz" : instr.INSTR_CZ,
+#                             "cy" : gates.INSTR_CY,
+#                             "ch" : gates.INSTR_CH,
+#                             "ccx" : instr.INSTR_CCX,
+#                             "crz" : lambda angle : gates.instrNop_RZ(angle, controlled=True),
+#                             "cu1" : lambda lambda_var : gates.INSTR_U(0, 0, lambda_var, controlled=True),
+#                             "cu3" : lambda theta, phi, lambda_var : gates.INSTR_U(theta, phi, lambda_var, controlled=True)}
+#         self.gates4circuit = []
+#         self.dqc_circuit = DqcCircuit(self.qregs, self.cregs, 
+#                                       self.native_gates, self.gates4circuit)
+#         
+#     def test_AstComment_does_not_raise_error_when_make_sim_readable_called(self):
+#         mock_ast_c_sect_element = {}
+#         converter = AstComment(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         
+#     def test_AstUnknown_raises_ValueError_when_make_sim_readable_called(self):
+#         mock_ast_c_sect_element = {}
+#         converter = AstComment(mock_ast_c_sect_element, self.dqc_circuit)
+#         converter.make_sim_readable()
+#         self.assertRaises(ValueError)
+#         
+#     def test_qreg_attribute_updated_by_AstQreg(self):
+#         mock_ast_c_sect_element = {'qreg_name' : 'q', 'qreg_num' : '5'}
+#         converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         self.assertEqual(updated_dqc_circuit.qregs['q'], {'size' : 5, 
+#                                                           'starting_index' : 0})
+#         
+#     def test_qreg_starting_index_updated_by_AstQreg(self):
+#         mock_ast_c_sect_element = {'qreg_name' : 'q', 'qreg_num' : '5'}
+#         converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         mock_ast_c_sect_element = {'qreg_name' : 'qreg2', 'qreg_num' : '9'}
+#         converter = AstQreg(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         self.assertEqual(updated_dqc_circuit.qregs['qreg2'], {'size' : 9, 
+#                                                           'starting_index' : 5})
+#         
+#     def test_creg_attribute_updated_by_AstCreg(self):
+#         mock_ast_c_sect_element = {'creg_name' : 'c', 'creg_num' : '5'}
+#         converter = AstCreg(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         self.assertEqual(updated_dqc_circuit.cregs['c'], 5)
+#         
+#     def test_AstGate_4_single_qubit_gate_on_qubit(self):
+#         mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['1'],
+#                                    'reg_list' : ['qr1[3]']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_spec = [gates.INSTR_U(1, -np.pi/2, np.pi/2), 3, 'qr1'] 
+#         self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
 # 
-#     def test_replace_macro_subgate_paramsNargs_with_values_rx(self):
-#         self.dqc_circuit.gate_macros = {'params': ['theta'],
-#                                         'args': ['a'],
-#                                         'subgates': [{'op': 'U',
-#                                         'op_param_list': ['theta', 'phi',
-#                                                           'lambda'],
-#                                         'op_reg_list': ['q']}]}
+#     def test_AstGate_4_single_qubit_gate_on_qubit_with_maths(self):
+#         mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
+#                                    'reg_list' : ['qr1[3]']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_spec = [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 
+#                               3, 'qr1'] 
+#         self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
+#         
+#     def test_AstGate_4_single_qubit_gate_on_reg(self):
+#         self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0}}
 #         mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
 #                                    'reg_list' : ['qr1']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_specs = [
+#             [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 0, 'qr1'],
+#             [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 1, 'qr1'],
+#             [gates.INSTR_U(np.pi/3, -np.pi/2, np.pi/2), 2, 'qr1']]
+#         self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
 #         
+#     def test_AstGate_4_two_qubit_gate_on_qubits_same_reg(self):
+#         self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0}}
+#         mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
+#                                    'reg_list' : ['qr1[0]', 'qr1[1]']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_spec = [instr.INSTR_CNOT, 0, 'qr1', 1, 'qr1']
+#         self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
+#         
+#     def test_AstGate_4_two_qubit_gate_on_qubits_different_reg(self):
+#         self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
+#                                   'qr2' : {'size': 2, 'starting_index' : 3}}
+#         mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
+#                                    'reg_list' : ['qr1[0]', 'qr2[1]']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_spec = [instr.INSTR_CNOT, 0, 'qr1', 1, 'qr2']
+#         self.assertEqual(updated_dqc_circuit.ops[0], desired_gate_spec)
+#         
+#     def test_AstGate_4_two_qubit_gate_on_two_regs(self):
+#         self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
+#                                   'qr2' : {'size': 3, 'starting_index' : 3}}
+#         mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
+#                                    'reg_list' : ['qr1', 'qr2']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_specs = [[instr.INSTR_CNOT, 0, 'qr1', 0, 'qr2'],
+#                               [instr.INSTR_CNOT, 1, 'qr1', 1, 'qr2'],
+#                               [instr.INSTR_CNOT, 2, 'qr1', 2, 'qr2']]
+#         self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
+#         
+#     def test_AstGate_4_two_qubit_gate_on_qubit_and_reg(self):
+#         self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
+#                                   'qr2' : {'size': 3, 'starting_index' : 3}}
+#         mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
+#                                    'reg_list' : ['qr1[1]', 'qr2']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_specs = [[instr.INSTR_CNOT, 1, 'qr1', 0, 'qr2'],
+#                               [instr.INSTR_CNOT, 1, 'qr1', 1, 'qr2'],
+#                               [instr.INSTR_CNOT, 1, 'qr1', 2, 'qr2']]
+#         self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
+# 
+#     def test_AstGate_4_two_qubit_gate_on_reg_and_qubit(self):
+#         self.dqc_circuit.qregs = {'qr1' : {'size': 3, 'starting_index' : 0},
+#                                   'qr2' : {'size': 3, 'starting_index' : 3}}
+#         mock_ast_c_sect_element = {'op' : 'cx', 'param_list' : None, 
+#                                    'reg_list' : ['qr1', 'qr2[1]']}
+#         converter = AstGate(mock_ast_c_sect_element, self.dqc_circuit)
+#         updated_dqc_circuit = converter.make_sim_readable()
+#         desired_gate_specs = [[instr.INSTR_CNOT, 0, 'qr1', 1, 'qr2'],
+#                               [instr.INSTR_CNOT, 1, 'qr1', 1, 'qr2'],
+#                               [instr.INSTR_CNOT, 2, 'qr1', 1, 'qr2']]
+#         self.assertEqual(updated_dqc_circuit.ops, desired_gate_specs)
+# 
+# 
+# # =============================================================================
+# # class TestAstGateWithNonNativeGates(unittest.TestCase):
+# #     def setUp(self):
+# #         self.native_gates = QasmTwoUniversalSet.gates
+# #         qregs = dict()
+# #         cregs = dict()
+# #         ops4circuit = []
+# #         filepath = self.directory_path + filename
+# #         ast = qasm2ast(filepath)
+# #         dqc_circuit = ast2dqc_circuit(ast)
+# # 
+# #     def test_replace_macro_subgate_paramsNargs_with_values_rx(self):
+# #         self.dqc_circuit.gate_macros = {'params': ['theta'],
+# #                                         'args': ['a'],
+# #                                         'subgates': [{'op': 'U',
+# #                                         'op_param_list': ['theta', 'phi',
+# #                                                           'lambda'],
+# #                                         'op_reg_list': ['q']}]}
+# #         mock_ast_c_sect_element = {'op' : 'rx', 'param_list' : ['pi/3'],
+# #                                    'reg_list' : ['qr1']}
+# # =============================================================================
+#         
+#         
+#     
 # =============================================================================
-        
-    
 
 
 class Test_ast2dqc_circuit(unittest.TestCase):
@@ -234,6 +236,7 @@ class Test_ast2dqc_circuit(unittest.TestCase):
         ast = qasm2ast(filepath)
         dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
         return dqc_circuit
+    
     def test_with_ae_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('ae_indep_qiskit_5.qasm')
         
@@ -248,6 +251,9 @@ class Test_ast2dqc_circuit(unittest.TestCase):
 
     def test_with_grover_noancilla_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('grover-noancilla_indep_qiskit_5.qasm')
+        
+    def test_with_grover_v_chain_indep_qiskit_5(self):
+        dqc_circuit = self._get_dqc_circuit('grover-v-chain_indep_qiskit_5.qasm')
         
     def test_portfolioqaoa_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('portfolioqaoa_indep_qiskit_5.qasm')

@@ -215,7 +215,7 @@ def cswap_macro(a, b, c):
     return subgates
 
 def crx_macro(lambda_var, a, b):
-    subgates = [{'name' : 'u1', 'params' : 'pi/2', 'args' : [b]},
+    subgates = [{'name' : 'u1', 'params' : ['pi/2'], 'args' : [b]},
                 {'name' : 'cx', 'params' : None, 'args' : [a,b]},
                 {'name' : 'u3', 
                  'params' : [minus + lambda_var + over2, '0', '0'],
@@ -328,7 +328,7 @@ def rxx_macro(theta, a, b):
 def rzz_macro(theta, a, b):
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
     subgates = [cx_gate, 
-                {'name' : 'u1', 'params' : ['theta'], 'args' : [b]},
+                {'name' : 'u1', 'params' : [theta], 'args' : [b]},
                 cx_gate]
     return subgates
 
