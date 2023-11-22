@@ -237,8 +237,6 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                                 #to approximate ideality for 
                                                 #when not interested in how input
                                                 #state arrived at
-            PhysicalInstruction(instr.INSTR_CS, duration=two_qubit_gate_time, 
-                                parallel=True, topology=None),
             PhysicalInstruction(instr.INSTR_MEASURE, duration=measurement_time,
                                 parallel=True, topology=None,
                                 quantum_noise_model=None, 
@@ -258,8 +256,6 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             PhysicalInstruction(INSTR_T_DAGGER, duration=single_qubit_gate_time,
                                 parallel=True,
                                 topology=None),
-            PhysicalInstruction(instr.INSTR_CZ, duration=two_qubit_gate_time,
-                                parallel=True),
             PhysicalInstruction(INSTR_SINGLE_QUBIT_UNITARY, 
                                 duration=single_qubit_gate_time,
                                 parallel=True, topology=None),
