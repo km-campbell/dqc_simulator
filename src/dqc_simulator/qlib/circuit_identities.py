@@ -92,13 +92,18 @@ def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, ctrl_qubi
 #                  "csx" : gates.instrNop_CSX}
 # =============================================================================
 
-
+#defining some useful strings
+lpar = '('
+rpar = ')'
+plus = '+'
+over2 = '/2'
+minus = ''
 
 #BELOW are for the U, CU universal set
 
 #added u0, sx, sxdg, csx
 
-#to add: swap, ccx, cswap, rxx, 
+
 
 # =============================================================================
 # class StandardLibMacros():
@@ -116,6 +121,18 @@ def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, ctrl_qubi
 # =============================================================================
 
 #want list of dicts with entries 'subgate_name', 'subgate_params', 'subgate_args'
+
+def cz_macro(a, b):
+    h_gate = {'name' : 'h', 'params' : None, 'args' : [b]}
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
+    subgates = [h_gate, cx_gate, h_gate]
+    return subgates
+    
+def cy_macro(a, b):
+    subgates = [{'name' : 'sdg', 'params' : None, 'args' : [b]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, b]},
+                {'name' : 's', 'params' : None, 'args' : [b]}]
+    return subgates
 
 def swap_macro(parent_arg1, parent_arg2):
     """
@@ -140,6 +157,20 @@ def swap_macro(parent_arg1, parent_arg2):
     subgate2 = {**common_entries,
                 'args' : [parent_arg2, parent_arg1]}
     return [subgate1, subgate2, subgate1]
+
+def ch_macro(a, b):
+    subgates = [{'name': 'h', 'params': None, 'args' : [b]},
+                {'name' : 'sdg', 'params' : None, 'args' : [b]},
+                {'name' : 'cx', 'params': None, 'args' : [a,b]},
+                {'name' : 'h', 'params' : None, 'args' : [b]},
+                {'name' : 't', 'params' : None, 'args' : [b]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, b]},
+                {'name' : 't', 'params' : None, 'args' : [b]},
+                {'name': 'h', 'params': None, 'args' : [b]},
+                {'name' : 's', 'params' : None, 'args' : [b]},
+                {'name' : 'x', 'params' : None, 'args' : [b]},
+                {'name' : 's', 'params' : None, 'args' : [a]}]
+    return subgates
 
 def ccx_macro(a, b, c):
     """
@@ -176,16 +207,113 @@ def ccx_macro(a, b, c):
                 {'name' : 't', 'params' : None, 'args' : [a]},
                 {'name' : 'tdg', 'params' : None, 'args' : [b]},
                 {**cx_common_entries, 'args' : [a, b]}]
-    return subgates #TO DO: change this so that its universal set is 
-    #consistent with the other expressions. This uses {U, CX}
+    return subgates 
     
 def cswap_macro(a, b, c):
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [c, b]}
     subgates = [cx_gate, *ccx_macro(a, b, c), cx_gate]
     return subgates
 
+def crx_macro(lambda_var, a, b):
+    subgates = [{'name' : 'u1', 'params' : 'pi/2', 'args' : [b]},
+                {'name' : 'cx', 'params' : None, 'args' : [a,b]},
+                {'name' : 'u3', 
+                 'params' : [minus + lambda_var + over2, '0', '0'],
+                 'args' : [b]},
+                {'name' : 'cx', 'params' : None, 'args' : [a,b]},
+                {'name' : 'u3',
+                 'params' : [lambda_var + '/2', '-pi/2', '0'],
+                 'args' : [b]}]
+    return subgates
+
+def cry_macro(lambda_var, a, b):
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
+    subgates = [{'name' : 'ry', 'params' : [lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate,
+                {'name' : 'ry', 'params' : [minus + lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate]
+    return subgates
+
+def crz_macro(lambda_var, a, b):
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
+    subgates = [{'name' : 'rz', 'params' : [lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate,
+                {'name' : 'rz', 'params' : [minus + lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate]
+    return subgates
+    
+def cu1_macro(lambda_var, a, b):
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
+    subgates = [{'name' : 'u1', 'params' : [lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate,
+                {'name' : 'u1', 'params' : [minus + lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate,
+                {'name' : 'u1', 'params' : [lambda_var + over2], 
+                             'args' : [b]}]
+    return subgates
+    
+def cp(lambda_var, a, b):
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
+    subgates = [{'name' : 'p', 'params' : [lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate,
+                {'name' : 'p', 'params' : [minus + lambda_var + over2], 
+                 'args' : [b]},
+                cx_gate,
+                {'name' : 'p', 'params' : [lambda_var + over2], 
+                             'args' : [b]}]
+    return subgates
+    
+def cu3(theta, phi, lambda_var, c, t):
+    subgates = [{'name' : 'u1', 
+                 'params' : [lpar + lambda_var + plus + phi + ')/2'],
+                 'args' : [c]},
+                {'name' : 'u1', 
+                 'params' : [lpar + lambda_var + '-' + phi + ')/2'],
+                 'args' : [t]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, t]},
+                {'name' : 'u3', 
+                 'params' : ['-' + theta + '/2', '0',
+                             '-(' + phi + '+' + lambda_var + ')/2'],
+                 'args' : [t]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, t]},
+                {'name' : 'u3', 
+                 'params' : [theta + '/2', phi, '0'],
+                 'args' : [t]}]
+    return subgates
+
+def csx_macro(a, b):
+    h_gate = {'name' : 'h', 'params' : None, 'args' : [b]}
+    subgates = [h_gate, *cu1_macro('pi/2', a, b), h_gate]
+    return subgates
+
+def cu(theta, phi, lambda_var, gamma, c, t):
+    subgates = [{'name' : 'p', 'params' : [gamma], 'args' : [c]},
+                {'name' : 'p', 
+                 'params' : [lpar + lambda_var + plus + phi + rpar + over2],
+                 'args' : [c]},
+                 {'name' : 'p', 
+                  'params' : [lpar + lambda_var + minus + phi + rpar + over2],
+                  'args' : [t]},
+                 {'name' : 'cx', 'params' : None, 'args' : [c, t]},
+                 {'name' : 'u', 
+                  'params' : [minus + theta + over2, '0', 
+                              minus + lpar + lambda_var + rpar + over2],
+                  'args' : [t]},
+                 {'name' : 'cx', 'params' : None, 'args' : [c, t]},
+                 {'name' : 'u',
+                  'params' : [theta + over2, phi, '0'], 
+                  'args' : [t]}]
+    return subgates
+
+
 def rxx_macro(theta, a, b):
-    #
     h_gate = {'name' : 'h', 'params' : None, 'args' : b}
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
     subgates = [{'name' : 'u3', 'params' : ['pi/2', theta, '0'],
@@ -195,8 +323,123 @@ def rxx_macro(theta, a, b):
                 cx_gate, h_gate,
                 {'name' : 'u2', 'params' : ['-pi', 'pi-' + theta],
                  'args' : [a]}]
-    return subgates #TO DO: change this so that its universal set is 
-    #consistent with the other expressions. This uses {U, CX}
+    return subgates 
 
+def rzz_macro(theta, a, b):
+    cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
+    subgates = [cx_gate, 
+                {'name' : 'u1', 'params' : ['theta'], 'args' : [b]},
+                cx_gate]
+    return subgates
+
+def rccx_macro(a, b, c):
+    subgates = [{'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [c]},
+                {'name' : 'u1', 'params' : ['pi/4'], 'args' : [c]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, c]},
+                {'name' : 'u1', 'params' : ['-pi/4'], 'args' : [c]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, c]},
+                {'name' : 'u1', 'params' : ['pi/4'], 'args' : [c]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, c]},
+                {'name' : 'u1', 'params' : ['-pi/4'], 'args' : [c]},
+                {'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [c]}]
+    return subgates
     
-    
+def rc3x_macro(a, b, c, d):
+    subgates = [{'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [d]},
+                {'name' : 'u1', 'params' : ['pi/4'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, d]},
+                {'name' : 'u1', 'params' : ['-pi/4'], 'args' : [d]},
+                {'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, d]},
+                {'name' : 'u1', 'params' : ['pi/4'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, d]},
+                {'name' : 'u1', 'params' : ['-pi/4'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, d]},
+                {'name' : 'u1', 'params' : ['pi/4'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, d]},
+                {'name' : 'u1', 'params' : ['-pi/4'], 'args' : [d]},
+                {'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [d]},
+                {'name' : 'u1', 'params' : ['pi/4'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, d]},
+                {'name' : 'u1', 'params' : ['-pi/4'], 'args' : [d]},
+                {'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [d]}]
+    return subgates
+
+def c3x_macro(a, b, c, d):
+    subgates = [{'name' : 'h', 'params' : None, 'args' : [d]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [a]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [b]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [c]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, b]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [b]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, b]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, c]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [c]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, c]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [c]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, c]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [c]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, c]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, d]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, d]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, d]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, d]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, d]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [b, d]},
+                {'name' : 'p', 'params' : ['pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [c, d]},
+                {'name' : 'p', 'params' : ['-pi/8'], 'args' : [d]},
+                {'name' : 'cx', 'params' : None, 'args' : [a, d]},
+                {'name' : 'h', 'params' : None, 'args' : [d]}]
+    return subgates
+
+def c3sqrtx_macro(a, b, c, d):
+    h_gate = {'name' : 'h', 'params' : None, 'args' : [d]}
+    subgates = [h_gate,
+                *cu1_macro('pi/8', a, d),
+                h_gate,
+                {'name' : 'cx', 'params' : None, 'args' : [a, b]},
+                h_gate,
+                *cu1_macro('-pi/8', b, d),
+                h_gate,
+                {'name' : 'cx', 'params' : None, 'args' : [a, b]},
+                h_gate,
+                *cu1_macro('pi/8', b, d),
+                h_gate,
+                {'name' : 'cx', 'params' : None, 'args' : [b, c]},
+                h_gate,
+                *cu1_macro('-pi/8', c, d),
+                h_gate,
+                {'name' : 'cx', 'params' : None, 'args' : [a, c]},
+                h_gate,
+                *cu1_macro('pi/8', c, d),
+                h_gate,
+                {'name' : 'cx', 'params' : None, 'args' : [b, c]},
+                h_gate,
+                *cu1_macro('-pi/8', c, d),
+                h_gate,
+                {'name' : 'cx', 'params' : None, 'args' : [a, c]},
+                h_gate,
+                *cu1_macro('pi/8', c, d),
+                h_gate]
+    return subgates
+
+def c4x_macro(a, b, c, d, e):
+    h_gate = {'name' : 'h', 'params' : None, 'args' : [e]}
+    subgates = [h_gate,
+                *cu1_macro('pi/2', d, e),
+                h_gate,
+                *c3x_macro(a, b, c, d),
+                h_gate,
+                *cu1_macro('-pi/2', d, e),
+                h_gate,
+                *c3x_macro(a, b, c, d),
+                *c3sqrtx_macro(a, b, c, e)]
+    return subgates
+
