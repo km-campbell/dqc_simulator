@@ -139,7 +139,7 @@ instrNop_SX = (INSTR_SINGLE_QUBIT_UNITARY,
             Operator('SX', S.conj.arr @ H.arr @ S.conj.arr))
 
 instrNop_SXDG = (INSTR_SINGLE_QUBIT_UNITARY,
-              Operator('SXDG', S.arr @ H.arr @ S.arr))
+                 Operator('SXDG', S.arr @ H.arr @ S.arr))
 
 instrNop_CSX = (INSTR_TWO_QUBIT_UNITARY, instrNop_SX[1].ctrl)
 

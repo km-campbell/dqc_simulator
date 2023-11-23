@@ -1,5 +1,5 @@
 """
-qasmast.py
+Derived from qasmast.py.
 Classes to implement qasm2 translation to python data structures
 Working from _Open Quantum Assembly Language_
 https://arxiv.org/pdf/1707.03429.pdf

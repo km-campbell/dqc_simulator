@@ -17,6 +17,7 @@ from netsquid.components.models.delaymodels import (FibreDelayModel,
 from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
                                       INSTR_T_DAGGER,
+                                      INSTR_S_DAGGER,
                                       INSTR_SINGLE_QUBIT_UNITARY, 
                                       INSTR_TWO_QUBIT_UNITARY)
 
@@ -227,6 +228,9 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             PhysicalInstruction(instr.INSTR_Z, duration=single_qubit_gate_time,
                                 parallel=True, topology=None),
             PhysicalInstruction(instr.INSTR_S, duration=single_qubit_gate_time,
+                                parallel=True, topology=None),
+            PhysicalInstruction(INSTR_S_DAGGER, 
+                                duration=single_qubit_gate_time,
                                 parallel=True, topology=None),
             PhysicalInstruction(instr.INSTR_CNOT, duration=two_qubit_gate_time,
                                 parallel=True, topology=None, 
