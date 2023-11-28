@@ -224,7 +224,6 @@ class ArgumentInterpreter(NonTerminalInterpreter):
             'qubit')
     
         """
-        
         if '[' in argument_terminal: #is (qu)bit
             arg_type = "qubit"
             split_bit = argument_terminal.replace(']', '').split('[')

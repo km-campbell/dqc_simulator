@@ -93,12 +93,12 @@ def _add_options2single_qubit_gate(op, controlled, conjugate):
         op = op.ctrl
         instruction = INSTR_TWO_QUBIT_UNITARY
     elif type(controlled) != bool:
-        raise TypeError("{controlled} is not of type `bool' ")
+        raise TypeError(f"The value for controlled ({controlled}) is not of type `bool' ")
         
     if conjugate == True:
         op = op.conj
-    elif type(conjugate) != False:
-        raise TypeError("{conjugate} is not of type `bool' ")
+    elif type(conjugate) != bool:
+        raise TypeError(f"The value for conjugate ({conjugate}) is not of type `bool' ")
     
     return (instruction, op)
         
@@ -129,7 +129,7 @@ def instrNop_RZ(angle, controlled=False, conjugate=False):
         operation defining the gate.
 
     """
-    op = create_rotation_op(angle, axis=(0, 0, 1))
+    op = create_rotation_op(angle, rotation_axis=(0, 0, 1))
     instructionNop = _add_options2single_qubit_gate(op, controlled, conjugate)
     return instructionNop
 
