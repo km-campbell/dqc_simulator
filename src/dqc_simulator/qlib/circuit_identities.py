@@ -314,7 +314,7 @@ def cu_macro(theta, phi, lambda_var, gamma, c, t):
 
 
 def rxx_macro(theta, a, b):
-    h_gate = {'name' : 'h', 'params' : None, 'args' : b}
+    h_gate = {'name' : 'h', 'params' : None, 'args' : [b]}
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
     subgates = [{'name' : 'u3', 'params' : ['pi/2', theta, '0'],
                  'args' : [a]},
