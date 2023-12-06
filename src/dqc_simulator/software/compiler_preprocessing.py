@@ -8,13 +8,17 @@ Created on Thu Oct 19 09:08:30 2023
 from netsquid.components import instructions as instr
 
 from dqc_simulator.software.qasm2ast import qasm2ast
-from dqc_simulator.software.ast2dqc_circuit import Ast2DqcCircuitTranslator
+from dqc_simulator.software.ast2dqc_circuit import (Ast2DqcCircuitTranslator,
+                                                    QasmTwoUniversalSet)
 from dqc_simulator.software.partitioner import bisect_circuit
 
-def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
-                                                include_path='.'):
+def preprocess_qasm_to_compilable_bipartitioned(
+                                    filepath, scheme,
+                                    native_gates=QasmTwoUniversalSet.gates,
+                                    include_path='.'):
     ast = qasm2ast(filepath, include_path=include_path)
-    dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+    interpreter = Ast2DqcCircuitTranslator(ast, native_gates=native_gates)
+    dqc_circuit = interpreter.ast2dqc_circuit()
     bisect_circuit(dqc_circuit)
     dqc_circuit.add_scheme_to_2_qubit_gates(scheme)
     node_init_commands = []
@@ -26,9 +30,15 @@ def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
     dqc_circuit.ops = node_init_commands + dqc_circuit.ops
     return dqc_circuit
 
-def preprocess_qasm_to_compilable_monolithic(filepath, include_path='.'):
+def preprocess_qasm_to_compilable_monolithic(
+                            filepath, include_path='.',
+                            native_gates=QasmTwoUniversalSet.gates):
     ast = qasm2ast(filepath, include_path=include_path)
-    dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+    interpreter = Ast2DqcCircuitTranslator(ast, native_gates=native_gates)
+    dqc_circuit = interpreter.ast2dqc_circuit()
+# =============================================================================
+#     dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+# =============================================================================
     #TO DO: add change node name and qubit indices of dqc_circuit.ops
     for ii, gate_spec in enumerate(dqc_circuit.ops):
         qreg1 = dqc_circuit.qregs[gate_spec[2]]
