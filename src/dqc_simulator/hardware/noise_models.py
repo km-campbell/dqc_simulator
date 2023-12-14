@@ -30,7 +30,6 @@ from netsquid.components import instructions as instr
 from netsquid.qubits import ketstates as ks
 
 
-
 #TO DO: figure our how to formulate maths as latex in docstring
 
 
@@ -57,8 +56,15 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
         p_error
     """ 
     if type(qubits) == ns.qubits.qubit.Qubit:
+# =============================================================================
+#         print(f'The qubit {qubits} has state {qubits.qstate.qrepr}')
+# =============================================================================
         qubits = [qubits]
     elif len(qubits) > 1:
+# =============================================================================
+#         print(f'The qubits {qubits} have states {qubits[0].qstate.qrepr}'
+#               f'{qubits[1].qstate.qrepr}')
+# =============================================================================
         ii = 0
         while ii < (len(qubits) - 1):
             qubit = qubits[ii]
@@ -81,6 +87,9 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
     subspace_dim = 2 ** len(indices4subspace)
     noise_mat = np.kron(partialtrace(ideal_dm, indices4subspace),
                       np.eye(subspace_dim))
+# =============================================================================
+#     print(f'The noise mat is {noise_mat}')
+# =============================================================================
     #re-ordering so that the noise matrix applies noise to the correct places:
     #list of form [complement_indices, subspace_indices] needed for noise_mat
     #to apply to the right places
@@ -91,6 +100,9 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
     noise_mat = reorder_dm(noise_mat, desired_ordering)
     partially_depolarised_dm = ((1 - p_error) * ideal_dm + 
                                 (p_error/subspace_dim) * noise_mat)
+# =============================================================================
+#     print(f'after depol {partially_depolarised_dm} with size {np.shape(partially_depolarised_dm)}')
+# =============================================================================
     qubit_list = qubit.qstate.qubits
     qapi.assign_qstate(qubit_list, partially_depolarised_dm,
                        formalism=QFormalism.DM)
