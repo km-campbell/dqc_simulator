@@ -118,12 +118,15 @@ class DqcCircuit():
         Parameters
         ----------
         scheme : str
-            The scheme to be used for all two_qubit_gates
+            The scheme to be used for all remote two-qubit gates
         """
         self.scheme = scheme
         for gate_spec in self.ops:
-            if len(gate_spec) >= 5:
-                gate_spec.append(scheme)
+            if len(gate_spec) == 5: #if two-qubit gate without scheme specified
+                node0 = gate_spec[2]
+                node1 = gate_spec[4]
+                if node0 != node1: #if remote:
+                    gate_spec.append(scheme)
             
     def lock_in_gate_specs(self):
         """Renders all elements of self.ops immutable. This is useful for 
