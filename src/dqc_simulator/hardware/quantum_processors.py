@@ -206,7 +206,7 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                          data_qubit_depolar_rate,
                                          single_qubit_gate_time=135 * 10**3,
                                          two_qubit_gate_time=600 * 10**3,
-                                         measurement_time=300 * 10**3,
+                                         measurement_time=600 * 10**4,
                                          alpha=1, beta=0,
                                          num_positions=20,
                                          num_comm_qubits=2):
@@ -282,7 +282,7 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                          data_qubit_depolar_rate,
                                          single_qubit_gate_time=135 * 10**3,
                                          two_qubit_gate_time=600 * 10**3,
-                                         measurement_time=300 * 10**3,
+                                         measurement_time=600 * 10**4, 
                                          alpha=1, beta=0,
                                          num_positions=20,
                                          num_comm_qubits=2):
