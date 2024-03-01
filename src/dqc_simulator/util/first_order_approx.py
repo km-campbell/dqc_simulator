@@ -104,6 +104,7 @@ def f_out_with_exponentially_growing_cnot_depol(num_cnots, p_error):
     f_out = (1 - p_error)**num_cnots
     return f_out
 
+#I don't think the following is very meaningful
 def f_out_with_mem_depol_first_order(depolar_rate, num_single_qubit_gates, 
                                      num_cnots, num_measurements,
                                      num_epr_pairs, num_classical_comms,
@@ -170,6 +171,7 @@ def f_out_with_mem_depol_first_order(depolar_rate, num_single_qubit_gates,
     #f_out = (1-depolar_rate)**circuit_runtime
     return f_out
 
+#I don't think the following is very meaningful
 def f_out_with_exponentially_growing_mem_depol(
                                      depolar_rate, num_single_qubit_gates, 
                                      num_cnots, num_measurements,
