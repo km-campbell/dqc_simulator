@@ -310,6 +310,170 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             yield self.node.qmemory.execute_program(program)
             program = QuantumProgram()
         return program
+    
+    def _bsm(self, program, data_or_tele_qubit_index, other_node_name,
+             ent_request_port, classical_comm_port):
+        yield self.node.qmemory.execute_program(program)
+        program=QuantumProgram()
+        if len(self.node.comm_qubits_free) == 0 :
+            #if there are no comm-qubits free:
+            raise Exception(f"Scheduling error:"
+                            f"No comm-qubits free."
+                            f" There are too many "
+                            f"remote gates on "
+                            f" {self.node.name} in"
+                            f" this time slice")
+        else: #if there are comm-qubits free
+            comm_qubit_index = self.node.comm_qubits_free[0]
+            #there is no need to delete a comm-qubit 
+            #it will be restored at the end of this 
+            #block
+            if (data_or_tele_qubit_index == -1 and
+                len(self.node.comm_qubits_free) <
+                len(self.node.comm_qubit_positions)):
+                #letting qubit to be teleported be the 
+                #last used communication qubit from the 
+                #prev time-slice
+                data_or_tele_qubit_index = comm_qubit_index - 1
+            #TO DO: implement the following if block as a subgenerator because 
+            #it appears many times in your different subgenerators
+            if not self.node.ebit_ready: 
+                node_names = [self.node.name, other_node_name]
+                node_names.sort()
+                #if there is no ebit ready:
+                ent_recv_port = self.node.ports[
+                    f"quantum_input_from_charlie"
+                    f"{comm_qubit_index}_"
+                    f"{node_names[0]}<->{node_names[1]}"]
+                #send entanglement request specifying
+                #the comm-qubit to be used:
+                ent_request_port.tx_output(comm_qubit_index)
+                #wait for entangled qubit to arrive in
+                #requested comm-qubit slot:
+                yield self.await_port_input(ent_recv_port)
+            program.apply(instr.INSTR_CNOT, [data_or_tele_qubit_index, 
+                          comm_qubit_index])
+            program.apply(instr.INSTR_H, [data_or_tele_qubit_index])
+            program.apply(instr.INSTR_MEASURE, [comm_qubit_index],
+                          output_key="m1")
+# =============================================================================
+#                                     #discarding the comm qubit to allow
+#                                     #another one to be retrieved.
+#                                     #Physically, this can be thought of as
+#                                     #reinitialising
+#                                     #the comm-qubit prior to entangling it
+#                                     #with another photon
+#                                     program.apply(instr.INSTR_DISCARD,
+#                                                   comm_qubit_index)
+# =============================================================================
+            program.apply(instr.INSTR_MEASURE, [data_or_tele_qubit_index],
+                          output_key = "m2")
+            yield self.node.qmemory.execute_program(program)
+            m1, = program.output["m1"]
+            m2, = program.output["m2"]
+            program = QuantumProgram()
+            #re-setting data-qubit to zero after
+            #measurement (comm-qubit already reset
+            #when entanglement re-distributed)
+            #TO DO: GET THIS TO TAKE SAME TIME AS 
+            #APPLYING AN X-GATE controlled by the 
+            #measurement result.
+            program.apply(instr.INSTR_INIT, data_or_tele_qubit_index)
+            yield self.node.qmemory.execute_program(program)
+            program = QuantumProgram()
+# =============================================================================
+#                                     if m2 == 1:
+#                                         program.apply(instr.INSTR_X,
+#                                                       data_or_tele_qubit_index)
+#                                         yield (
+#                                           self.node.qmemory.execute_program(
+#                                               program))
+#                                         program = QuantumProgram()
+# =============================================================================
+            classical_comm_port.tx_output((m1, m2))
+            program = QuantumProgram() #re-initialising
+            if data_or_tele_qubit_index in self.node.comm_qubit_positions:
+                #freeing comm_qubit now that it has been
+                #measured
+                self.node.comm_qubits_free = (self.node.comm_qubits_free + 
+                                              [data_or_tele_qubit_index])
+                #re-ordering from smallest number to
+                #largest
+                self.node.comm_qubits_free.sort()
+        return program
+    
+    def _tp_correct(self, program, ent_request_port, other_node_name,
+                    classical_comm_port, reserve_comm_qubit):
+        """
+        
+
+        Parameters
+        ----------
+        program : TYPE
+            DESCRIPTION.
+        ent_request_port : TYPE
+            DESCRIPTION.
+        other_node_name : TYPE
+            DESCRIPTION.
+        classical_comm_port : TYPE
+            DESCRIPTION.
+        reserve_comm_qubit : bool
+            Whether or not to reserve the comm-qubit being used, so that the
+            state teleported there cannot be overwritten. Will reserve if True.
+
+        Raises
+        ------
+        Exception
+            DESCRIPTION.
+
+        Yields
+        ------
+        TYPE
+            DESCRIPTION.
+        TYPE
+            DESCRIPTION.
+
+        """
+        yield self.node.qmemory.execute_program(program)
+        program=QuantumProgram()
+        if len(self.node.comm_qubits_free) == 0 :
+            #if there are no comm-qubits free:
+            raise Exception(f"Scheduling error: No "
+                            f" comm-qubits free. "
+                            f"There are too many"
+                            f" remote gates on "
+                            f"{self.node.name} in "
+                            f"this time slice")
+        else: #if there are comm-qubits free
+            #establishing new comm-qubit for the current
+            #teleportation
+            comm_qubit_index = self.node.comm_qubits_free[0]
+            if reserve_comm_qubit:
+                del self.node.comm_qubits_free[0]
+            #removing comm qubit being used from list of 
+            #available comm-qubits:
+            if not self.node.ebit_ready:#if there is no ebit ready:
+                node_names = [self.node.name, other_node_name]
+                node_names.sort()
+                ent_recv_port = self.node.ports[
+                    f"quantum_input_from_charlie"
+                    f"{comm_qubit_index}_"
+                    f"{node_names[0]}<->{node_names[1]}"]
+                #send entanglement request specifying
+                #the comm-qubit to be used:
+                ent_request_port.tx_output(comm_qubit_index)
+                #wait for entangled qubit to arrive in
+                #requested comm-qubit slot:
+                yield self.await_port_input(ent_recv_port)
+            yield self.await_port_input(classical_comm_port)
+            meas_results, = classical_comm_port.rx_input().items
+            if meas_results[0] == 1:
+                program.apply(instr.INSTR_X, comm_qubit_index)
+            if meas_results[1] == 1:
+                program.apply(instr.INSTR_Z, comm_qubit_index)
+            yield self.node.qmemory.execute_program(program)
+            program = QuantumProgram()
+        return (comm_qubit_index, program)
 
     def run(self):
         program=QuantumProgram()
@@ -408,202 +572,38 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                             
                         elif scheme == "tp":
                             if role == "bsm":
-                                yield self.node.qmemory.execute_program(
-                                    program)
-                                program=QuantumProgram()
-                                if len(self.node.comm_qubits_free) == 0 :
-                                    #if there are no comm-qubits free:
-                                    raise Exception(f"Scheduling error:"
-                                                    f"No comm-qubits free."
-                                                    f" There are too many "
-                                                    f"remote gates on "
-                                                    f" {self.node.name} in"
-                                                    f" this time slice")
-                                else: #if there are comm-qubits free
-                                    comm_qubit_index = (
-                                        self.node.comm_qubits_free[0])
-                                    #there is no need to delete a comm-qubit 
-                                    #it will be restored at the end of this 
-                                    #block
-                                    if (data_or_tele_qubit_index == -1 and
-                                        len(self.node.comm_qubits_free) <
-                                        len(self.node.comm_qubit_positions)):
-                                        #letting qubit to be teleported be the 
-                                        #last used communication qubit from the 
-                                        #prev time-slice
-                                        data_or_tele_qubit_index = (
-                                            comm_qubit_index - 1)
-                                    if not self.node.ebit_ready: 
-                                        #if there is no ebit ready:
-                                        ent_recv_port = self.node.ports[
-                                            f"quantum_input_from_charlie"
-                                            f"{comm_qubit_index}_"
-                                            f"{node_names[0]}<->{node_names[1]}"]
-                                        #send entanglement request specifying
-                                        #the comm-qubit to be used:
-                                        ent_request_port.tx_output(
-                                            comm_qubit_index)
-                                        #wait for entangled qubit to arrive in
-                                        #requested comm-qubit slot:
-                                        yield self.await_port_input(
-                                            ent_recv_port)
-                                    program.apply(instr.INSTR_CNOT, 
-                                                  [data_or_tele_qubit_index, 
-                                                   comm_qubit_index])
-                                    program.apply(instr.INSTR_H,
-                                                  [data_or_tele_qubit_index])
-                                    program.apply(instr.INSTR_MEASURE,
-                                                  [comm_qubit_index],
-                                                  output_key="m1")
-# =============================================================================
-#                                     #discarding the comm qubit to allow
-#                                     #another one to be retrieved.
-#                                     #Physically, this can be thought of as
-#                                     #reinitialising
-#                                     #the comm-qubit prior to entangling it
-#                                     #with another photon
-#                                     program.apply(instr.INSTR_DISCARD,
-#                                                   comm_qubit_index)
-# =============================================================================
-                                    program.apply(instr.INSTR_MEASURE, 
-                                                  [data_or_tele_qubit_index],
-                                                  output_key = "m2")
-                                    yield self.node.qmemory.execute_program(
-                                        program)
-                                    m1, = program.output["m1"]
-                                    m2, = program.output["m2"]
-                                    program = QuantumProgram()
-                                    #re-setting data-qubit to zero after
-                                    #measurement (comm-qubit already reset
-                                    #when entanglement re-distributed)
-                                    #TO DO: GET THIS TO TAKE SAME TIME AS 
-                                    #APPLYING AN X-GATE controlled by the 
-                                    #measurement result.
-                                    program.apply(instr.INSTR_INIT,
-                                                  data_or_tele_qubit_index)
-                                    yield self.node.qmemory.execute_program(
-                                        program)
-                                    program = QuantumProgram()
-# =============================================================================
-#                                     if m2 == 1:
-#                                         program.apply(instr.INSTR_X,
-#                                                       data_or_tele_qubit_index)
-#                                         yield (
-#                                           self.node.qmemory.execute_program(
-#                                               program))
-#                                         program = QuantumProgram()
-# =============================================================================
-                                    classical_comm_port.tx_output((m1, m2))
-                                    program = QuantumProgram() #re-initialising
-                                    if (data_or_tele_qubit_index in 
-                                        self.node.comm_qubit_positions):
-                                        #freeing comm_qubit now that it has been
-                                        #measured
-                                        self.node.comm_qubits_free = (
-                                            self.node.comm_qubits_free + 
-                                            [data_or_tele_qubit_index])
-                                        #re-ordering from smallest number to
-                                        #largest
-                                        self.node.comm_qubits_free.sort()
+                                evexpr_or_program = (
+                                    yield from self._bsm(
+                                        program, 
+                                        data_or_tele_qubit_index,
+                                        other_node_name,
+                                        ent_request_port,
+                                        classical_comm_port))
+                                program = evexpr_or_program
 
                             elif role == "correct":
-                                yield self.node.qmemory.execute_program(
-                                    program)
-                                program=QuantumProgram()
-                                if len(self.node.comm_qubits_free) == 0 :
-                                    #if there are no comm-qubits free:
-                                    raise Exception(f"Scheduling error: No "
-                                                    f" comm-qubits free. "
-                                                    f"There are too many"
-                                                    f" remote gates on "
-                                                    f"{self.node.name} in "
-                                                    f"this time slice")
-                                else: #if there are comm-qubits free
-                                    #establishing new comm-qubit for the current
-                                    #teleportation
-                                    comm_qubit_index = (
-                                        self.node.comm_qubits_free[0]) 
-                                    del self.node.comm_qubits_free[0]
-                                    #removing comm qubit being used from list of 
-                                    #available comm-qubits:
-                                    if not self.node.ebit_ready:
-                                        #if there is no ebit ready:
-                                        ent_recv_port = self.node.ports[
-                                            f"quantum_input_from_charlie"
-                                            f"{comm_qubit_index}_"
-                                            f"{node_names[0]}<->{node_names[1]}"]
-                                        #send entanglement request specifying
-                                        #the comm-qubit to be used:
-                                        ent_request_port.tx_output(
-                                            comm_qubit_index)
-                                        #wait for entangled qubit to arrive in
-                                        #requested comm-qubit slot:
-                                        yield self.await_port_input(
-                                            ent_recv_port)
-                                    yield self.await_port_input(
-                                        classical_comm_port)
-                                    meas_results, = (
-                                        classical_comm_port.rx_input().items)
-                                    if meas_results[0] == 1:
-                                        program.apply(instr.INSTR_X, 
-                                                      comm_qubit_index)
-                                    if meas_results[1] == 1:
-                                        program.apply(instr.INSTR_Z, 
-                                                      comm_qubit_index)
-                                    yield self.node.qmemory.execute_program(
-                                        program)
-                                    program = QuantumProgram()
+                                reserve_comm_qubit = True
+                                evexpr_or_tuple = (
+                                    yield from self._tp_correct(
+                                        program,
+                                        ent_request_port, 
+                                        other_node_name,
+                                        classical_comm_port,
+                                        reserve_comm_qubit))
+                                comm_qubit_index = evexpr_or_tuple[0]
+                                program = evexpr_or_tuple[1]
                                     
                             elif role == "correct4tele_only":
-                                #TO DO: implement more effiently. Currently,
-                                #this is just a copy and past of the above role
-                                #with one line (deleting the comm-qubit free)
-                                #removed
-                                yield self.node.qmemory.execute_program(
-                                    program)
-                                program=QuantumProgram()
-                                if len(self.node.comm_qubits_free) == 0 : 
-                                    #if there are no comm-qubits free:
-                                    raise Exception(f"Scheduling error: No"
-                                                    f" comm-qubits free. "
-                                                    f"There are too many"
-                                                    f" remote gates on "
-                                                    f" {self.node.name} in"
-                                                    f" this time slice")
-                                else: #if there are comm-qubits free
-                                    #establishing new comm-qubit for the
-                                    #current teleportation
-                                    comm_qubit_index = (
-                                        self.node.comm_qubits_free[0]) 
-                                    #removing comm qubit being used from list 
-                                    #of available comm-qubits:
-                                    if not self.node.ebit_ready: 
-                                        #if there is no ebit ready:
-                                        ent_recv_port = self.node.ports[
-                                            f"quantum_input_from_charlie"
-                                            f"{comm_qubit_index}_"
-                                            f"{node_names[0]}<->{node_names[1]}"]
-                                        #send entanglement request specifying 
-                                        #the comm-qubit to be used:
-                                        ent_request_port.tx_output(
-                                            comm_qubit_index)
-                                        #wait for entangled qubit to arrive in
-                                        #requested comm-qubit slot:
-                                        yield self.await_port_input(
-                                            ent_recv_port)
-                                    yield self.await_port_input(
-                                        classical_comm_port)
-                                    meas_results, = (
-                                        classical_comm_port.rx_input().items)
-                                    if meas_results[0] == 1:
-                                        program.apply(instr.INSTR_X, 
-                                                      comm_qubit_index)
-                                    if meas_results[1] == 1:
-                                        program.apply(instr.INSTR_Z, 
-                                                      comm_qubit_index)
-                                    yield self.node.qmemory.execute_program(
-                                        program)
-                                    program = QuantumProgram()
+                                reserve_comm_qubit = False
+                                evexpr_or_tuple = (
+                                    yield from self._tp_correct(
+                                        program,
+                                        ent_request_port, 
+                                        other_node_name,
+                                        classical_comm_port,
+                                        reserve_comm_qubit))
+                                comm_qubit_index = evexpr_or_tuple[0]
+                                program = evexpr_or_tuple[1]
                                     
                             else:
                                 raise ValueError(
