@@ -184,7 +184,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     def _cat_entangle(self, program, other_node_name,
                       data_or_tele_qubit_index, classical_comm_port,
                       ent_request_port):
-        print("entered subgenerator")
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
         if len(self.node.comm_qubits_free) == 0: 
@@ -198,32 +197,28 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                             f"gates on {self.node.name}"
                             f"in this time slice")
         else:
-            cat_ent_comm_qubit_index = (
-                self.node.comm_qubits_free[0]) 
+            comm_qubit_index = self.node.comm_qubits_free[0]
             #removing comm qubit being used from list
             #of available comm-qubits:
             if not self.node.ebit_ready:
                 #if there is no ebit ready:
-                node_names = [self.node.name,
-                              other_node_name]
+                node_names = [self.node.name, other_node_name]
                 node_names.sort()
                 ent_recv_port = self.node.ports[
                     f"quantum_input_from_charlie"
-                    f"{cat_ent_comm_qubit_index}_"
+                    f"{comm_qubit_index}_"
                     f"{node_names[0]}<->{node_names[1]}"]
                 #send entanglement request specifying
                 #the comm-qubit to be used:
-                ent_request_port.tx_output(
-                    cat_ent_comm_qubit_index)
+                ent_request_port.tx_output(comm_qubit_index)
                 #wait for entangled qubit to arrive in
                 #requested comm-qubit slot:
-                yield self.await_port_input(
-                    ent_recv_port)
+                yield self.await_port_input(ent_recv_port)
             program.apply(instr.INSTR_CNOT,
                           [data_or_tele_qubit_index,
-                          cat_ent_comm_qubit_index])
+                          comm_qubit_index])
             program.apply(instr.INSTR_MEASURE, 
-                          [cat_ent_comm_qubit_index],
+                          [comm_qubit_index],
                           output_key="ma")
             #run program to this point
             yield self.node.qmemory.execute_program(
@@ -234,8 +229,87 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             ma, = program.output["ma"]
             classical_comm_port.tx_output(ma)
             program = QuantumProgram() #resetting
-            print("reached end of subgenerator")
-            return (cat_ent_comm_qubit_index, program)
+            return program #note that this will only be 
+                                               #be returned after all the 
+                                               #EventExpressions from the prev.
+                                               #yield statements have been 
+                                               #outputed 
+        
+    def _cat_correct(self, program, other_node_name, classical_comm_port, 
+                     ent_request_port):
+        yield self.node.qmemory.execute_program(program)
+        program=QuantumProgram()
+        if len(self.node.comm_qubits_free) == 0: 
+            #if there are NO comm_qubits free:
+            raise Exception(f"Scheduling error: No"
+                            f" comm-qubits free. There"
+                            f" are too many remote"
+                            f" gates on"
+                            f" {self.node.name} in "
+                            f"this time slice")
+        else: #if there are comm-qubits free
+            #using first comm_qubit that's free with
+            #name specific to role (so that it can be
+            #found by "disentangle_start")
+            comm_qubit_index = self.node.comm_qubits_free[0]
+            #removing comm qubit being used from list
+            #of available comm-qubits:
+            if not self.node.ebit_ready: #if there is no ebit ready
+                node_names = [self.node.name, other_node_name]
+                node_names.sort()
+                ent_recv_port = self.node.ports[
+                    f"quantum_input_from_charlie"
+                    f"{comm_qubit_index}_"
+                    f"{node_names[0]}<->{node_names[1]}"]
+                #send entanglement request specifying 
+                #the comm-qubit to be used:
+                ent_request_port.tx_output(comm_qubit_index)
+                #wait for entangled qubit to arrive in
+                #requested comm-qubit slot:
+                yield self.await_port_input(ent_recv_port)
+            del self.node.comm_qubits_free[0]
+            #wait for measurement result
+            yield self.await_port_input(classical_comm_port)
+            meas_result, = classical_comm_port.rx_input().items
+            if meas_result == 1:
+                program.apply(instr.INSTR_X, comm_qubit_index)
+        return (comm_qubit_index, program) #note that this will only be 
+                                           #be returned after all the 
+                                           #EventExpressions from the prev.
+                                           #yield statements have been 
+                                           #outputed 
+                                           
+    def _cat_disentangle_start(self, program, comm_qubit_index, 
+                           classical_comm_port):
+        #don't need comm-qubit free to do this. It
+        #will use the comm-qubit index defined in the 
+        #last operation (ie, correct)
+        program.apply(instr.INSTR_H, comm_qubit_index)
+        program.apply(instr.INSTR_MEASURE, comm_qubit_index, output_key="mb")
+        yield self.node.qmemory.execute_program(program)
+        meas_result, = program.output["mb"]  
+        program = QuantumProgram() #re-initialising
+        classical_comm_port.tx_output(meas_result)
+        #freeing comm-qubit now that it is not needed
+        self.node.comm_qubits_free = (self.node.comm_qubits_free +
+                                      [comm_qubit_index])
+        #re-odering form smallest number to largest
+        self.node.comm_qubits_free.sort()
+        return program
+    
+    def _cat_disentangle_end(self, program, classical_comm_port,
+                             data_or_tele_qubit_index):
+        yield self.await_port_input(
+            classical_comm_port)
+        meas_result, = (
+            classical_comm_port.rx_input().items)
+        if meas_result == 1:
+            #correcting some qubit entangled in the
+            #cat-entanglement step
+            program.apply(instr.INSTR_Z, [data_or_tele_qubit_index])
+            yield self.node.qmemory.execute_program(program)
+            program = QuantumProgram()
+        return program
 
     def run(self):
         program=QuantumProgram()
@@ -285,153 +359,48 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                             f"{node_names[1]}"]
                         if scheme == "cat":
                             if role == "entangle":
-                                output = yield from self._cat_entangle(
-                                                      program, 
-                                                      other_node_name,
-                                                      data_or_tele_qubit_index,
-                                                      classical_comm_port,
-                                                      ent_request_port)
+                                evexpr_or_program = yield from self._cat_entangle(
+                                                        program, 
+                                                        other_node_name,
+                                                        data_or_tele_qubit_index,
+                                                        classical_comm_port,
+                                                        ent_request_port)
                                 #output will be EventExpression until end of 
                                 #generator is reached when it will instead 
                                 #be tuple of useful variables to pass on to 
-                                #subsequent code
-                                comm_qubit_index = output[0]
-                                program = output[1]
-# =============================================================================
-#                                 yield self.node.qmemory.execute_program(
-#                                     program)
-#                                 program=QuantumProgram()
-#                                 if len(self.node.comm_qubits_free) == 0: 
-#                                     #if there are NO comm_qubits free:
-#                                     #using first comm-qubit that's free with a
-#                                     #name unique to this role so that it can
-#                                     #be reused in the "disentangle_end" role
-#                                     raise Exception(f"Scheduling error: No"
-#                                                     f"comm-qubits free. There"
-#                                                     f" are too many remote" 
-#                                                     f"gates on {self.node.name}"
-#                                                     f"in this time slice")
-#                                 else:
-#                                     cat_ent_comm_qubit_index = (
-#                                         self.node.comm_qubits_free[0]) 
-#                                     #removing comm qubit being used from list
-#                                     #of available comm-qubits:
-#                                     if not self.node.ebit_ready:
-#                                         #if there is no ebit ready:
-#                                         node_names = [self.node.name,
-#                                                       other_node_name]
-#                                         node_names.sort()
-#                                         ent_recv_port = self.node.ports[
-#                                             f"quantum_input_from_charlie"
-#                                             f"{cat_ent_comm_qubit_index}_"
-#                                             f"{node_names[0]}<->{node_names[1]}"]
-#                                         #send entanglement request specifying
-#                                         #the comm-qubit to be used:
-#                                         ent_request_port.tx_output(
-#                                             cat_ent_comm_qubit_index)
-#                                         #wait for entangled qubit to arrive in
-#                                         #requested comm-qubit slot:
-#                                         yield self.await_port_input(
-#                                             ent_recv_port)
-#                                     program.apply(instr.INSTR_CNOT,
-#                                                   [data_or_tele_qubit_index,
-#                                                   cat_ent_comm_qubit_index])
-#                                     program.apply(instr.INSTR_MEASURE, 
-#                                                   [cat_ent_comm_qubit_index],
-#                                                   output_key="ma")
-#                                     #run program to this point
-#                                     yield self.node.qmemory.execute_program(
-#                                         program) 
-#                                     #comm-qubit is immediately freed by
-#                                     #measurement so is not deleted from
-#                                     #comm_qubits_free here
-#                                     ma, = program.output["ma"]
-#                                     classical_comm_port.tx_output(ma)
-#                                     program = QuantumProgram() #resetting
-# =============================================================================
+                                #subsequent code. The following works on the 
+                                #tuple:
+                                program = evexpr_or_program
                                     
                             elif role == "correct":
-                                yield self.node.qmemory.execute_program(
-                                    program)
-                                program=QuantumProgram()
-                                if len(self.node.comm_qubits_free) == 0: 
-                                    #if there are NO comm_qubits free:
-                                    raise Exception(f"Scheduling error: No"
-                                                    f" comm-qubits free. There"
-                                                    f" are too many remote"
-                                                    f" gates on"
-                                                    f" {self.node.name} in "
-                                                    f"this time slice")
-                                else: #if there are comm-qubits free
-                                    #using first comm_qubit that's free with
-                                    #name specific to role (so that it can be
-                                    #found by "disentangle_start")
-                                    cat_corr_comm_qubit_index = (
-                                        self.node.comm_qubits_free[0])
-                                    #removing comm qubit being used from list
-                                    #of available comm-qubits:
-                                    if not self.node.ebit_ready:
-                                        #if there is no ebit ready
-                                        ent_recv_port = self.node.ports[
-                                            f"quantum_input_from_charlie"
-                                            f"{cat_corr_comm_qubit_index}_"
-                                            f"{node_names[0]}<->{node_names[1]}"]
-                                        #send entanglement request specifying 
-                                        #the comm-qubit to be used:
-                                        ent_request_port.tx_output(
-                                            cat_corr_comm_qubit_index)
-                                        #wait for entangled qubit to arrive in
-                                        #requested comm-qubit slot:
-                                        yield self.await_port_input(
-                                            ent_recv_port)
-                                    del self.node.comm_qubits_free[0]
-                                    #wait for measurement result
-                                    yield self.await_port_input(
-                                        classical_comm_port)
-                                    meas_result, = (
-                                        classical_comm_port.rx_input().items)
-                                    if meas_result == 1:
-                                        program.apply(instr.INSTR_X,
-                                                      cat_corr_comm_qubit_index)
-                                    #renaming cat-comm index so that it is 
-                                    #accessible from either tp or cat-comm
-                                    #for the local two-qubit gates
-                                    comm_qubit_index = cat_corr_comm_qubit_index
+                                evexpr_or_tuple = yield from self._cat_correct(
+                                                        program, 
+                                                        other_node_name,
+                                                        classical_comm_port,
+                                                        ent_request_port)
+                                #output will be EventExpression until end of 
+                                #generator is reached when it will instead 
+                                #be tuple of useful variables to pass on to 
+                                #subsequent code. The following works on the 
+                                #tuple:
+                                comm_qubit_index = evexpr_or_tuple[0]
+                                program = evexpr_or_tuple[1]
     
                             elif role == "disentangle_start":
-                                #don't need comm-qubit free to do this. It
-                                #will use the comm-qubit index defined in the 
-                                #last operation (ie,
-                                #correct)
-                                program.apply(instr.INSTR_H,
-                                              cat_corr_comm_qubit_index)
-                                program.apply(instr.INSTR_MEASURE,
-                                              cat_corr_comm_qubit_index,
-                                              output_key="mb")
-                                yield self.node.qmemory.execute_program(program)
-                                meas_result, = program.output["mb"]  
-                                program = QuantumProgram() #re-initialising
-                                classical_comm_port.tx_output(meas_result)
-                                #freeing comm-qubit now that it is not needed
-                                self.node.comm_qubits_free = (
-                                    self.node.comm_qubits_free +
-                                    [cat_corr_comm_qubit_index])
-                                #re-odering form smallest number to largest
-                                self.node.comm_qubits_free.sort()
-            
+                                evexpr_or_program = ( 
+                                    yield from self._cat_disentangle_start(
+                                                        program,
+                                                        comm_qubit_index, 
+                                                        classical_comm_port))
+                                program = evexpr_or_program
+                                
                             elif role == "disentangle_end":
-                                yield self.await_port_input(
-                                    classical_comm_port)
-                                meas_result, = (
-                                    classical_comm_port.rx_input().items)
-                                if meas_result == 1:
-                                    #correcting some qubit entangled in the
-                                    #cat-entanglement step
-                                    program.apply(instr.INSTR_Z,
-                                                  [data_or_tele_qubit_index])
-                                    yield self.node.qmemory.execute_program(
-                                        program)
-                                    program = QuantumProgram()
+                                evexpr_or_program = ( 
+                                    yield from self._cat_disentangle_end(
+                                                    program, 
+                                                    classical_comm_port,
+                                                    data_or_tele_qubit_index))
+                                program = evexpr_or_program
                             else:
                                 raise ValueError(
                                     "final element of gate_tuple is not valid"
