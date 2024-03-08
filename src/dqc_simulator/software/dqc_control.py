@@ -181,6 +181,21 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         else:
             qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
             
+    def _request_entanglement(self, other_node_name, comm_qubit_index,
+                              ent_request_port):
+        node_names = [self.node.name, other_node_name]
+        node_names.sort()
+        ent_recv_port = self.node.ports[
+            f"quantum_input_from_charlie"
+            f"{comm_qubit_index}_"
+            f"{node_names[0]}<->{node_names[1]}"]
+        #send entanglement request specifying
+        #the comm-qubit to be used:
+        ent_request_port.tx_output(comm_qubit_index)
+        #wait for entangled qubit to arrive in
+        #requested comm-qubit slot:
+        yield self.await_port_input(ent_recv_port)
+            
     def _cat_entangle(self, program, other_node_name,
                       data_or_tele_qubit_index, classical_comm_port,
                       ent_request_port):
@@ -200,20 +215,10 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             comm_qubit_index = self.node.comm_qubits_free[0]
             #removing comm qubit being used from list
             #of available comm-qubits:
-            if not self.node.ebit_ready:
-                #if there is no ebit ready:
-                node_names = [self.node.name, other_node_name]
-                node_names.sort()
-                ent_recv_port = self.node.ports[
-                    f"quantum_input_from_charlie"
-                    f"{comm_qubit_index}_"
-                    f"{node_names[0]}<->{node_names[1]}"]
-                #send entanglement request specifying
-                #the comm-qubit to be used:
-                ent_request_port.tx_output(comm_qubit_index)
-                #wait for entangled qubit to arrive in
-                #requested comm-qubit slot:
-                yield self.await_port_input(ent_recv_port)
+            if not self.node.ebit_ready: #if there is no ebit ready:
+                yield from self._request_entanglement(other_node_name,
+                                                      comm_qubit_index,
+                                                      ent_request_port)
             program.apply(instr.INSTR_CNOT,
                           [data_or_tele_qubit_index,
                           comm_qubit_index])
@@ -254,19 +259,10 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             comm_qubit_index = self.node.comm_qubits_free[0]
             #removing comm qubit being used from list
             #of available comm-qubits:
-            if not self.node.ebit_ready: #if there is no ebit ready
-                node_names = [self.node.name, other_node_name]
-                node_names.sort()
-                ent_recv_port = self.node.ports[
-                    f"quantum_input_from_charlie"
-                    f"{comm_qubit_index}_"
-                    f"{node_names[0]}<->{node_names[1]}"]
-                #send entanglement request specifying 
-                #the comm-qubit to be used:
-                ent_request_port.tx_output(comm_qubit_index)
-                #wait for entangled qubit to arrive in
-                #requested comm-qubit slot:
-                yield self.await_port_input(ent_recv_port)
+            if not self.node.ebit_ready: #if there is no ebit ready:
+                yield from self._request_entanglement(other_node_name,
+                                                      comm_qubit_index,
+                                                      ent_request_port)
             del self.node.comm_qubits_free[0]
             #wait for measurement result
             yield self.await_port_input(classical_comm_port)
@@ -338,19 +334,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #TO DO: implement the following if block as a subgenerator because 
             #it appears many times in your different subgenerators
             if not self.node.ebit_ready: 
-                node_names = [self.node.name, other_node_name]
-                node_names.sort()
-                #if there is no ebit ready:
-                ent_recv_port = self.node.ports[
-                    f"quantum_input_from_charlie"
-                    f"{comm_qubit_index}_"
-                    f"{node_names[0]}<->{node_names[1]}"]
-                #send entanglement request specifying
-                #the comm-qubit to be used:
-                ent_request_port.tx_output(comm_qubit_index)
-                #wait for entangled qubit to arrive in
-                #requested comm-qubit slot:
-                yield self.await_port_input(ent_recv_port)
+                yield from self._request_entanglement(other_node_name,
+                                                      comm_qubit_index,
+                                                      ent_request_port)
             program.apply(instr.INSTR_CNOT, [data_or_tele_qubit_index, 
                           comm_qubit_index])
             program.apply(instr.INSTR_H, [data_or_tele_qubit_index])
@@ -391,7 +377,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
 #                                         program = QuantumProgram()
 # =============================================================================
             classical_comm_port.tx_output((m1, m2))
-            program = QuantumProgram() #re-initialising
             if data_or_tele_qubit_index in self.node.comm_qubit_positions:
                 #freeing comm_qubit now that it has been
                 #measured
@@ -453,18 +438,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #removing comm qubit being used from list of 
             #available comm-qubits:
             if not self.node.ebit_ready:#if there is no ebit ready:
-                node_names = [self.node.name, other_node_name]
-                node_names.sort()
-                ent_recv_port = self.node.ports[
-                    f"quantum_input_from_charlie"
-                    f"{comm_qubit_index}_"
-                    f"{node_names[0]}<->{node_names[1]}"]
-                #send entanglement request specifying
-                #the comm-qubit to be used:
-                ent_request_port.tx_output(comm_qubit_index)
-                #wait for entangled qubit to arrive in
-                #requested comm-qubit slot:
-                yield self.await_port_input(ent_recv_port)
+                yield from self._request_entanglement(other_node_name,
+                                                      comm_qubit_index,
+                                                      ent_request_port)
             yield self.await_port_input(classical_comm_port)
             meas_results, = classical_comm_port.rx_input().items
             if meas_results[0] == 1:

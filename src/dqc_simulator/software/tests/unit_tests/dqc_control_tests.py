@@ -276,6 +276,7 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         self.assertAlmostEqual(fidelity, 1.000, 3)
         
     def test_can_distribute_arbitrary_state_by_specifiying_topology(self):
+        #TO DO: identify why this occassionally fails and fix
         ns.sim_reset()
         quantum_topology = [(0,1)]
         network = create_dqc_network(state4distribution=werner_state(0.5),
