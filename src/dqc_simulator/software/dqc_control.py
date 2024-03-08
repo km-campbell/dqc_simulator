@@ -120,10 +120,15 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                 form:
                 1) for single-qubit gate: (gate_type, qubit_index)
                 2) for two-qubit gate: (gate_type, qubit_index1, qubit_index2)
-                3) for remote gate primitive: (data_qubit_index or sometimes
-                                               index of qubit to be
-                                               teleported/distributed, 
-                                               other_node_name, scheme, role).
+                3) for remote gate primitive:
+                        either : i) (data_qubit_index or sometimes
+                                     index of qubit to be
+                                     teleported/distributed, 
+                                     other_node_name, scheme, role).
+                                             OR
+                                 ii) (other_node_name, scheme, role)
+                                
+                                      
                     where othernode_name is the name attribute of a
                     netsquid.nodes.Node object, and gate_type is an
                     instruction from netsquid.components.instructions
@@ -725,7 +730,7 @@ class dqcMasterProtocol(Protocol):
             for time_slice in range(max_num_time_slices):
                 for node_key in node_op_dict:
                     #if node does anything on this time slice
-                    if time_slice < len(node_op_dict[node_key]): 
+                    if time_slice < len(node_op_dict[node_key]):
                         #strictly less than because python indexes from 0
                         gate_tuples4node_and_time = (
                             node_op_dict[node_key][time_slice])
