@@ -150,6 +150,13 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     def __init__(self, gate_tuples, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.gate_tuples = gate_tuples
+        #The following subgenerators are similar to subprotocols implemented
+        #in functional form rather than as classes. Unlike subprotocols (as far
+        #as I can tell), the protocol_subgenerators can yield variables
+        #needed for subsequent processes as well as event expressions used to 
+        #evolve the simulation in time.
+        self.protocol_subgenerators = {"cat" : self._cat_subgenerator,
+                                       "tp" : self._tp_subgenerator}
 
     def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
                              gate_op):
@@ -450,9 +457,134 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             yield self.node.qmemory.execute_program(program)
             program = QuantumProgram()
         return (comm_qubit_index, program)
+    
+    def _cat_subgenerator(self, role, program, other_node_name,
+                          data_or_tele_qubit_index,
+                          classical_comm_port, ent_request_port,
+                          comm_qubit_index):
+# =============================================================================
+#         #commented out block is alternative implementation. It is more easily
+#         #extensible but I think maybe a little harder to understand, in the 
+#         #sense that it hides which subgenerators change what variables:
+#         cat_subgenerator_funcs = {
+#                              "entangle" : self._cat_entangle(other_node_name,
+#                                                              comm_qubit_index,
+#                                                              ent_request_port),
+#                              "correct" : self._cat_correct(program, 
+#                                                            other_node_name,
+#                                                            classical_comm_port,
+#                                                            ent_request_port),
+#                              "disentangle_start" : self._cat_disentangle_start(
+#                                                         program,
+#                                                         comm_qubit_index, 
+#                                                         classical_comm_port),
+#                              "disentangle_end" : self._cat_disentangle_end(
+#                                                     program, 
+#                                                     classical_comm_port,
+#                                                     data_or_tele_qubit_index)}
+#         evexpr_or_vars = yield from self.cat_subgenerator_funcs[role]
+# =============================================================================
+
+        if role == "entangle":
+            evexpr_or_program = yield from self._cat_entangle(
+                                    program, 
+                                    other_node_name,
+                                    data_or_tele_qubit_index,
+                                    classical_comm_port,
+                                    ent_request_port)
+            #output will be EventExpression until end of 
+            #generator is reached when it will instead 
+            #be tuple of useful variables to pass on to 
+            #subsequent code. The following works on the 
+            #tuple:
+            program = evexpr_or_program
+                
+        elif role == "correct":
+            evexpr_or_tuple = yield from self._cat_correct(
+                                    program, 
+                                    other_node_name,
+                                    classical_comm_port,
+                                    ent_request_port)
+            #output will be EventExpression until end of 
+            #generator is reached when it will instead 
+            #be tuple of useful variables to pass on to 
+            #subsequent code. The following works on the 
+            #tuple:
+            comm_qubit_index = evexpr_or_tuple[0]
+            program = evexpr_or_tuple[1]
+
+        elif role == "disentangle_start":
+            evexpr_or_program = ( 
+                yield from self._cat_disentangle_start(
+                                    program,
+                                    comm_qubit_index, 
+                                    classical_comm_port))
+            program = evexpr_or_program
+            
+        elif role == "disentangle_end":
+            evexpr_or_program = ( 
+                yield from self._cat_disentangle_end(
+                                program, 
+                                classical_comm_port,
+                                data_or_tele_qubit_index))
+            program = evexpr_or_program
+            
+        else:
+            raise ValueError(
+                "final element of gate_tuple is not valid"
+                " role")
+        return (comm_qubit_index, program)
+            
+    def _tp_subgenerator(self, role, program, other_node_name,
+                         data_or_tele_qubit_index,
+                         classical_comm_port, ent_request_port,
+                         comm_qubit_index):
+        
+        if role == "bsm":
+            evexpr_or_program = (
+                yield from self._bsm(
+                    program, 
+                    data_or_tele_qubit_index,
+                    other_node_name,
+                    ent_request_port,
+                    classical_comm_port))
+            program = evexpr_or_program
+
+        elif role == "correct":
+            reserve_comm_qubit = True
+            evexpr_or_tuple = (
+                yield from self._tp_correct(
+                    program,
+                    ent_request_port, 
+                    other_node_name,
+                    classical_comm_port,
+                    reserve_comm_qubit))
+            comm_qubit_index = evexpr_or_tuple[0]
+            program = evexpr_or_tuple[1]
+                
+        elif role == "correct4tele_only":
+            reserve_comm_qubit = False
+            evexpr_or_tuple = (
+                yield from self._tp_correct(
+                    program,
+                    ent_request_port, 
+                    other_node_name,
+                    classical_comm_port,
+                    reserve_comm_qubit))
+            comm_qubit_index = evexpr_or_tuple[0]
+            program = evexpr_or_tuple[1]
+                
+        else:
+            raise ValueError(
+                "final element of gate_tuple is not valid"
+                " role")
+        return (comm_qubit_index, program)
 
     def run(self):
+        #intialising variables that should be overwritten later but are needed
+        #as function arguments:
         program=QuantumProgram()
+        comm_qubit_index = float("nan")
         while True:
          #TO DO: could potentially put another for loop here which cycles over
          #each row of gate_tuples outputted for this node by the scheduler
@@ -486,6 +618,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                             scheme = gate_tuple[2]
                             role = gate_tuple[3]
                         elif len(gate_tuple) == 3:
+                            data_or_tele_qubit_index = None
                             other_node_name = gate_tuple[0]
                             scheme = gate_tuple[1]
                             role = gate_tuple[2]
@@ -497,94 +630,19 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                         ent_request_port = self.node.ports[
                             f"request_entanglement_{node_names[0]}<->"
                             f"{node_names[1]}"]
-                        if scheme == "cat":
-                            if role == "entangle":
-                                evexpr_or_program = yield from self._cat_entangle(
-                                                        program, 
-                                                        other_node_name,
-                                                        data_or_tele_qubit_index,
-                                                        classical_comm_port,
-                                                        ent_request_port)
-                                #output will be EventExpression until end of 
-                                #generator is reached when it will instead 
-                                #be tuple of useful variables to pass on to 
-                                #subsequent code. The following works on the 
-                                #tuple:
-                                program = evexpr_or_program
-                                    
-                            elif role == "correct":
-                                evexpr_or_tuple = yield from self._cat_correct(
-                                                        program, 
-                                                        other_node_name,
-                                                        classical_comm_port,
-                                                        ent_request_port)
-                                #output will be EventExpression until end of 
-                                #generator is reached when it will instead 
-                                #be tuple of useful variables to pass on to 
-                                #subsequent code. The following works on the 
-                                #tuple:
-                                comm_qubit_index = evexpr_or_tuple[0]
-                                program = evexpr_or_tuple[1]
-    
-                            elif role == "disentangle_start":
-                                evexpr_or_program = ( 
-                                    yield from self._cat_disentangle_start(
-                                                        program,
-                                                        comm_qubit_index, 
-                                                        classical_comm_port))
-                                program = evexpr_or_program
-                                
-                            elif role == "disentangle_end":
-                                evexpr_or_program = ( 
-                                    yield from self._cat_disentangle_end(
-                                                    program, 
-                                                    classical_comm_port,
-                                                    data_or_tele_qubit_index))
-                                program = evexpr_or_program
-                            else:
-                                raise ValueError(
-                                    "final element of gate_tuple is not valid"
-                                    " role")
-                            
-                        elif scheme == "tp":
-                            if role == "bsm":
-                                evexpr_or_program = (
-                                    yield from self._bsm(
-                                        program, 
-                                        data_or_tele_qubit_index,
-                                        other_node_name,
-                                        ent_request_port,
-                                        classical_comm_port))
-                                program = evexpr_or_program
-
-                            elif role == "correct":
-                                reserve_comm_qubit = True
-                                evexpr_or_tuple = (
-                                    yield from self._tp_correct(
-                                        program,
-                                        ent_request_port, 
-                                        other_node_name,
-                                        classical_comm_port,
-                                        reserve_comm_qubit))
-                                comm_qubit_index = evexpr_or_tuple[0]
-                                program = evexpr_or_tuple[1]
-                                    
-                            elif role == "correct4tele_only":
-                                reserve_comm_qubit = False
-                                evexpr_or_tuple = (
-                                    yield from self._tp_correct(
-                                        program,
-                                        ent_request_port, 
-                                        other_node_name,
-                                        classical_comm_port,
-                                        reserve_comm_qubit))
-                                comm_qubit_index = evexpr_or_tuple[0]
-                                program = evexpr_or_tuple[1]
-                                    
-                            else:
-                                raise ValueError(
-                                    "final element of gate_tuple is not valid"
-                                    " role")
+                        evexpr_or_variables = ( 
+                            yield from self.protocol_subgenerators[scheme](
+                                                    role,
+                                                    program,
+                                                    other_node_name,
+                                                    data_or_tele_qubit_index,
+                                                    classical_comm_port, 
+                                                    ent_request_port,
+                                                    comm_qubit_index))
+                        #past this point evexpr_or_variables will be the
+                        #variables
+                        comm_qubit_index = evexpr_or_variables[0]
+                        program = evexpr_or_variables[1]
                         break #breaking inner while loop to allow next 
                               #gate_tuple to be evaluated.
                 elif type(gate_tuple[-1]) == int: #if local 2-qubit gate
