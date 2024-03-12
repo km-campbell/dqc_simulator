@@ -68,6 +68,12 @@ class NodeOps():
               < len(self.ops[node1_name])): 
             self.pad_num_time_slices_until_matching(node0_name, node1_name)
             
+    def remove_empty_trailing_time_slices(self):
+        for node_key in self.ops:
+            if not self.ops[node_key][-1]:
+            #if last time slice is empty:
+                del self.ops[node_key][-1]
+            
     def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
                        node0_name, node1_name):
         node0_ops = (
@@ -183,50 +189,42 @@ def sort_greedily_by_node_and_time(gate_tuples):
     node_ops = NodeOps()
 
     for gate_tuple in gate_tuples:
-        if len(gate_tuple) == 3: #if single-qubit gate
+        if len(gate_tuple) == 3: #if single-qubit gate:
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
             op = (gate_instr, qubit_index)
             node_ops.add_op(node_name, op)
-        elif len(gate_tuple) > 3: #if multi-qubit gate
+        elif len(gate_tuple) > 3: #if multi-qubit gate:
             qubit_index0 = gate_tuple[1]
             node0_name = gate_tuple[2]
             qubit_index1 = gate_tuple[3]
             node1_name = gate_tuple[4]
-            if node0_name == node1_name: #if local
+            if node0_name == node1_name: #if local:
                 gate_instr = gate_tuple[0]
                 node_name = node0_name
                 op = (gate_instr, qubit_index0, qubit_index1)
                 node_ops.add_op(node_name, op)
-            else: #if remote gate
+            else: #if remote gate:
                 scheme = gate_tuple[-1]
                 gate_instructions = gate_tuple[0]
-                #if only one instruction given, with no qubit index specified
-                #eg, just instr.INSTR_CNOT given:
                 if (isinstance(gate_instructions,ns.components.instructions.IGate)
                     or isinstance(gate_instructions, tuple)):
                     #putting into correct form to use the comm-qubit index
-                    #as the control. Which comm-qubit index to use will be 
-                    #decided by the correction block in
-                    #HandleCommBlockForOneNodeProtocol in dqc_control.py
+                    #as the control (defers exact index choice to 
+                    #HandleOneNodeProtocol in
+                    #dqc_simulator.softwaredqc_control.py):
                     gate_instructions = [(gate_instructions, -1, qubit_index1)]
-                if node0_name not in node_ops.ops: #if node0 does not yet have
-                                                   #entry in node_op_dict
+                if node0_name not in node_ops.ops: 
                     node_ops.add_empty_node_entry(node0_name)
-                if node1_name not in node_ops.ops: #if node1 does not yet have
-                                                   #entry in node_op_dict
+                if node1_name not in node_ops.ops: 
                     node_ops.add_empty_node_entry(node1_name)
                     
                 node_ops.make_num_time_slices_match(node0_name, node1_name)
                 node_ops.apply_remote_gate(scheme, gate_instructions, 
                                            qubit_index0, qubit_index1, 
                                            node0_name, node1_name)
-
-    for node_key in node_ops.ops:
-        if node_ops.ops[node_key][-1] == []:
-            del node_ops.ops[node_key][-1]
-            
+    node_ops.remove_empty_trailing_time_slices()
     return node_ops.ops
 
 
