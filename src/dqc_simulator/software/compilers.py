@@ -27,6 +27,9 @@ class NodeOps():
 
     def append_op2current_time_slice(self, node_name, op):
         self.ops[node_name][-1].append(op)
+    
+    def append_multiple_ops2current_time_slice(self, node_name, ops):
+        self.ops[node_name][-1].append(*ops)
 
     def add_op(self, node_name, op):
         if node_name in self.ops:
@@ -57,6 +60,54 @@ class NodeOps():
         elif (len(self.ops[node0_name])
               < len(self.ops[node1_name])): 
             self.pad_num_time_slices_until_matching(node0_name, node1_name)
+            
+    def apply_cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
+                       node0_name, node1_name):
+        node0_ops = (
+            [(qubit_index0, node1_name, "cat", "entangle")] + 
+            [(qubit_index0, node1_name, "cat", "disentangle_end")])
+        node1_ops = (
+            [(node0_name, "cat", "correct")]
+            + gate_instructions + 
+            [(qubit_index1, node0_name,
+              "cat", "disentangle_start")])
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+
+    def apply_tp_risky(self, gate_instructions, qubit_index0, node0_name, 
+                       node1_name):
+        #does not teleport back to original node to free up 
+        #comm-qubit
+        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")] 
+        node1_ops = [(node0_name, "tp", "correct")] + gate_instructions
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+        
+    def free_comm_qubit_with_tele(self, qubit_index0,
+                                  qubit_index1, node0_name, node1_name):
+        #TO DO: have the SWAP gate happen first if possible. The main issue may
+        #be that -1 will not be defined without the correct
+        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
+        node1_ops = [(node0_name, "tp", "correct4tele_only"),
+                       (instr.INSTR_SWAP, -1, qubit_index1)] 
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+
+    def apply_tp_safe(self, gate_instructions, qubit_index0, node0_name, 
+                      node1_name):
+        #implements tp remote gate then teleports back to original node 
+        #to free up comm-qubit.
+        #For remote gate:
+        self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+                      node1_name)
+        self.add_time_slice(node0_name)
+        self.add_time_slice(node1_name)
+        #For teleportation back:
+        self.free_comm_qubit_with_tele(-1, qubit_index0, node1_name,
+                                       node0_name)
+        self.add_time_slice(node0_name)
+        self.add_time_slice(node1_name)
+
 
 
 #TO DO: 
@@ -184,6 +235,7 @@ def sort_greedily_by_node_and_time(gate_tuples):
                     raise Exception(f"Scheme not specified for remote gate"
                                     f"{gate_tuple} or is not of form 'cat',"
                                     f" 'tp_safe' or 'tp_risky'")
+                #TO DO: comment out below once it is in functional form
                 #adding the lists to the last row of the relevant dictionary
                 #entry for each node
                 node_ops.ops[node0_name][-1] = (node_ops.ops[node0_name][-1] + 

@@ -59,8 +59,45 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
                                       [(-1, 'node_0', 'tp', 'bsm')]]}
         self.assertEqual(updated_node_op_dict, expected_output)
 
-
-
+    def test_can_add_tp_risky_cx(self):
+        gate_tuples = [(instr.INSTR_CNOT, 2, "node_0", 4, "node_1", "tp_risky")]
+        updated_node_op_dict = self.compiler(gate_tuples)
+        expected_output = {'node_0': [[(2, 'node_1', 'tp', 'bsm')]],
+                           'node_1': [[('node_0', 'tp', 'correct'), 
+                                       (instr.INSTR_CNOT, -1, 4)]]}
+        self.assertEqual(updated_node_op_dict, expected_output)
+        
+    def test_can_add_block_cat(self):
+        gate_tuples = [([(instr.INSTR_CNOT, -1, "node_1", 4, "node_1"),
+                         (instr.INSTR_X, 3, "node_1"),
+                         (instr.INSTR_CNOT, -1, "node_1", 2, "node_1")],
+                        2, "node_0", 4, "node_1", "cat")]
+        updated_node_op_dict = self.compiler(gate_tuples)
+        expected_output = {'node_0': [[(2, 'node_1', 'cat', 'entangle'),
+                                       (2, 'node_1', 'cat', 'disentangle_end')]],
+                           'node_1': [[('node_0', 'cat', 'correct'),
+                                       (instr.INSTR_CNOT, -1, 'node_1', 4, 'node_1'),
+                                       (instr.INSTR_X, 3, 'node_1'), 
+                                       (instr.INSTR_CNOT, -1, 'node_1', 2, 'node_1'), 
+                                       (4, 'node_0', 'cat', 'disentangle_start')]]}
+        self.assertEqual(updated_node_op_dict, expected_output)
+        
+    def test_can_add_block_tp_safe(self):
+        gate_tuples = [([(instr.INSTR_CNOT, -1, "node_1", 4, "node_1"),
+                         (instr.INSTR_X, 3, "node_1"),
+                         (instr.INSTR_CNOT, -1, "node_1", 2, "node_1")],
+                        2, "node_0", 4, "node_1", "tp_safe")]
+        updated_node_op_dict = self.compiler(gate_tuples)
+        #TO DO: THIS may need changed if you adjust how TP-safe works
+        expected_output = {'node_0': [[(2, 'node_1', 'tp', 'bsm')],
+                                      [('node_1', 'tp', 'correct4tele_only'), 
+                                       (instr.INSTR_SWAP, -1, 2)]],
+                           'node_1': [[(4, 'node_0', 'tp', 'correct'),
+                                       (instr.INSTR_CNOT, -1, 'node_1', 4, 'node_1'),
+                                       (instr.INSTR_X, 3, 'node_1'),
+                                       (instr.INSTR_CNOT, -1, 'node_1', 2, 'node_1')],
+                                      [(-1, 'node_0', 'tp', 'bsm')]]}
+        self.assertEqual(updated_node_op_dict, expected_output)
 
 
 
