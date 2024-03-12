@@ -98,32 +98,15 @@ class NodeOps():
         #implements tp remote gate then teleports back to original node 
         #to free up comm-qubit.
         #For remote gate:
-        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
-        node1_ops = ([(qubit_index1, node0_name, "tp", "correct")]
-                      + gate_instructions)
-        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
-        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-# =============================================================================
-#         self.apply_tp_risky(gate_instructions, qubit_index0, node0_name, 
-#                       node1_name)
-# =============================================================================
+        self.apply_tp_risky(gate_instructions, qubit_index0, node0_name, 
+                      node1_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
         #For teleportation back:
-# =============================================================================
-#         node1_ops = [(-1, node0_name, "tp", "bsm")]
-#         node0_ops = [(node1_name, "tp",
-#                               "correct4tele_only"), 
-#                       (instr.INSTR_SWAP, -1, qubit_index0)]
-#         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
-#         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-# =============================================================================
         self.free_comm_qubit_with_tele(-1, qubit_index0, node1_name,
                                        node0_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
-
-
 
 #TO DO: 
     #1) refactor handling of schemes in below (be careful of tp_safe as it 
