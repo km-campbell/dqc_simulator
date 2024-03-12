@@ -13,6 +13,7 @@ Created on Wed Sep 20 15:01:31 2023
 #that they use only intraprocessor quantum gates and the interprocessor 
 #subroutines involved in Cat and TP-comm
 
+from functools import partial
 
 import netsquid as ns
 from netsquid.components import instructions as instr
@@ -21,6 +22,12 @@ from netsquid.components import instructions as instr
 class NodeOps():
     def __init__(self):
         self.ops = {}
+# =============================================================================
+#         self.comm_schemes = {
+#             'cat' : self.cat_comm, 
+#             'tp_risky' : self.tp_risky,
+#             'tp_safe' : self.tp_safe}
+# =============================================================================
 
     def add_empty_node_entry(self, node_name):
         self.ops[node_name] = [[]]
@@ -61,7 +68,7 @@ class NodeOps():
               < len(self.ops[node1_name])): 
             self.pad_num_time_slices_until_matching(node0_name, node1_name)
             
-    def apply_cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
+    def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
                        node0_name, node1_name):
         node0_ops = (
             [(qubit_index0, node1_name, "cat", "entangle")] + 
@@ -74,8 +81,8 @@ class NodeOps():
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
 
-    def apply_tp_risky(self, gate_instructions, qubit_index0, node0_name, 
-                       node1_name):
+    def tp_risky(self, gate_instructions, qubit_index0, node0_name, 
+                 node1_name):
         #does not teleport back to original node to free up 
         #comm-qubit
         node0_ops = [(qubit_index0, node1_name, "tp", "bsm")] 
@@ -93,12 +100,12 @@ class NodeOps():
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
 
-    def apply_tp_safe(self, gate_instructions, qubit_index0, qubit_index1,
+    def tp_safe(self, gate_instructions, qubit_index0, qubit_index1,
                       node0_name, node1_name):
         #implements tp remote gate then teleports back to original node 
         #to free up comm-qubit.
         #For remote gate:
-        self.apply_tp_risky(gate_instructions, qubit_index0, node0_name, 
+        self.tp_risky(gate_instructions, qubit_index0, node0_name, 
                       node1_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
@@ -107,10 +114,26 @@ class NodeOps():
                                        node0_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
+        
+    def apply_remote_gate(self, scheme, gate_instructions, qubit_index0,
+                          qubit_index1, node0_name, node1_name):
+        #the use of functools.partial in the following just bakes in the 
+        #arguments and allows a single call of the dict to be used despite
+        #the arguments being different
+        comm_schemes = {
+            'cat' : partial(self.cat_comm, gate_instructions, qubit_index0, 
+                            qubit_index1, node0_name, node1_name), 
+            'tp_risky' : partial(self.tp_risky, gate_instructions,
+                                 qubit_index0, node0_name, node1_name),
+            'free_comm_qubit_with_tele' : partial(self.free_comm_qubit_with_tele,
+                                                  qubit_index0, qubit_index1,
+                                                  node0_name, node1_name),
+            'tp_safe' : partial(self.tp_safe, gate_instructions, qubit_index0,
+                                qubit_index1, node0_name, node1_name)}
+                            
+        comm_schemes[scheme]()
+        
 
-#TO DO: 
-    #1) refactor handling of schemes in below (be careful of tp_safe as it 
-    #   it would currently need more outputs than the others.)
 
 def sort_greedily_by_node_and_time(gate_tuples):
     """
@@ -178,7 +201,6 @@ def sort_greedily_by_node_and_time(gate_tuples):
                 node_ops.add_op(node_name, op)
             else: #if remote gate
                 scheme = gate_tuple[-1]
-                more2do4tp_safe = False 
                 gate_instructions = gate_tuple[0]
                 #if only one instruction given, with no qubit index specified
                 #eg, just instr.INSTR_CNOT given:
@@ -195,84 +217,12 @@ def sort_greedily_by_node_and_time(gate_tuples):
                 if node1_name not in node_ops.ops: #if node1 does not yet have
                                                    #entry in node_op_dict
                     node_ops.add_empty_node_entry(node1_name)
+                    
                 node_ops.make_num_time_slices_match(node0_name, node1_name)
-                if scheme == "cat":
-                    node_ops.apply_cat_comm(gate_instructions, qubit_index0, 
-                                            qubit_index1, node0_name,
-                                            node1_name)
-# =============================================================================
-#                     node0_list = (
-#                         [(qubit_index0, node1_name, "cat", "entangle")] + 
-#                         [(qubit_index0, node1_name, "cat", "disentangle_end")])
-#                     node1_list = (
-#                         [(node0_name, "cat", "correct")]
-#                         + gate_instructions + 
-#                         [(qubit_index1, node0_name,
-#                           "cat", "disentangle_start")])
-# =============================================================================
-                elif scheme == "tp_risky":
-                    #does not teleport back to original node to free up 
-                    #comm-qubit
-                    node_ops.apply_tp_risky(gate_instructions, qubit_index0,
-                                            node0_name, node1_name)
-# =============================================================================
-#                     node0_list = [(qubit_index0, node1_name, "tp", "bsm")] 
-#                     node1_list = ([(node0_name, "tp", "correct")]
-#                                     + gate_instructions)
-# =============================================================================
-                elif scheme == "free_comm_qubit_with_tele":
-                    node_ops.free_comm_qubit_with_tele(qubit_index0,
-                                                       qubit_index1,
-                                                       node0_name,
-                                                       node1_name)
-# =============================================================================
-#                     node0_list = [(qubit_index0, node1_name, "tp", "bsm")]
-#                     node1_list = [(node0_name, "tp", "correct4tele_only"),
-#                                    (instr.INSTR_SWAP, -1, qubit_index1)] 
-# =============================================================================
-                elif scheme == "tp_safe":
-                    node_ops.apply_tp_safe(gate_instructions,
-                                           qubit_index0, 
-                                           qubit_index1, 
-                                           node0_name,
-                                           node1_name)
-# =============================================================================
-#                     #implements tp remote gate then teleports back to original node 
-#                     #to free up comm-qubit.
-#                     #for remote gate:
-#                     node0_list = [(qubit_index0, node1_name, "tp", "bsm")]
-#                     node1_list = ([(qubit_index1, node0_name, "tp", "correct")]
-#                                   + gate_instructions)
-#                     more2do4tp_safe = True
-#                     #for teleportation back
-#                     node1_list_nxt_ts = [(-1, node0_name, "tp", "bsm")]
-#                     node0_list_nxt_ts = [(node1_name, "tp",
-#                                           "correct4tele_only"), 
-#                                   (instr.INSTR_SWAP, -1, qubit_index0)]
-# =============================================================================
-                    
-                else:
-                    raise Exception(f"Scheme not specified for remote gate"
-                                    f"{gate_tuple} or is not of form 'cat',"
-                                    f" 'tp_safe' or 'tp_risky'")
-# =============================================================================
-#                 #TO DO: comment out below once it is in functional form
-#                 #adding the lists to the last row of the relevant dictionary
-#                 #entry for each node
-#                 node_ops.ops[node0_name][-1] = (node_ops.ops[node0_name][-1] + 
-#                                              node0_list)
-#                 node_ops.ops[node1_name][-1] = (node_ops.ops[node1_name][-1] + 
-#                                              node1_list)
-#                 if more2do4tp_safe:
-#                     node_ops.ops[node0_name].append(node0_list_nxt_ts)
-#                     node_ops.add_time_slice(node0_name)
-#                     node_ops.ops[node1_name].append(node1_list_nxt_ts)
-#                     node_ops.add_time_slice(node1_name)
-#                 else:
-#                     node_ops.add_time_slice(node0_name)
-#                     node_ops.add_time_slice(node1_name)
-# =============================================================================
-                    
+                node_ops.apply_remote_gate(scheme, gate_instructions, 
+                                           qubit_index0, qubit_index1, 
+                                           node0_name, node1_name)
+
     for node_key in node_ops.ops:
         if node_ops.ops[node_key][-1] == []:
             del node_ops.ops[node_key][-1]
