@@ -77,7 +77,7 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
         expected_output = {'node_0': [[(2, 'node_1', 'tp', 'bsm')],
                                       [('node_1', 'tp', 'correct4tele_only'),
                                        (instr.INSTR_SWAP, -1, 2)]],
-                           'node_1': [[(4, 'node_0', 'tp', 'correct'), 
+                           'node_1': [[('node_0', 'tp', 'correct'), 
                                        (instr.INSTR_CNOT, -1, 4)],
                                       [(-1, 'node_0', 'tp', 'bsm')]]}
         self.assertEqual(updated_node_op_dict, expected_output)
@@ -92,7 +92,7 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
         expected_output = {'node_0': [[(2, 'node_1', 'tp', 'bsm')],
                                       [('node_1', 'tp', 'correct4tele_only'), 
                                        (instr.INSTR_SWAP, -1, 2)]],
-                           'node_1': [[(4, 'node_0', 'tp', 'correct'),
+                           'node_1': [[('node_0', 'tp', 'correct'),
                                        (instr.INSTR_CNOT, -1, 'node_1', 4, 'node_1'),
                                        (instr.INSTR_X, 3, 'node_1'),
                                        (instr.INSTR_CNOT, -1, 'node_1', 2, 'node_1')],
