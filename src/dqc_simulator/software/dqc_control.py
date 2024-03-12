@@ -400,7 +400,8 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         return program
     
     def _tp_correct(self, program, ent_request_port, other_node_name,
-                    classical_comm_port, reserve_comm_qubit):
+                    classical_comm_port, reserve_comm_qubit, swap_commNdata,
+                    data_qubit_index=None):
         """
         
 
@@ -417,6 +418,12 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         reserve_comm_qubit : bool
             Whether or not to reserve the comm-qubit being used, so that the
             state teleported there cannot be overwritten. Will reserve if True.
+        swap_commNdata : bool
+            Whether to swap the data qubit and comm qubit prior to applying
+            measurement dependent gates.
+        data_qubit_index : int
+            The index of the data qubit index to SWAP the comm qubit index with
+            if swap_commNdata == True
 
         Raises
         ------
@@ -455,10 +462,16 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                                                       ent_request_port)
             yield self.await_port_input(classical_comm_port)
             meas_results, = classical_comm_port.rx_input().items
-            if meas_results[0] == 1:
-                program.apply(instr.INSTR_X, comm_qubit_index)
-            if meas_results[1] == 1:
-                program.apply(instr.INSTR_Z, comm_qubit_index)
+            if swap_commNdata:
+                if meas_results[0] == 1:
+                    program.apply(instr.INSTR_X, data_qubit_index)
+                if meas_results[1] == 1:
+                    program.apply(instr.INSTR_Z, data_qubit_index)
+            else:
+                if meas_results[0] == 1:
+                    program.apply(instr.INSTR_X, comm_qubit_index)
+                if meas_results[1] == 1:
+                    program.apply(instr.INSTR_Z, comm_qubit_index)
             yield self.node.qmemory.execute_program(program)
             program = QuantumProgram()
         return (comm_qubit_index, program)
@@ -557,25 +570,44 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
 
         elif role == "correct":
             reserve_comm_qubit = True
+            swap_commNdata = False
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
                     ent_request_port, 
                     other_node_name,
                     classical_comm_port,
-                    reserve_comm_qubit))
+                    reserve_comm_qubit,
+                    swap_commNdata))
             comm_qubit_index = evexpr_or_tuple[0]
             program = evexpr_or_tuple[1]
                 
         elif role == "correct4tele_only":
             reserve_comm_qubit = False
+            swap_commNdata = False
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
                     ent_request_port, 
                     other_node_name,
                     classical_comm_port,
-                    reserve_comm_qubit))
+                    reserve_comm_qubit,
+                    swap_commNdata))
+            comm_qubit_index = evexpr_or_tuple[0]
+            program = evexpr_or_tuple[1]
+            
+        elif role == "swap_then_correct":
+            reserve_comm_qubit = False
+            swap_commNdata = True
+            evexpr_or_tuple = (
+                yield from self._tp_correct(
+                    program,
+                    ent_request_port, 
+                    other_node_name,
+                    classical_comm_port,
+                    reserve_comm_qubit,
+                    swap_commNdata,
+                    data_qubit_index=data_or_tele_qubit_index))
             comm_qubit_index = evexpr_or_tuple[0]
             program = evexpr_or_tuple[1]
                 

@@ -98,16 +98,23 @@ class NodeOps():
         
     def free_comm_qubit_with_tele(self, qubit_index0,
                                   qubit_index1, node0_name, node1_name):
-        #TO DO: have the SWAP gate happen first if possible. The main issue may
-        #be that -1 will not be defined without the correct
+        #TO DO: potentially deprecate in favour of tele2data_qubit, however
+        #this will require changes to dqc_simulator.software.dqc_control
         node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
         node1_ops = [(node0_name, "tp", "correct4tele_only"),
                        (instr.INSTR_SWAP, -1, qubit_index1)] 
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+        
+    def tele2data_qubit(self, qubit_index0, qubit_index1, node0_name,
+                       node1_name):
+        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
+        node1_ops = [(qubit_index1, node0_name, "tp", "swap_then_correct")] 
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
 
     def tp_safe(self, gate_instructions, qubit_index0, qubit_index1,
-                      node0_name, node1_name):
+                node0_name, node1_name):
         #implements tp remote gate then teleports back to original node 
         #to free up comm-qubit.
         #For remote gate:
@@ -121,6 +128,21 @@ class NodeOps():
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
         
+    def tp_block(self, gate_instructions, qubit_index0, qubit_index1, 
+                 node0_name, node1_name):
+        #Very similar to TP-safe except that the SWAP happens before the 
+        #correction and the measurement dependent gates act on the data qubit
+        #(see figure 2b of published version of AutoComm paper)
+        #For remote gate:
+        self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+                      node1_name)
+        self.add_time_slice(node0_name)
+        self.add_time_slice(node1_name)
+        #for teleportation back:
+        self.tele2data_qubit(-1, qubit_index0, node1_name, node0_name)
+        self.add_time_slice(node0_name)
+        self.add_time_slice(node1_name)
+            
     def apply_remote_gate(self, scheme, gate_instructions, qubit_index0,
                           qubit_index1, node0_name, node1_name):
         #the use of functools.partial in the following just bakes in the 
@@ -135,7 +157,10 @@ class NodeOps():
                                                   qubit_index0, qubit_index1,
                                                   node0_name, node1_name),
             'tp_safe' : partial(self.tp_safe, gate_instructions, qubit_index0,
-                                qubit_index1, node0_name, node1_name)}
+                                qubit_index1, node0_name, node1_name),
+            'tp_block' : partial(self.tp_block, gate_instructions,
+                                 qubit_index0, qubit_index1, node0_name, 
+                                 node1_name)}
                             
         comm_schemes[scheme]()
         
@@ -208,7 +233,8 @@ def sort_greedily_by_node_and_time(gate_tuples):
             else: #if remote gate:
                 scheme = gate_tuple[-1]
                 gate_instructions = gate_tuple[0]
-                if (isinstance(gate_instructions,ns.components.instructions.IGate)
+                if (isinstance(gate_instructions, 
+                               ns.components.instructions.IGate)
                     or isinstance(gate_instructions, tuple)):
                     #putting into correct form to use the comm-qubit index
                     #as the control (defers exact index choice to 

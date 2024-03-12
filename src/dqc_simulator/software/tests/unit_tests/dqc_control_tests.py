@@ -816,8 +816,11 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
         mask = (qubit_array == None)
         self.assertEqual(list(mask), [False] * 4)
         
+    #TO DO: test new scheme: tp_block 
+    
     #TO DO: add test that you can perform a fused communication block (ie, 
     #several gates using one call of Cat-comm or two teleportations)
+    
         
 #right now remote gate operations have to be done at a different time from everything else
 #this could potentially be changed by accessing the measurement results later but you would
