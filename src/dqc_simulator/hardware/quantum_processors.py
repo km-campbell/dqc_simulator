@@ -249,11 +249,13 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             PhysicalInstruction(instr.INSTR_DISCARD, 
                                 duration=single_qubit_gate_time, parallel=False,
                                 toplology=[ii for ii in range(num_comm_qubits)]),
-            PhysicalInstruction(instr.INSTR_SWAP, duration=1e-10, 
-                                parallel=True, 
-                                topology=None), #duration deliberately negligible
-                                                #to approximate ideality for 
-                                                #TP-safe
+# =============================================================================
+#             PhysicalInstruction(instr.INSTR_SWAP, duration=1e-10, 
+#                                 parallel=True, 
+#                                 topology=None), #duration deliberately negligible
+#                                                 #to approximate ideality for 
+#                                                 #TP-safe. MAYBE REVISIT
+# =============================================================================
             PhysicalInstruction(instr.INSTR_T, duration=single_qubit_gate_time,
                                 parallel=True, 
                                 topology=None),
@@ -273,6 +275,12 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         + ["data"] * num_data_qubits, mem_noise_models=
         [comm_qubit_memory_depolar_model] * num_comm_qubits +
         [data_qubit_memory_depolar_model] * num_data_qubits)
+    
+    qprocessor.add_composite_instruction(instr.INSTR_SWAP, 
+                                         [(instr.INSTR_CNOT, (0, 1)),
+                                          (instr.INSTR_CNOT, (1, 0)),
+                                          (instr.INSTR_CNOT, (0, 1))],
+                                         parallel=True, topology=None)
     return qprocessor
 
 
@@ -325,11 +333,13 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
             PhysicalInstruction(instr.INSTR_DISCARD, 
                                 duration=single_qubit_gate_time, parallel=False,
                                 toplology=[ii for ii in range(num_comm_qubits)]),
-            PhysicalInstruction(instr.INSTR_SWAP, duration=1e-10, 
-                                parallel=True, 
-                                topology=None), #duration deliberately negligible
-                                                #to approximate ideality for 
-                                                #TP-safe
+# =============================================================================
+#             PhysicalInstruction(instr.INSTR_SWAP, duration=1e-10, 
+#                                 parallel=True, 
+#                                 topology=None), #duration deliberately negligible
+#                                                 #to approximate ideality for 
+#                                                 #TP-safe
+# =============================================================================
             PhysicalInstruction(instr.INSTR_T, duration=single_qubit_gate_time,
                                 parallel=True, 
                                 topology=None),
@@ -349,6 +359,12 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
         + ["data"] * num_data_qubits, mem_noise_models=
         [comm_qubit_memory_depolar_model] * num_comm_qubits +
         [data_qubit_memory_depolar_model] * num_data_qubits)
+    
+    qprocessor.add_composite_instruction(instr.INSTR_SWAP, 
+                                         [(instr.INSTR_CNOT, (0, 1)),
+                                          (instr.INSTR_CNOT, (1, 0)),
+                                          (instr.INSTR_CNOT, (0, 1))],
+                                         parallel=True, topology=None)
     return qprocessor
 
 

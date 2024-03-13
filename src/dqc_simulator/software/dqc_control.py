@@ -463,6 +463,8 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             yield self.await_port_input(classical_comm_port)
             meas_results, = classical_comm_port.rx_input().items
             if swap_commNdata:
+                program.apply(instr.INSTR_SWAP, [comm_qubit_index,
+                                                 data_qubit_index])
                 if meas_results[0] == 1:
                     program.apply(instr.INSTR_X, data_qubit_index)
                 if meas_results[1] == 1:

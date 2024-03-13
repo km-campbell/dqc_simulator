@@ -122,26 +122,41 @@ class NodeOps():
                       node1_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
-        #For teleportation back:
-        self.free_comm_qubit_with_tele(-1, qubit_index0, node1_name,
-                                       node0_name)
-        self.add_time_slice(node0_name)
-        self.add_time_slice(node1_name)
-        
-    def tp_block(self, gate_instructions, qubit_index0, qubit_index1, 
-                 node0_name, node1_name):
-        #Very similar to TP-safe except that the SWAP happens before the 
-        #correction and the measurement dependent gates act on the data qubit
-        #(see figure 2b of published version of AutoComm paper)
-        #For remote gate:
-        self.tp_risky(gate_instructions, qubit_index0, node0_name, 
-                      node1_name)
-        self.add_time_slice(node0_name)
-        self.add_time_slice(node1_name)
         #for teleportation back:
         self.tele2data_qubit(-1, qubit_index0, node1_name, node0_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
+        #implements tp remote gate then teleports back to original node 
+        #to free up comm-qubit.
+# =============================================================================
+#         #For remote gate:
+#         self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+#                       node1_name)
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+#         #For teleportation back:
+#         self.free_comm_qubit_with_tele(-1, qubit_index0, node1_name,
+#                                        node0_name)
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+# =============================================================================
+        
+# =============================================================================
+#     def tp_block(self, gate_instructions, qubit_index0, qubit_index1, 
+#                  node0_name, node1_name):
+#         #Very similar to TP-safe except that the SWAP happens before the 
+#         #correction and the measurement dependent gates act on the data qubit
+#         #(see figure 2b of published version of AutoComm paper)
+#         #For remote gate:
+#         self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+#                       node1_name)
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+#         #for teleportation back:
+#         self.tele2data_qubit(-1, qubit_index0, node1_name, node0_name)
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+# =============================================================================
             
     def apply_remote_gate(self, scheme, gate_instructions, qubit_index0,
                           qubit_index1, node0_name, node1_name):
@@ -157,10 +172,7 @@ class NodeOps():
                                                   qubit_index0, qubit_index1,
                                                   node0_name, node1_name),
             'tp_safe' : partial(self.tp_safe, gate_instructions, qubit_index0,
-                                qubit_index1, node0_name, node1_name),
-            'tp_block' : partial(self.tp_block, gate_instructions,
-                                 qubit_index0, qubit_index1, node0_name, 
-                                 node1_name)}
+                                qubit_index1, node0_name, node1_name)}
                             
         comm_schemes[scheme]()
         
@@ -252,6 +264,8 @@ def sort_greedily_by_node_and_time(gate_tuples):
                                            node0_name, node1_name)
     node_ops.remove_empty_trailing_time_slices()
     return node_ops.ops
+
+
 
 
 #I think rather than compiling dqc_circuit you need to pre-process once more 
