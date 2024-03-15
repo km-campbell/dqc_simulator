@@ -247,6 +247,7 @@ class Test_entangling(unittest.TestCase):
 
 class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.TestCase):
     def test_can_distribute_arbitrary_state(self):
+        #TO DO: identify why this occassionally fails and fix
         ns.sim_reset()
         network = create_dqc_network(state4distribution=werner_state(0.5),
                                      node_list=None, num_nodes=2,
@@ -271,8 +272,14 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         ns.sim_run(1000)
         alice_qubit, = alice.qmemory.pop(0)
         bob_qubit, = bob.qmemory.pop(0)
+        print(f"in test_can_distribute_arbitrary_state, Alice's qstate is"
+              f'{alice_qubit.qstate.qrepr}')
+        print(f"in test_can_distribute_arbitrary_state, Bob's qstate is"
+              f'{bob_qubit.qstate.qrepr}')
         fidelity = qapi.fidelity([alice_qubit, bob_qubit],
                                  werner_state(0.5))
+        print(f'in test_can_distribute_arbitrary_state, desired state is:'
+              f'{werner_state(0.5)}')
         self.assertAlmostEqual(fidelity, 1.000, 3)
         
     def test_can_distribute_arbitrary_state_by_specifiying_topology(self):
@@ -302,8 +309,14 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         ns.sim_run(1000)
         alice_qubit, = alice.qmemory.pop(0)
         bob_qubit, = bob.qmemory.pop(0)
+        print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
+              f"Alice's qstate is {alice_qubit.qstate.qrepr}")
+        print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
+              " Bob's qstate is {bob_qubit.qstate.qrepr}")
         fidelity = qapi.fidelity([alice_qubit, bob_qubit],
                                  werner_state(0.5))
+        print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
+              " desired state is: {werner_state(0.5)}")
         self.assertAlmostEqual(fidelity, 1.000, 3)
         
 

@@ -178,43 +178,89 @@ class NodeOps():
         
 
 
-def sort_greedily_by_node_and_time(gate_tuples):
+# =============================================================================
+# #helper functions
+# def find_pairs(partitioned_gates, pair_type, add_identifier2gates):
+#     """
+#     Parameters
+#     ----------
+#     partitioned_gates : list of tuples
+#         List of tuples with gate information including type of gate, qubit
+#         indices acted on, node names acted on, and (for remote gates) a string 
+#         indicating the scheme (here this should be some placeholder string
+#         as the scheme is not yet decided).
+#     pair_type : str
+#         Whether to seek out 'qubit_node' or 'node_node' pairs.
+#     add_identifier2gates : bool
+#         If True, will add a unique position identifier to each gate based on
+#         their position in gate tuples. This is to safeguard against disallowed
+#         commutations during scheduling.
+# 
+#     Returns
+#     -------
+#     None.
+# 
+#     """
+#     for gate in partitioned_gates: #you will also iterate over gates of different
+#                                    #type in linear merge but I'm not sure this can be
+#                                    #avoided
+#         if add_identifier2gates: #bear in mind this will change length of tuples
+#                                  #which may be a problem when identifying gate
+#                                  #types
+#             
+#             
+#         #if gate is remote:
+#     if pair_type == "qubit_node":
+#         
+# # =============================================================================
+# #     elif pair_type == "node_node":
+# #         #do something else
+# # =============================================================================
+# =============================================================================
+
+
+
+
+
+#compilers
+
+def sort_greedily_by_node_and_time(partitioned_gates):
     """
     Distributes the circuit between nodes and splits into explicit time-slices
     (rows in output array). Initialisation of qubits must be specified as 
-    an instruction in the gate_tuples input.
+    an instruction in the partitioned_gates input.
     
     INPUT: 
-        gate_tuples:  list of tuples
-        The gates in the entire circuit. The tuples should be of the form:
-        1) single-qubit gate: (gate_instr, qubit, node_name)
-        2) two-qubit gate: (list of instructions or gate_instruction or
-                            instruction_tuple if local,
-                            qubit0, node0_name, qubit1, node1_name, scheme)
-                            #can later extend this to multi-qubit gates
-                            #keeping scheme as last element
-                            list of instructions: list
-                                list of same form as gate_tuples containing
-                                the local gates to be conducted as part of the
-                                remote gate. Ie, for remote-cnot this would
-                                contain the cnot (but not the gates used for
-                                 bsm or correction).Note if this is given as
-                                empty list and scheme = "tp" then it will
-                                just do a teleportation
-                            gate_instruction : instance ofnetsquid.components.instructions.Instruction
-                                The gate instruction for the target gate
-                            instruction_tuple : tuple 
-                                Tuple of form (gate_instruction, op), where
-                                op is the operatution used to perform the 
-                                gate. This form is useful if you want to give
-                                several gates the same
-                                netsquid.components.qprocessor.PhysicalInstruction
-                            qubit{ii}: int
-                                The qubit index
-                            node_name: str
-                            The name of the relevant node
-                            scheme: str, optional 
-                                Only needed for remote gates
+        partitioned_gates:  list of tuples
+            The gates in the entire circuit. The tuples should be of the form:
+            1) single-qubit gate: (gate_instr, qubit, node_name)
+            2) two-qubit gate: (list of instructions or gate_instruction or
+                                instruction_tuple if local,
+                                qubit0, node0_name, qubit1, node1_name, scheme)
+                                #can later extend this to multi-qubit gates
+                                #keeping scheme as last element
+                                list of instructions: list
+                                    list of same form as partitioned_gates containing
+                                    the local gates to be conducted as part of the
+                                    remote gate. Ie, for remote-cnot this would
+                                    contain the cnot (but not the gates used for
+                                     bsm or correction).Note if this is given as
+                                    empty list and scheme = "tp" then it will
+                                    just do a teleportation
+                                gate_instruction : instance ofnetsquid.components.instructions.Instruction
+                                    The gate instruction for the target gate
+                                instruction_tuple : tuple 
+                                    Tuple of form (gate_instruction, op), where
+                                    op is the operatution used to perform the 
+                                    gate. This form is useful if you want to give
+                                    several gates the same
+                                    netsquid.components.qprocessor.PhysicalInstruction
+                                qubit{ii}: int
+                                    The qubit index
+                                node_name: str
+                                The name of the relevant node
+                                scheme: str, optional 
+                                    Only needed for remote gates
 
                             
 
@@ -225,7 +271,7 @@ def sort_greedily_by_node_and_time(gate_tuples):
     """
     node_ops = NodeOps()
 
-    for gate_tuple in gate_tuples:
+    for gate_tuple in partitioned_gates:
         if len(gate_tuple) == 3: #if single-qubit gate:
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]

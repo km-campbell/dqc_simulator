@@ -71,9 +71,9 @@ class EntangleLinkedNodesProtocol(NodeProtocol):
         while True:
             #wait for entanglement request from node_a or node_b
             expr = yield (self.await_port_input(self.node.ports[
-                "entanglement_request_inputA2C"])
-                   | self.await_port_input(self.node.ports[
-                       "entanglement_request_inputB2C"]))
+                                "entanglement_request_inputA2C"])
+                           | self.await_port_input(self.node.ports[
+                                "entanglement_request_inputB2C"]))
             if expr.first_term.value:
                 msg, = self.node.ports[
                     "entanglement_request_inputA2C"].rx_input().items
@@ -463,6 +463,14 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             yield self.await_port_input(classical_comm_port)
             meas_results, = classical_comm_port.rx_input().items
             if swap_commNdata:
+# =============================================================================
+#                 program.apply(instr.INSTR_CNOT, [comm_qubit_index,
+#                                                  data_qubit_index])
+#                 program.apply(instr.INSTR_CNOT, [data_qubit_index,
+#                                                  comm_qubit_index])
+#                 program.apply(instr.INSTR_CNOT, [comm_qubit_index,
+#                                                  data_qubit_index])
+# =============================================================================
                 program.apply(instr.INSTR_SWAP, [comm_qubit_index,
                                                  data_qubit_index])
                 if meas_results[0] == 1:
@@ -705,7 +713,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
 class dqcMasterProtocol(Protocol):
     """ Protocol which executes a distributed quantum circuit 
     INPUT: 
-        gate_tuples:  list of tuples.
+        partitioned_gates:  list of tuples.
             The gates implemented in the entire circuit. The tuples should be
             of the form:
             1) single-qubit gate: (gate_instr, qubit, node_name)
@@ -715,7 +723,7 @@ class dqcMasterProtocol(Protocol):
                                 #can later extend this to multi-qubit gates
                                 #keeping scheme as last element
                                 list of instructions: list
-                                    list of same form as gate_tuples
+                                    list of same form as partitioned_gates
                                     containing the local gates to be conducted
                                     as part of the remote gate. Ie, for
                                     remote-cnot this would contain the cnot 
@@ -725,13 +733,13 @@ class dqcMasterProtocol(Protocol):
                                     scheme = "tp" then it will just do a
                                     teleportation
         compiler_func: function, optional
-            The compiler function to be used to split gate_tuples into
+            The compiler function to be used to split partitioned_gates into
             protocols by node and time-slice
     """
-    def __init__(self, gate_tuples, network, *args, 
+    def __init__(self, partitioned_gates, network, *args, 
                  compiler_func=sort_greedily_by_node_and_time, **kwargs):
         super().__init__(*args, **kwargs)
-        self.gate_tuples = gate_tuples
+        self.partitioned_gates = partitioned_gates
         self.network = network
         self.compiler_func = compiler_func
         #TO DO: initialise values that used to be initialised in 
@@ -739,7 +747,7 @@ class dqcMasterProtocol(Protocol):
         #NETWORK CREATION FUNCTION INSTEAD)
         
     def run(self):
-        node_op_dict = self.compiler_func(self.gate_tuples)
+        node_op_dict = self.compiler_func(self.partitioned_gates)
         node_dict = {}
         for node_key in node_op_dict:
             node_dict[node_key] = self.network.get_node(node_key)
