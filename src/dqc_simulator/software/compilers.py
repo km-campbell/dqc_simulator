@@ -180,7 +180,7 @@ class NodeOps():
 
 # =============================================================================
 # #helper functions
-# def find_pairs(partitioned_gates, pair_type, add_identifier2gates):
+# def find_pairs(partitioned_gates, pair_type):
 #     """
 #     Parameters
 #     ----------
@@ -191,10 +191,6 @@ class NodeOps():
 #         as the scheme is not yet decided).
 #     pair_type : str
 #         Whether to seek out 'qubit_node' or 'node_node' pairs.
-#     add_identifier2gates : bool
-#         If True, will add a unique position identifier to each gate based on
-#         their position in gate tuples. This is to safeguard against disallowed
-#         commutations during scheduling.
 # 
 #     Returns
 #     -------
@@ -204,20 +200,21 @@ class NodeOps():
 #     for gate in partitioned_gates: #you will also iterate over gates of different
 #                                    #type in linear merge but I'm not sure this can be
 #                                    #avoided
-#         if add_identifier2gates: #bear in mind this will change length of tuples
-#                                  #which may be a problem when identifying gate
-#                                  #types
+#         if len(gate) > 3 and gate[2] != gate[4]:
+#         #if two-qubit remote gate (node names not the same):
 #             
 #             
-#         #if gate is remote:
-#     if pair_type == "qubit_node":
+#             
+# # =============================================================================
+# #     if pair_type == "qubit_node":
+# # =============================================================================
 #         
 # # =============================================================================
 # #     elif pair_type == "node_node":
 # #         #do something else
 # # =============================================================================
+# 
 # =============================================================================
-
 
 
 
