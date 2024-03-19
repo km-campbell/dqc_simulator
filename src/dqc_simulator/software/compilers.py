@@ -13,6 +13,7 @@ Created on Wed Sep 20 15:01:31 2023
 #that they use only intraprocessor quantum gates and the interprocessor 
 #subroutines involved in Cat and TP-comm
 
+from collections import Counter
 from functools import partial
 
 import netsquid as ns
@@ -178,46 +179,186 @@ class NodeOps():
         
 
 
+#helper functions:
+    
+    
+def find_qubit_node_pairs(partitioned_gates):
+    """
+    Parameters
+    ----------
+    partitioned_gates : list of tuples
+        List of tuples with gate information including type of gate, qubit
+        indices acted on, node names acted on, and (for remote gates) a string 
+        indicating the scheme (here this should be some placeholder string
+        as the scheme is not yet decided).
+    Returns
+    -------
+    qubit_node_pairs : dict
+        All of the gates associated with a qubit-node pair. Qubit-node pairs
+        are referred to by a key of the form (qubit0_index, node0_name,
+                                              node1_name), where the first two
+        entries define the qubit and the latter the node. The remote gates for
+        each qubit-node pair are lists of the form [gate, ID] where gate is 
+        the gate tuple form partitioned gates and ID
+
+    """
+    def _add_entry(a_dict, key, value):
+        if key in a_dict:
+            a_dict[key].append(value)
+        else:
+            a_dict[key] = [value]
+            
+    qubit_node_pairs = {}
+    for ii, gate in enumerate(partitioned_gates): #you will also iterate over gates of different
+                                   #type in linear merge but I'm not sure this can be
+                                   #avoided
+        if len(gate) > 3 and gate[2] != gate[4]:
+        #if two-qubit remote gate (node names not the same):
+            ctrl_qubit = gate[1]
+            ctrl_node = gate[2]
+            target_qubit = gate[3]
+            target_node = gate[4]
+            key = (ctrl_qubit, ctrl_node, target_node)
+            #first two entries of key needed to fully specify ctrl qubit
+            _add_entry(qubit_node_pairs, key, (gate, ii))
+            #index ii needed so that duplicate gates can be identified later 
+            #and their position in partitioned_gates can be ascertained
+            key = (target_qubit, target_node, ctrl_node)
+            _add_entry(qubit_node_pairs, key, (gate, ii))
+    return qubit_node_pairs
+
+def find_node_node_pairs(partitioned_gates):
+    node_node_pairs = {}
+    for ii, gate in enumerate(partitioned_gates):
+        if len(gate) > 3 and gate[2] != gate[4]:
+        #if two-qubit remote gate (node names not the same):
+            ctrl_node = gate[2]
+            target_node = gate[4]
+            key = (ctrl_node, target_node)
+            key = tuple(sorted(key)) #puts key in intuitive ordering 
+                                     #(eg, node_0, node_1, ... rather than
+                                     #node_1, node_0, ...)
+            if key in node_node_pairs:
+                node_node_pairs[key].append((gate, ii))
+                #index ii needed so that the position in partitioned_gates can 
+                #be ascertained later, during scheduling, to avoid illegal 
+                #commutation
+            elif (key[1], key[0]) in node_node_pairs:
+                node_node_pairs[(key[1], key[0])].append((gate, ii))
+            else:
+                node_node_pairs[key] = [(gate, ii)]
+    return node_node_pairs
+
+
+def find_pairs(partitioned_gates, pair_type):
+    """
+    Parameters
+    ----------
+    partitioned_gates : list of tuples
+        List of tuples with gate information including type of gate, qubit
+        indices acted on, node names acted on, and (for remote gates) a string 
+        indicating the scheme (here this should be some placeholder string
+        as the scheme is not yet decided).
+    pair_type : str
+        Whether to return 'qubit_node' or 'node_node' pairs.
+
+    Returns
+    -------
+    pairs : dict
+        The remote gates for each qubit-node or node-node pair
+
+    """
+    if pair_type == "qubit_node":
+        pairs = find_qubit_node_pairs(partitioned_gates)
+    elif pair_type == "node_node":
+        pairs = find_node_node_pairs(partitioned_gates)
+    return pairs
+
+            
+def order_pairs(pairs):
+    """
+    Sorts dict of the remote gates associated with different qubit-node or
+    node-node pairs in descending order
+
+    Parameters
+    ----------
+    pairs : dict
+        Sorts dict of the remote gates associated with different qubit-node or
+        node-node pairs 
+
+    Returns
+    -------
+    dict
+        The pairs ordered from those with the most remote gates to those with
+        the least.
+
+    """
+    return dict(sorted(pairs.items(), key=lambda items : len(items[1]),
+                       reverse=True))
+
 # =============================================================================
-# #helper functions
-# def find_pairs(partitioned_gates, pair_type):
-#     """
-#     Parameters
-#     ----------
-#     partitioned_gates : list of tuples
-#         List of tuples with gate information including type of gate, qubit
-#         indices acted on, node names acted on, and (for remote gates) a string 
-#         indicating the scheme (here this should be some placeholder string
-#         as the scheme is not yet decided).
-#     pair_type : str
-#         Whether to seek out 'qubit_node' or 'node_node' pairs.
-# 
-#     Returns
-#     -------
-#     None.
-# 
-#     """
-#     for gate in partitioned_gates: #you will also iterate over gates of different
-#                                    #type in linear merge but I'm not sure this can be
-#                                    #avoided
-#         if len(gate) > 3 and gate[2] != gate[4]:
-#         #if two-qubit remote gate (node names not the same):
-#             
-#             
-#             
-# # =============================================================================
-# #     if pair_type == "qubit_node":
-# # =============================================================================
-#         
-# # =============================================================================
-# #     elif pair_type == "node_node":
-# #         #do something else
-# # =============================================================================
-# 
+# def something_btwn_gates(all_gates, gate1_info, gate2_info):
+#     if element1 
 # =============================================================================
+    
 
+#TO DO: think about whether the following function should be internal to 
+#aggregate_comms (in which case filtered_remote_gates would be qubit_node_pairs)
+def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
+    """
+    Finds the consecutive gates in a filtered set of remote gates (eg, those
+    in the same qubit-node or node-node pair)
 
+    Parameters
+    ----------
+    partitioned_gates : list of tuples
+        All gates in quantum circuit (partitioned into different nodes)
+    filtered_remote_gates : list of tuples of form 
+                            (gate, postional index of gate within partitioned gates)
+        The filtered list of remote gates and their positional indices wrt
+        the overall list of partitioned gates.
+        
 
+    Returns
+    -------
+    burst
+
+    """
+    burst_comm_blocks = []
+    for ii, remote_gateNindex in enumerate(filtered_remote_gates):
+        consecutive_gates = []
+        while True:
+            index_in_partitioned_gates = remote_gateNindex[1]
+            nxt_gate_overall = partitioned_gates[index_in_partitioned_gates + 1]
+            nxt_gate_in_filtered_remote_gates = filtered_remote_gates[ii + 1]
+            if nxt_gate_overall != nxt_gate_in_filtered_remote_gates:
+            #if the remote gates from the filtered set are NOT consecutive:
+                break #break while loop
+            else:
+            #if the remote gates from the filtered set ARE consecutive:
+                consecutive_gates.append(remote_gateNindex)
+        burst_comm_blocks.append(consecutive_gates)
+    return burst_comm_blocks
+    #TO DO: test this!
+            
+        
+    
+
+# =============================================================================
+# def aggregate_comms(partitioned_gates):
+#     qubit_node_pairs = find_pairs(partitioned_gates, 'qubit_node')
+#     #ordering pairs by number of associated remote gates (largest first):
+#     qubit_node_pairs = order_pairs(qubit_node_pairs)
+#     for qubit_node_pair in qubit_node_pairs:
+#         burst_comm_blocks = find_consecutive_remote_gates(partitioned_gates,
+#                                                           qubit_node_pairs)
+#         #linear fusion here on burst_comm_blocks
+# # =============================================================================
+# #         for remote_gateNindex in qubit_node_pair:
+# #             pos_in_partitioned_gates = remote_gateNindex[1]
+# # =============================================================================
+# #TO DO (longer term): generalise aggregate_comms to work with node-node pairs as well
+# =============================================================================
 
 #compilers
 

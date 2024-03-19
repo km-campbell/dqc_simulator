@@ -9,7 +9,11 @@ import unittest
 
 from netsquid.components import instructions as instr
 
-from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
+from dqc_simulator.software.compilers import (sort_greedily_by_node_and_time,
+                                              find_qubit_node_pairs,
+                                              find_node_node_pairs,
+                                              find_pairs,
+                                              order_pairs)
 
 
 class Test_sort_greedily_by_node_and_time(unittest.TestCase):
@@ -112,13 +116,164 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
         self.assertEqual(updated_node_op_dict, expected_output)
 
 
+class Test_find_qubit_node_pairs(unittest.TestCase):
+    def test_adds_single_gate(self):
+        partitioned_gates = [(instr.INSTR_CNOT, 2, "node_0", 3, "node_1",
+                              "placeholder")]
+        qubit_node_pairs = find_qubit_node_pairs(partitioned_gates)
+        expected_output = {(2, 'node_0', 'node_1'): [((instr.INSTR_CNOT, 2,
+                                                      'node_0', 3, 'node_1',
+                                                      'placeholder'), 0)], 
+                           (3, 'node_1', 'node_0'): [((instr.INSTR_CNOT, 2, 
+                                                      'node_0', 3, 'node_1', 
+                                                      'placeholder'), 0)]}
+        self.assertEqual(qubit_node_pairs, expected_output)
+    def test_adds_single_gate_from_many(self):
+        partitioned_gates = [(instr.INSTR_X, 2, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_0", 3, "node_1","placeholder"),
+                             (instr.INSTR_Z, 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_1")]
+        qubit_node_pairs = find_qubit_node_pairs(partitioned_gates)
+        expected_output = {(2, 'node_0', 'node_1'): [((instr.INSTR_CNOT, 2,
+                                                      'node_0', 3, 'node_1',
+                                                      'placeholder'), 1)], 
+                           (3, 'node_1', 'node_0'): [((instr.INSTR_CNOT, 2, 
+                                                      'node_0', 3, 'node_1', 
+                                                      'placeholder'), 1)]}
+        self.assertEqual(qubit_node_pairs, expected_output)
+    
+    def test_adds_multiple_gates(self):
+        partitioned_gates = [(instr.INSTR_X, 2, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_0", 3, "node_1","placeholder"),
+                             (instr.INSTR_Z, 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_0", "placeholder"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_1")]
+        qubit_node_pairs = find_qubit_node_pairs(partitioned_gates)
+        expected_output = {(2, 'node_0', 'node_1'): 
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1',
+                                  'placeholder'), 1),
+                                ((instr.INSTR_CNOT, 2, "node_0", 4, "node_1"), 3)], 
+                           (3, 'node_1', 'node_0'):
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1', 
+                                  'placeholder'), 1)],
+                           (4, 'node_1', 'node_0') : 
+                                [((instr.INSTR_CNOT, 2, "node_0", 4, "node_1"), 3)],
+                           (2, "node_1", "node_0") :
+                                [((instr.INSTR_CNOT, 2, "node_1", 4, "node_0", 
+                                  "placeholder"), 4)],
+                            (4, "node_0", "node_1") :
+                                [((instr.INSTR_CNOT, 2, "node_1", 4, "node_0", 
+                                   "placeholder"), 4)]}
+        self.assertEqual(qubit_node_pairs, expected_output)
+        
+class Test_find_node_node_pairs(unittest.TestCase):
+    def test_adds_single_gate(self):
+        partitioned_gates = [(instr.INSTR_CNOT, 2, "node_0", 3, "node_1",
+                              "placeholder")]
+        node_node_pairs = find_node_node_pairs(partitioned_gates)
+        expected_output = {('node_0', 'node_1'): [((instr.INSTR_CNOT, 2,
+                                                      'node_0', 3, 'node_1',
+                                                      'placeholder'), 0)]}
+        self.assertEqual(node_node_pairs, expected_output)
+        
+    def test_adds_two_gates_to_same_entry(self):
+        partitioned_gates = [(instr.INSTR_CNOT, 2, "node_0", 3, "node_1",
+                              "placeholder"), 
+                             (instr.INSTR_CNOT, 2, "node_1", 3, "node_0",
+                                                   "placeholder"), ]
+        node_node_pairs = find_node_node_pairs(partitioned_gates)
+        expected_output = {('node_0', 'node_1'): 
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1',
+                                  'placeholder'), 0),
+                                ((instr.INSTR_CNOT, 2, "node_1", 3, "node_0",
+                                  "placeholder"), 1)]}
+        self.assertEqual(node_node_pairs, expected_output)
+        
+    def test_adds_single_gate_from_many(self):
+        partitioned_gates = [(instr.INSTR_X, 2, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_0", 3, "node_1","placeholder"),
+                             (instr.INSTR_Z, 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_1")]
+        node_node_pairs = find_node_node_pairs(partitioned_gates)
+        expected_output = {('node_0', 'node_1'): [((instr.INSTR_CNOT, 2,
+                                                      'node_0', 3, 'node_1',
+                                                      'placeholder'), 1)]}
+        self.assertEqual(node_node_pairs, expected_output)
+    
+    def test_adds_multiple_gates(self):
+        partitioned_gates = [(instr.INSTR_X, 2, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_0", 3, "node_1","placeholder"),
+                             (instr.INSTR_Z, 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_2", "placeholder"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_1")]
+        node_node_pairs = find_node_node_pairs(partitioned_gates)
+        expected_output = {('node_0', 'node_1'): 
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1',
+                                  'placeholder'), 1),
+                                ((instr.INSTR_CNOT, 2, "node_0", 4, "node_1"), 3)], 
+                            ('node_1', 'node_2'):
+                                [((instr.INSTR_CNOT, 2, "node_1", 4, "node_2", 
+                                  "placeholder"), 4)]}
+        self.assertEqual(node_node_pairs, expected_output)
+        
+class Test_find_pairs(unittest.TestCase):
+    def test_qubit_node_option(self):
+        partitioned_gates = [(instr.INSTR_X, 2, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_0", 3, "node_1","placeholder"),
+                             (instr.INSTR_Z, 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_0", "placeholder"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_1")]
+        qubit_node_pairs = find_pairs(partitioned_gates, 'qubit_node')
+        expected_output = {(2, 'node_0', 'node_1'): 
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1',
+                                  'placeholder'), 1),
+                                ((instr.INSTR_CNOT, 2, "node_0", 4, "node_1"), 3)], 
+                           (3, 'node_1', 'node_0'):
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1', 
+                                  'placeholder'), 1)],
+                           (4, 'node_1', 'node_0') : 
+                                [((instr.INSTR_CNOT, 2, "node_0", 4, "node_1"), 3)],
+                           (2, "node_1", "node_0") :
+                                [((instr.INSTR_CNOT, 2, "node_1", 4, "node_0", 
+                                  "placeholder"), 4)],
+                            (4, "node_0", "node_1") :
+                                [((instr.INSTR_CNOT, 2, "node_1", 4, "node_0", 
+                                   "placeholder"), 4)]}
+        self.assertEqual(qubit_node_pairs, expected_output)
+    
+    def test_node_node_option(self):
+        partitioned_gates = [(instr.INSTR_X, 2, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_0", 3, "node_1","placeholder"),
+                             (instr.INSTR_Z, 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_1"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_2", "placeholder"),
+                             (instr.INSTR_CNOT, 2, "node_0", 4, "node_0"),
+                             (instr.INSTR_CNOT, 2, "node_1", 4, "node_1")]
+        node_node_pairs = find_pairs(partitioned_gates, 'node_node')
+        expected_output = {('node_0', 'node_1'): 
+                               [((instr.INSTR_CNOT, 2,'node_0', 3, 'node_1',
+                                  'placeholder'), 1),
+                                ((instr.INSTR_CNOT, 2, "node_0", 4, "node_1"), 3)], 
+                            ('node_1', 'node_2'):
+                                [((instr.INSTR_CNOT, 2, "node_1", 4, "node_2", 
+                                  "placeholder"), 4)]}
+        self.assertEqual(node_node_pairs, expected_output)
 
-
-# =============================================================================
-# class Test_autocomm(unittest.TestCase):
-#     def test_
-# =============================================================================
-
+class Test_order_remote_gates(unittest.TestCase):
+    def test_in_descending_order(self):
+        a_dict = {'smaller_entry' : [1], 'larger_entry' : [2, 3, 4, 4]}
+        sorted_dict = order_pairs(a_dict)
+        expected_output = {'larger_entry' : [2, 3, 4, 4],
+                           'smaller_entry' : [1]}
+        self.assertEqual(sorted_dict, expected_output)
 
 
 
