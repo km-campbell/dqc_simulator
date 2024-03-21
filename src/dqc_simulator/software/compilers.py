@@ -20,6 +20,8 @@ import netsquid as ns
 from netsquid.components import instructions as instr
 
 
+
+
 class NodeOps():
     def __init__(self):
         self.ops = {}
@@ -301,6 +303,94 @@ def order_pairs(pairs):
 #     if element1 
 # =============================================================================
     
+def get_qubit_id(gate):
+    """
+    Collecting info needed to uniquely ID the qubits of a gate within a
+    partitioned circuit
+
+    Parameters
+    ----------
+    gate : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    qubit0 : TYPE
+        DESCRIPTION.
+    qubit1 : TYPE
+        DESCRIPTION.
+
+    """
+    #TO DO: convert this function to handle multi-qubit gate using the pattern
+    #of indices (would need to return a single tuple which can be unpacked)
+    if len(gate) == 3:
+        qubit_index0 = gate[1]
+        qubit_index1 = None
+        node_index0 = gate[2]
+        node_index1 = None
+        qubit1 = (None, None)
+    elif len(gate) > 3:
+        qubit_index0 = gate[1]
+        qubit_index1 = gate[3]
+        node_index0 = gate[2]
+        node_index1 = gate[4]
+        qubit1 = (qubit_index1, node_index1) # fully defining 2nd qubit
+    qubit0 = (qubit_index0, node_index0)
+    return qubit0, qubit1
+
+def shared_qubit(gate0, gate1):
+    gate0qubit0, gate0qubit1 = get_qubit_id(gate0)
+    gate1qubit0, gate1qubit1 = get_qubit_id(gate1)
+    gate0shares_gate1qubit0 = (
+        (gate0qubit0 == gate1qubit0 or gate0qubit0 == gate1qubit1)
+        and None not in gate0qubit0)
+    gate0shares_gate1qubit1 = (
+        (gate0qubit1 == gate1qubit0 or gate0qubit1 == gate1qubit1)
+        and None not in gate0qubit1)
+    return (gate0shares_gate1qubit0 or 
+            gate0shares_gate1qubit1)
+
+def find_consecutive_gate(partitioned_gates, gate, gate_position):
+    """
+    Finds the next gate to the gate from gateNindex which has shared qubits.
+    Otherwise, the next gate in partitioned gates may be completely unrelated
+    to the gate of interest with no need to maintain their ordering. They 
+    may even occur on completely different nodes or pairs of nodes.
+
+    Parameters
+    ----------
+    partitioned_gates : list of tuples
+        DESCRIPTION.
+    gate: tuple
+        A gate.
+    gate_position : int
+        The positional index of the gate in partitioned gates.
+
+    Returns
+    -------
+    nxt_gate : tuple
+        The gate consecutive to the gate of interest (inputted as part of
+        gateNindex)
+
+    """
+    #TO DO: replace following with generator for memory efficiency to avoid
+    #storing whole sublist
+    unvisited_partitioned_gates = partitioned_gates[gate_position+1:]
+    nxt_gate = None
+    for gate2check in unvisited_partitioned_gates:
+# =============================================================================
+#         print(f'gate of interest is {gate}')
+#         print(f'gate to check is {gate2check}')
+#         print(f'they are consecutive: {shared_qubit(gate, gate2check)}')
+# =============================================================================
+        if shared_qubit(gate, gate2check):
+            nxt_gate = gate2check
+# =============================================================================
+#             print(f'consecutive gate is {gate2check}')
+# =============================================================================
+            break
+    return nxt_gate
+
 
 #TO DO: think about whether the following function should be internal to 
 #aggregate_comms (in which case filtered_remote_gates would be qubit_node_pairs)
@@ -321,25 +411,37 @@ def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
 
     Returns
     -------
-    burst
+    burst_comm_blocks : list of lists
+        The identified burst communication blocks as found in the first step of 
+        the autocomm communication aggregation process (identifying blocks)
+        without circuit restructuring.
 
     """
-    burst_comm_blocks = []
-    for ii, remote_gateNindex in enumerate(filtered_remote_gates):
-        consecutive_gates = []
-        while True:
-            index_in_partitioned_gates = remote_gateNindex[1]
-            nxt_gate_overall = partitioned_gates[index_in_partitioned_gates + 1]
-            nxt_gate_in_filtered_remote_gates = filtered_remote_gates[ii + 1]
-            if nxt_gate_overall != nxt_gate_in_filtered_remote_gates:
-            #if the remote gates from the filtered set are NOT consecutive:
-                break #break while loop
-            else:
-            #if the remote gates from the filtered set ARE consecutive:
-                consecutive_gates.append(remote_gateNindex)
-        burst_comm_blocks.append(consecutive_gates)
+    current_filtered_gateNindex = filtered_remote_gates[0]
+    current_filtered_gate = current_filtered_gateNindex[0]
+    current_filtered_gate_position = current_filtered_gateNindex[1]
+    burst_comm_blocks = [[current_filtered_gateNindex]]
+    unvisited_gates = filtered_remote_gates[1:]
+    for ii, nxt_remote_gateNindex in enumerate(unvisited_gates, start=1):
+        nxt_filtered_gate = nxt_remote_gateNindex[0]
+        nxt_filtered_gate_position = nxt_remote_gateNindex[1]
+        nxt_partitioned_gate = find_consecutive_gate(partitioned_gates,
+                                                     current_filtered_gate,
+                                                     current_filtered_gate_position)
+        if nxt_partitioned_gate == nxt_filtered_gate:
+        #if the remote gates from the filtered set ARE consecutive:
+            burst_comm_blocks[-1].append(nxt_remote_gateNindex)
+        else:
+        #if the remote gates from the filtered set are NOT consecutive:
+            burst_comm_blocks.append([nxt_remote_gateNindex])
+        current_filtered_gate = nxt_filtered_gate
+        current_filtered_gate_position = nxt_filtered_gate_position
+    #removing trailing empty sublist
+    if not burst_comm_blocks[-1]:
+    #if final element empty:
+        del burst_comm_blocks[-1]
     return burst_comm_blocks
-    #TO DO: test this!
+    #TO DO: figure out why this is not giving desired output
             
         
     

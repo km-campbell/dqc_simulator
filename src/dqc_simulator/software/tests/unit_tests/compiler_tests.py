@@ -13,7 +13,12 @@ from dqc_simulator.software.compilers import (sort_greedily_by_node_and_time,
                                               find_qubit_node_pairs,
                                               find_node_node_pairs,
                                               find_pairs,
-                                              order_pairs)
+                                              order_pairs,
+                                              find_consecutive_gate,
+                                              find_consecutive_remote_gates)
+from dqc_simulator.qlib.circuits import ( 
+    produce_partitioned_circuit_from_fig4_in_autocomm_paper)
+from dqc_simulator.qlib.gates import INSTR_T_DAGGER
 
 
 class Test_sort_greedily_by_node_and_time(unittest.TestCase):
@@ -267,6 +272,7 @@ class Test_find_pairs(unittest.TestCase):
                                   "placeholder"), 4)]}
         self.assertEqual(node_node_pairs, expected_output)
 
+
 class Test_order_remote_gates(unittest.TestCase):
     def test_in_descending_order(self):
         a_dict = {'smaller_entry' : [1], 'larger_entry' : [2, 3, 4, 4]}
@@ -275,8 +281,54 @@ class Test_order_remote_gates(unittest.TestCase):
                            'smaller_entry' : [1]}
         self.assertEqual(sorted_dict, expected_output)
 
+class Test_find_consecutive_gate(unittest.TestCase):
+    def test_realises_autocomm_paper_8a_blocks1and2_not_consecutive(self):
+        #test circuit is start of circuit from fig. 8a of AutoComm paper
+        #(up to block 2)
+        partitioned_gates = [(instr.INSTR_T, 2, 'node_1'), 
+                            (instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'),
+                            (INSTR_T_DAGGER, 2, 'node_1'),
+                            (instr.INSTR_T, 3, 'node_1'),
+                            (instr.INSTR_T, 3, 'node_2'),
+                            (instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1')]
+        nxt_gate = find_consecutive_gate(partitioned_gates, 
+                                         (instr.INSTR_CNOT, 2, 'node_0', 2,
+                                          'node_1'),
+                                         1)
+        expected_output = (INSTR_T_DAGGER, 2, 'node_1')
+        self.assertEqual(nxt_gate, expected_output)
+    
+    def test_identifies_different_cnots_as_consecutive(self):
+        gate0 = (instr.INSTR_CNOT, 2, 'node_1', 3, 'node_0')
+        gate1 = (instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1')
+        partitioned_gates = [gate0, gate1]
+        nxt_gate = find_consecutive_gate(partitioned_gates,
+                                         gate0,
+                                         0)
+        self.assertEqual(nxt_gate, gate1)
 
-
+class Test_find_consecutive_remote_gates(unittest.TestCase):
+    def test_gets_same_result_as_autocomm_paper8a(self):
+        #Circuit from fig. 4 of AutoComm paper:
+        partitioned_gates = ( 
+            produce_partitioned_circuit_from_fig4_in_autocomm_paper())
+        #the remote gates associated with the qubit-node pair that has the most
+        #remote gates:
+        filtered_remote_gates = [((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 1),
+                                 ((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 5),
+                                 ((instr.INSTR_CNOT, 3, 'node_0', 2, 'node_1'), 27),
+                                 ((instr.INSTR_CNOT, 2, 'node_1', 3, 'node_0'), 33),
+                                 ((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 35)]
+        burst_comm_blocks = find_consecutive_remote_gates(partitioned_gates,
+                                                          filtered_remote_gates)
+        print(burst_comm_blocks)
+        #from figure 8a of AutoComm paper:
+        expected_output = [[((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 1)],
+                           [((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 5)],
+                           [((instr.INSTR_CNOT, 3, 'node_0', 2, 'node_1'), 27)],
+                           [((instr.INSTR_CNOT, 2, 'node_1', 3, 'node_0'), 33),
+                            ((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 35)]]
+        self.assertEqual(burst_comm_blocks, expected_output)
 
 
 
