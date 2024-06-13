@@ -16,17 +16,23 @@ from netsquid.qubits.operators import (Operator, H, T, I, S, Y,
 from netsquid.components import instructions as instr
 
 
+def make_state_gen_op(alpha, beta):
+    state_gen_op = Operator("state_generating_op", 
+                            np.array([[alpha, 0], [0, beta]]) @ 
+                            np.array([[1, 1], [1, -1]]))
+    return state_gen_op
 
 def INSTR_ARB_GEN(alpha, beta):
+    #THIS WILL BE DEPRECATED IN FUTURE VERSION
     total_probability_q1 = abs(alpha)**2 + abs(beta)**2
     if round(total_probability_q1, 3) !=1.000:
         raise ValueError('alpha and beta do not give normalised input to circuit')
     
-    state_gen_op = Operator("state_generating_op", 
-                            np.array([[alpha, 0], [0, beta]]) @ 
-                            np.array([[1, 1], [1, -1]]))
+    state_gen_op = make_state_gen_op(alpha, beta)
     instruction = instr.IGate("state_gen_gate", state_gen_op)
     return instruction
+
+
 
 INSTR_CH = instr.IGate("CH", H.ctrl) #creates CH gate as instruction
 
@@ -39,10 +45,14 @@ INSTR_T_DAGGER = instr.IGate("T_dagger", operator=T.conj)
 INSTR_S_DAGGER = instr.IGate("S_dagger", operator=S.conj)
 
 
-
+#instructions without operations. The operation will be specified later. 
+#These instructions should be used when we want to define a PhysicalInstruction
+#for an operation dependent on continuous paramters. 
 INSTR_SINGLE_QUBIT_UNITARY = instr.IGate('single_qubit_unitary',
                                          num_positions=1)
 INSTR_TWO_QUBIT_UNITARY = instr.IGate('two_qubit_unitary', num_positions=2)
+INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME = instr.IGate('neglibible_time_instr',
+                                                 num_positions=1)
 
 def INSTR_U(theta, phi, lambda_var, controlled=False):
     """
@@ -81,7 +91,6 @@ def INSTR_U(theta, phi, lambda_var, controlled=False):
         raise TypeError(f"{controlled} is not of type `bool' ")
     instructionNop = (instruction, op)
     return instructionNop
-
 
 
 INSTR_CY = instr.IGate("CY", operator=Y.ctrl)

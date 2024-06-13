@@ -19,7 +19,8 @@ from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
                                       INSTR_T_DAGGER,
                                       INSTR_S_DAGGER,
                                       INSTR_SINGLE_QUBIT_UNITARY, 
-                                      INSTR_TWO_QUBIT_UNITARY)
+                                      INSTR_TWO_QUBIT_UNITARY,
+                                      INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME)
 
 #creating custom instructions
 
@@ -273,7 +274,9 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                 parallel=True, topology=None),
             PhysicalInstruction(INSTR_TWO_QUBIT_UNITARY, 
                                 duration=two_qubit_gate_time,
-                                parallel=True, topology=None)]
+                                parallel=True, topology=None),
+            PhysicalInstruction(INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME,
+                                duration=3, parallel=True, topology=None)]
     qprocessor = QuantumProcessor(
         "custom_noisy_qprocessor",
         phys_instructions=physical_instructions, 
