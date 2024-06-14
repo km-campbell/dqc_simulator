@@ -129,7 +129,7 @@ def get_data_collector(master_protocol, qubit_indices_2b_checked,
 
 
 def get_data_collector4dm(master_protocol, qubit_indices_2b_checked,
-                       desired_state):
+                          desired_state):
     """ Sets up data collector for simulation in which qubits_indices_2b_checked
     share a dm. This avoids the sensitivity to the ordering of the qubits to 
     be checked in the list produced below but at the cost of requiring desired
