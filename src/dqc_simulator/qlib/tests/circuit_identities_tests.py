@@ -29,7 +29,7 @@ class TestToffoliDecomp(unittest.TestCase):
         ns.sim_reset()
         set_qstate_formalism(QFormalism.DM)
         self.network = create_dqc_network(state4distribution=ks.b00, 
-                                          node_list=None, num_nodes=2,
+                                          node_list=None, num_qpus=2,
                                   node_distance=4e-3, quantum_topology = None, 
                                   classical_topology = None,
                                   create_classical_2way_link=True,

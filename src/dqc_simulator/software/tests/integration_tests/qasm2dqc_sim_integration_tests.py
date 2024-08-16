@@ -25,10 +25,10 @@ from dqc_simulator.software.dqc_control import dqcMasterProtocol
 from netsquid.util import simlog
 import logging
 loggers = simlog.get_loggers()
-loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
-# loggers['netsquid'].setLevel(logging.WARNING)
+# loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
+loggers['netsquid'].setLevel(logging.WARNING)
 
 #TO DO: convert all tests copied and pasted from the ast2dqc_circuit_tests.py 
 #to the integration tests in which the circuits are actually run
@@ -58,7 +58,7 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                         data_qubit_depolar_rate,
                         state4distribution=None, #ks.b00 defined in function body
                         node_list=None,
-                        num_nodes=2,
+                        num_qpus=2,
                         node_distance=2e-3, ent_dist_rate=0,
                         quantum_topology = None, 
                         classical_topology = None,
@@ -193,7 +193,7 @@ class Test_can_run_sim_from_qasm_file_with_noise(unittest.TestCase):
                         data_qubit_depolar_rate,
                         state4distribution=None, #ks.b00 defined in function body
                         node_list=None,
-                        num_nodes=2,
+                        num_qpus=2,
                         node_distance=2e-3, ent_dist_rate=1000,
                         quantum_topology = None, 
                         classical_topology = None,

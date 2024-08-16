@@ -29,7 +29,7 @@ from dqc_simulator.qlib.states import werner_state
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.dqc_control import (
                           HandleCommBlockForOneNodeProtocol, 
-                          EntangleLinkedNodesProtocol,
+                          AbstractFromPhotonsEntangleProtocol,
                           dqcMasterProtocol)
 
 
@@ -48,7 +48,7 @@ loggers['netsquid'].setLevel(logging.WARNING)
 
 class Test_entangling(unittest.TestCase):
     """ 
-    Testing EntangleLinkedNodesProtocol does what it should. Note it is sensible to 
+    Testing AbstractFromPhotonsEntangleProtocol does what it should. Note it is sensible to 
     also test the link_2_nodes function separately
     """
     #defining code to be used at the start of all subsequent test functions
@@ -83,7 +83,7 @@ class Test_entangling(unittest.TestCase):
                     create_entangling_link=True)
         self.cycle_runtime = 200 #ns
         self.charlie = self.network.get_node("Charlie_Alice<->Bob")
-        self.protocol = EntangleLinkedNodesProtocol(self.charlie)
+        self.protocol = AbstractFromPhotonsEntangleProtocol(self.charlie)
         
     def test_alice_can_request_0_0_entangling_gate(self):
         self.protocol.start()
@@ -250,7 +250,7 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         #TO DO: identify why this occassionally fails and fix
         ns.sim_reset()
         network = create_dqc_network(state4distribution=werner_state(0.5),
-                                     node_list=None, num_nodes=2,
+                                     node_list=None, num_qpus=2,
                                      node_distance=4e-3,
                                      quantum_topology = None, 
                                      classical_topology = None,
@@ -265,7 +265,7 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         port_alice = alice.ports["request_entanglement_node_0<->node_1"]
         port_bob = bob.ports["request_entanglement_node_0<->node_1"]
         charlie = network.get_node("Charlie_node_0<->node_1")
-        entangling_protocol = EntangleLinkedNodesProtocol(charlie)
+        entangling_protocol = AbstractFromPhotonsEntangleProtocol(charlie)
         entangling_protocol.start()
         port_alice.tx_output(0)
         port_bob.tx_output(0)
@@ -287,7 +287,7 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         ns.sim_reset()
         quantum_topology = [(0,1)]
         network = create_dqc_network(state4distribution=werner_state(0.5),
-                                     node_list=None, num_nodes=2,
+                                     node_list=None, num_qpus=2,
                                      node_distance=4e-3,
                                      quantum_topology = quantum_topology, 
                                      classical_topology = None,
@@ -302,7 +302,7 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         port_alice = alice.ports["request_entanglement_node_0<->node_1"]
         port_bob = bob.ports["request_entanglement_node_0<->node_1"]
         charlie = network.get_node("Charlie_node_0<->node_1")
-        entangling_protocol = EntangleLinkedNodesProtocol(charlie)
+        entangling_protocol = AbstractFromPhotonsEntangleProtocol(charlie)
         entangling_protocol.start()
         port_alice.tx_output(0)
         port_bob.tx_output(0)
@@ -332,7 +332,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
         beta = 1j/np.sqrt(2)
         network = create_dqc_network(
                            state4distribution=ks.b00,
-                           node_list=None,num_nodes=2,
+                           node_list=None,num_qpus=2,
                            quantum_topology = None, 
                            classical_topology = None,
                            create_classical_2way_link=True,
@@ -365,7 +365,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                                                      node=node_a)
         node_b_protocol = HandleCommBlockForOneNodeProtocol(gate_tuples4node_b, 
                                                      node=node_b)
-        charlie_protocol = EntangleLinkedNodesProtocol(charlie)
+        charlie_protocol = AbstractFromPhotonsEntangleProtocol(charlie)
         charlie_protocol.start()
         node_a_protocol.start()
         node_b_protocol.start()
@@ -385,7 +385,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
         alpha = 1/np.sqrt(2)
         beta = 1j/np.sqrt(2)
         network = create_dqc_network(state4distribution=ks.b00,
-                                     node_list=None,num_nodes=2,
+                                     node_list=None,num_qpus=2,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
                            create_classical_2way_link=True,
@@ -412,7 +412,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                                                      node=node_a)
         node_b_protocol = HandleCommBlockForOneNodeProtocol(gate_tuples4node_b, 
                                                      node=node_b)
-        charlie_protocol = EntangleLinkedNodesProtocol(charlie)
+        charlie_protocol = AbstractFromPhotonsEntangleProtocol(charlie)
         charlie_protocol.start()
         node_a_protocol.start()
         node_b_protocol.start()
@@ -434,8 +434,9 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
         #making 2 node linear network:
         alpha = 1/np.sqrt(2)
         beta = 1j/np.sqrt(2)
-        network = create_dqc_network(state4distribution=ks.b00,
-                                     node_list=None,num_nodes=2,
+        network = create_dqc_network(
+                           state4distribution=ks.b00,
+                           node_list=None,num_qpus=2,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
                            create_classical_2way_link=True,
@@ -465,7 +466,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                                                      node=node_a)
         node_b_protocol = HandleCommBlockForOneNodeProtocol(gate_tuples4node_b, 
                                                      node=node_b)
-        charlie_protocol = EntangleLinkedNodesProtocol(charlie)
+        charlie_protocol = AbstractFromPhotonsEntangleProtocol(charlie)
         charlie_protocol.start()
         node_a_protocol.start()
         node_b_protocol.start()
@@ -491,7 +492,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
         alpha = 1/np.sqrt(2)
         beta = 1j/np.sqrt(2)
         network = create_dqc_network(state4distribution=ks.b00,
-                                          node_list=None,num_nodes=2,
+                                          node_list=None,num_qpus=2,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
                            create_classical_2way_link=True,
@@ -516,7 +517,7 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                                                      node=node_a)
         node_b_protocol = HandleCommBlockForOneNodeProtocol(gate_tuples4node_b, 
                                                      node=node_b)
-        charlie_protocol = EntangleLinkedNodesProtocol(charlie)
+        charlie_protocol = AbstractFromPhotonsEntangleProtocol(charlie)
         charlie_protocol.start()
         node_a_protocol.start()
         node_b_protocol.start()
@@ -552,7 +553,7 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
         self.alpha = 1/np.sqrt(2)
         self.beta = 1j/np.sqrt(2)
         self.network = create_dqc_network(state4distribution=ks.b00,
-                                          node_list=None, num_nodes=3,
+                                          node_list=None, num_qpus=3,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
                            create_classical_2way_link=True,
@@ -581,8 +582,8 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 # #             print(f"for {node.name}, comm_qubits free is {node.comm_qubits_free}")
 # #             print(f"for {node.name}, comm_qubit_positions is {node.comm_qubit_positions}")
 # # =============================================================================
-#         self.charlie_ab_protocol = EntangleLinkedNodesProtocol(self.charlie_ab)
-#         self.charlie_bc_protocol = EntangleLinkedNodesProtocol(self.charlie_bc)
+#         self.charlie_ab_protocol = AbstractFromPhotonsEntangleProtocol(self.charlie_ab)
+#         self.charlie_bc_protocol = AbstractFromPhotonsEntangleProtocol(self.charlie_bc)
 # =============================================================================
         self.cycle_runtime = 400
         #if I don't manually set the attributes 

@@ -6,13 +6,14 @@ Created on Tue Apr  4 12:40:42 2023
 """
 
 import pydynaa
-from netsquid.protocols.protocol import Signals, Protocol
-from netsquid.protocols.nodeprotocols import NodeProtocol
 from netsquid.components import instructions as instr
 from netsquid.components.qprogram import QuantumProgram
-
+from netsquid.nodes.node import Node
+from netsquid.protocols.protocol import Signals, Protocol
+from netsquid.protocols.nodeprotocols import NodeProtocol
 
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
+from dqc_simulator.hardware.dqc_creation import QpuNode
 
 #The following will act on the qsource node, Charlie, when one of the nodes 
 #either side of Charlie a message to Charlie asking for an entangled pair.
@@ -20,9 +21,16 @@ from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 #first index being the comm qubit of the node requesting entanglement and the 
 #second index being the comm qubit of the node it is requesting entanlgement 
 #with
-class EntangleLinkedNodesProtocol(NodeProtocol):
-    """ Designed to act on the quantum source node
-    Charlie_{node_a.name}<->{node_b.name}, so as to distribute an entangled 
+class AbstractFromPhotonsEntangleProtocol(NodeProtocol):
+    """ This abstracts from the details of photon generation by treating flying
+    and communication qubits as the same thing. Restraints on the number of 
+    communication qubits can be enforced at the QPU nodes but entangled 
+    communication qubits are generated at a central quantum source and sent
+    to the QPUs. In this way, we can model error and loss but needn't simulate
+    the details of entanglement between static communication qubits and photons.
+    The protocol assumes a certain network structure and is designed to act on
+    a quantum source node Charlie_{node_a.name}<->{node_b.name}, so as to 
+    distribute an entangled 
     pair to node_a and node_b from a quantum source between them. This protocol
     will do something when Charlie_{node_a.name}<->{node_b.name} receives a 
     message consisting of a tuple with 2 indices. The first index is the index
@@ -30,7 +38,6 @@ class EntangleLinkedNodesProtocol(NodeProtocol):
     connect linked nodes and will not work over a virtual quantum connection.
     """
         
-
     def run(self):
         def route_based_on_m1_m2(m1, m2):
             qsource_output_port0 = self.node.subcomponents[
@@ -100,6 +107,8 @@ class EntangleLinkedNodesProtocol(NodeProtocol):
                 
             #TO DO: raise error if Alice sends tuple and 
             #Bob sends int or vice versa
+            
+            
 
 class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     """Carries out the parts of the protocol on one node. This is designed 
@@ -709,9 +718,69 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             self.send_signal(Signals.SUCCESS)
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
+            
+            
+# =============================================================================
+# def _initiate_abstract_entangle(network):
+#     #TO DO: think about whether to incorporate this functionality elsewhere
+#     #so that you don't need a new function for every protocol.
+#     """
+#     Starts the AbstractFromPhotonsEntangleProtocol for all relevant nodes.
+# 
+#     Parameters
+#     ----------
+#     network : netsquid.nodes.network.Network 
+#         The entire DQC network.
+#     """
+#     for node_name in dict(network.nodes):
+#         if node_name.startswith("Charlie"):
+#             charlie = network.get_node(node_name)
+#             entangling_protocol = AbstractFromPhotonsEntangleProtocol(
+#                 node=charlie, name=f"{node_name}_protocol")
+#             entangling_protocol.start()
+#             
+# def _start_entangling_protocols(network, node_roles, roles2protocol):
+#     #TO DO: evaluate if all arguments are needed
+#     """
+#     Starts all entangling protocols
+# 
+#     Parameters
+#     ----------
+#     network : TYPE
+#         DESCRIPTION.
+#     node_roles : TYPE
+#         DESCRIPTION.
+#     roles2protocol : TYPE
+#         DESCRIPTION.
+# 
+#     Returns
+#     -------
+#     None.
+# 
+#     """
+#     #TO DO: could use isinstance to identify QPUs (instances of QpuNode class or a 
+#     #subclass). Every other type of node in the network will have a protocol 
+#     #started on it initially
+#     for node in self.network.nodes.values():
+#         if not isinstance(node, QpuNode): #isinstance also checks if is subclass
+#                                           #QPU node
+#             
+#             
+#         
+# # =============================================================================
+# #         for node_name in dict(self.network.nodes):
+# #             if node_name.startswith("Charlie"):
+# #                 charlie = self.network.get_node(node_name)
+# #                 entangling_protocol = AbstractFromPhotonsEntangleProtocol(
+# #                     node=charlie, name=f"{node_name}_protocol")
+# #                 entangling_protocol.start()
+# # =============================================================================
+# =============================================================================
+
 
 class dqcMasterProtocol(Protocol):
-    """ Protocol which executes a distributed quantum circuit 
+    """ Protocol which executes a distributed quantum circuit. 
+    
     INPUT: 
         partitioned_gates:  list of tuples.
             The gates implemented in the entire circuit. The tuples should be
@@ -732,31 +801,100 @@ class dqcMasterProtocol(Protocol):
                                     Note if this is given as empty list and 
                                     scheme = "tp" then it will just do a
                                     teleportation
+        network : netsquid.nodes.network.Network
+            Wraps all simulated hardware.
+        background_protocol_lookup : dict
+            Lookup table with keys being subclasses of netsquid.nodes.node.Node
+            and protocols being non-QPU subclasses of 
+            netsquid.protocols.protocol.Protocol. This is used to start all 
+            protocols that exist outside of time slice structure and must be 
+            initialised to make the network function.
         compiler_func: function, optional
             The compiler function to be used to split partitioned_gates into
             protocols by node and time-slice
+            
+    Notes:        
+        This protocol violates locality by splitting everything into time slices. 
+        Each time slice
+        obeys locality but the entire network is instantaneously made aware when a 
+        time slice ends. This is intended to be an easier-to-implement abstraction
+        of each node knowing the entire circuit and having a time slice 
+        counter of things it is allowed to do on that time slice before waiting a 
+        certain amount of time (the max time for operations on any QPU in the 
+        entire circuit) prior to evaluating the operations it has for that time slice.
+        This construction is a compromise between retaining the 
+        user's ability to easily use and test their own almost arbitrary compilation 
+        schemes (global sequencing can be enforced using the time slices,
+        simplifying the coding of compilers to the production of nested lists of 
+        gate tuples) and an easier to use framework that waits for resources to 
+        become available
+        and greedily conducts operations as soon as possible, which can be achieved
+        by putting everything in one time slice. A limitation of the framework is
+        that a given QPU may not be able to do subprotocols for more than one remote
+        gate at once even if there are enough resources to do so (I am essentially
+        assuming that each QPU can be involved in only one remote gate per time 
+        slice).
     """
-    def __init__(self, partitioned_gates, network, *args, 
-                 compiler_func=sort_greedily_by_node_and_time, **kwargs):
+    def __init__(self, partitioned_gates, network,
+                 *args, 
+                 background_protocol_lookup=None,
+                 compiler_func=sort_greedily_by_node_and_time,
+                 **kwargs):
+        #TO DO: add additional argument background_protocol_lookup to all calls of 
+        #DqcMasterProtocol
         super().__init__(*args, **kwargs)
         self.partitioned_gates = partitioned_gates
         self.network = network
         self.compiler_func = compiler_func
-        #TO DO: initialise values that used to be initialised in 
-        #HandleCommBlockForOneNodeProtocol as attributes for node (MAYBE DO IN
-        #NETWORK CREATION FUNCTION INSTEAD)
+        if background_protocol_lookup == None:
+            #defaulting to starting AbstractFromPhotonsEntangleProtocol on 
+            #anything that is not a QpuNode
+            self.background_protocol_lookup = ( 
+                            {Node : AbstractFromPhotonsEntangleProtocol})
         
     def run(self):
-        node_op_dict = self.compiler_func(self.partitioned_gates)
-        node_dict = {}
-        for node_key in node_op_dict:
-            node_dict[node_key] = self.network.get_node(node_key)
-        for node_name in dict(self.network.nodes):
-            if node_name.startswith("Charlie"):
-                charlie = self.network.get_node(node_name)
-                entangling_protocol = EntangleLinkedNodesProtocol(
-                    node=charlie, name=f"{node_name}_protocol")
-                entangling_protocol.start()
+        qpu_op_dict = self.compiler_func(self.partitioned_gates)
+        qpu_dict = {}
+        for node_name, node in self.network.nodes.items():
+            if isinstance(node, QpuNode): #isinstance also checks if node 
+                                              #is subclass of QPU node
+                qpu_dict[node_name] = node
+            else:
+                node_type = type(node)
+                background_protocol = self.background_protocol_lookup[node_type](
+                                         node=node,
+                                         name=f"{node_name}_protocol")
+                background_protocol.start()
+                
+                #if isinstance(node, table_key): #where table_key is the subclass of node
+                    #start table[table_key] protocol on node
+ 
+# =============================================================================
+#         for qpu_name in qpu_op_dict:
+#             qpu_dict[qpu_name] = self.network.get_node(qpu_name)
+# =============================================================================
+        #TO DO: replace following for loop with function to abstract the 
+        #functionality. This will allow any entangling protocol to be started
+        #This may require a change to the input to the __init__ method, 
+        #necessitating updates to all calls to dqcMasterProtocol. A keyword
+        #argument may circumvent this.
+        #start_entangling_protocols may be a good name for the function.
+# =============================================================================
+#         self.start_entangling_protocols(self.network) #TO DO: add more arguments 
+#                                                       #as necessary
+# =============================================================================
+# =============================================================================
+#         start_entangling_protocols(entangling_protocols, network) # TO DO: write code for this function
+# =============================================================================
+        #IF THIS DOESN'T work then uncomment block below
+# =============================================================================
+#         for node_name in dict(self.network.nodes):
+#             if node_name.startswith("Charlie"):
+#                 charlie = self.network.get_node(node_name)
+#                 entangling_protocol = AbstractFromPhotonsEntangleProtocol(
+#                     node=charlie, name=f"{node_name}_protocol")
+#                 entangling_protocol.start()
+# =============================================================================
         #initialising dummy event expression 
         dummy_entity = pydynaa.Entity()
         evtype_dummy = pydynaa.EventType("dummy_event", "dummy event")
@@ -766,20 +904,20 @@ class dqcMasterProtocol(Protocol):
         dummy_entity._schedule_now(evtype_dummy)
         
         #finding max length of dictionary entry
-        longest_list_in_node_op_dict = max(node_op_dict.values(), key=len)
-        max_num_time_slices = len(longest_list_in_node_op_dict)
+        longest_list_in_qpu_op_dict = max(qpu_op_dict.values(), key=len)
+        max_num_time_slices = len(longest_list_in_qpu_op_dict)
         while True:
             for time_slice in range(max_num_time_slices):
-                for node_key in node_op_dict:
+                for qpu_name in qpu_op_dict:
                     #if node does anything on this time slice
-                    if time_slice < len(node_op_dict[node_key]):
+                    if time_slice < len(qpu_op_dict[qpu_name]):
                         #strictly less than because python indexes from 0
                         gate_tuples4node_and_time = (
-                            node_op_dict[node_key][time_slice])
+                            qpu_op_dict[qpu_name][time_slice])
                         protocol4node_and_time = (
                             HandleCommBlockForOneNodeProtocol(
                                 gate_tuples4node_and_time,
-                                node=node_dict[node_key]))
+                                node=qpu_dict[qpu_name]))
                         expr = expr & self.await_signal(
                             protocol4node_and_time, Signals.SUCCESS)
                         protocol4node_and_time.start()
