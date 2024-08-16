@@ -5,7 +5,7 @@ Created on Tue Dec  6 19:11:14 2022
 @author: kenny
 """
 
-import unittest
+import unittest, warnings
 import numpy as np
 
 import netsquid as ns
@@ -117,7 +117,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         set_qstate_formalism(QFormalism.DM)
     def test_right_num_connections_2_node_linear_network(self):
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=2,
+                                     node_list=None, num_qpus=2,
                                   node_distance=4e-3,
                                   quantum_topology = None, 
                                   classical_topology = None,
@@ -128,7 +128,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
     
     def test_right_num_nodes_2_node_linear_network(self):
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=2,
+                                     node_list=None, num_qpus=2,
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
@@ -139,7 +139,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         
     def test_right_num_connections_3_node_linear_network(self):
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=3,
+                                     node_list=None, num_qpus=3,
                                   node_distance=4e-3,
                                   quantum_topology = None, 
                                   classical_topology = None,
@@ -150,7 +150,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         
     def test_right_num_connections_4_node_linear_network(self):
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
@@ -161,7 +161,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
     
     def test_can_create_4_node_classical_linear_network(self):
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
@@ -172,7 +172,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
 
     def test_can_create_4_node_quantum_linear_network(self):
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3,
                                   quantum_topology = None, 
                                   classical_topology = None,
@@ -185,7 +185,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         classical_topology = [(0, 1), (1, 2), (2, 3)]
         quantum_topology = [(0, 1), (1, 2), (2, 3)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
@@ -197,7 +197,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
     def test_can_manually_create_4_node_classical_network(self):
         classical_topology = [(0, 1), (1, 2), (2, 3)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = classical_topology,
@@ -209,7 +209,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
     def test_can_manually_create_4_node_quantum_network(self):
         quantum_topology = [(0, 1), (1, 2), (2, 3)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = None,
@@ -222,7 +222,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
     def test_can_still_create_4_node_quantum_network_with_wrong_num_nodes_if_topology_defined(self):
             quantum_topology = [(0, 1), (1, 2), (2, 3)]
             network = create_dqc_network(state4distribution=ks.b00, 
-                                         node_list=None, num_nodes=2,
+                                         node_list=None, num_qpus=2,
                                       node_distance=4e-3, 
                                       quantum_topology = quantum_topology, 
                                       classical_topology = None,
@@ -230,12 +230,26 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                       create_entangling_link=False, 
                                       name="linear network")
             self.assertEqual(len(network.connections), 6)
-            #SHOULD SEE WARNING if this works
+            #SHOULD SEE WARNING if this works (see test below)
+
+    def test_warning_raised_if_num_nodes_does_not_match_topology(self):
+        quantum_topology = [(0, 1), (1, 2), (2, 3)]
+        with self.assertWarns(UserWarning, msg="WARNING: num_qpus was "
+                              "overwritten because there were not enough nodes "
+                              "to realise the requested topology"):
+            create_dqc_network(state4distribution=ks.b00, 
+                               node_list=None, num_qpus=2,
+                                node_distance=4e-3, 
+                                quantum_topology = quantum_topology, 
+                                classical_topology = None,
+                                create_classical_2way_link=False,
+                                create_entangling_link=False, 
+                                name="linear network")
             
     def test_can_still_create_4_node_classical_network_with_wrong_num_nodes_if_topology_defined(self):
             classical_topology = [(0, 1), (1, 2), (2, 3)]
             network = create_dqc_network(state4distribution=ks.b00, 
-                                         node_list=None, num_nodes=2,
+                                         node_list=None, num_qpus=2,
                                       node_distance=4e-3, 
                                       quantum_topology = None, 
                                       classical_topology = classical_topology,
@@ -243,13 +257,27 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                       create_entangling_link=False, 
                                       name="linear network")
             self.assertEqual(len(network.connections), 3)
-            #SHOULD SEE WARNING if this works
+            #SHOULD SEE WARNING if this works (see test below)
+            
+    def test_warning_raised_if_wrong_num_qpus_for_classical_topology(self):
+            classical_topology = [(0, 1), (1, 2), (2, 3)]
+            with self.assertWarns(UserWarning, msg="WARNING: num_qpus was "
+                                  "overwritten because there were not enough nodes "
+                                  "to realise the requested topology"):
+                create_dqc_network(state4distribution=ks.b00, 
+                                   node_list=None, num_qpus=2,
+                                   node_distance=4e-3, 
+                                   quantum_topology = None, 
+                                   classical_topology = classical_topology,
+                                   create_classical_2way_link=False,
+                                   create_entangling_link=False, 
+                                   name="linear network")
             
     def test_arbitrary_network_can_be_realised(self):
         classical_topology = [(3, 2), (5, 6)]
         quantum_topology = [(1, 2)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=7,
+                                     node_list=None, num_qpus=7,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
@@ -262,7 +290,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         classical_topology = [(0, 1), (1, 2), (2, 3), (3, 0)]
         quantum_topology = [(0, 1), (1, 2), (2, 3), (3, 0)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=4,
+                                     node_list=None, num_qpus=4,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
@@ -275,7 +303,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         classical_topology = [(3, 2), (5, 6)]
         quantum_topology = [(1, 2)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=7,
+                                     node_list=None, num_qpus=7,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
@@ -292,7 +320,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         classical_topology = [(3, 2), (5, 6)]
         quantum_topology = [(1, 2)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=7,
+                                     node_list=None, num_qpus=7,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
@@ -309,7 +337,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         classical_topology = [(3, 2), (5, 6)]
         quantum_topology = [(1, 2)]
         network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_nodes=7,
+                                     node_list=None, num_qpus=7,
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
@@ -361,7 +389,7 @@ class TestCreateDQCNetwork(unittest.TestCase):
         F_werner = 1.0
         state4distribution = werner_state(F_werner)
         network = create_dqc_network(state4distribution=state4distribution, 
-                                     node_list=None, num_nodes=2,
+                                     node_list=None, num_qpus=2,
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,

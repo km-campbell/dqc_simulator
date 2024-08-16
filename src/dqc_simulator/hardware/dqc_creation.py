@@ -5,6 +5,8 @@ Created on Fri Mar 31 12:37:47 2023
 @author: kenny
 """
 
+import warnings
+
 import netsquid as ns
 from netsquid.nodes import Node, Connection, Network
 from netsquid.components.qchannel import QuantumChannel
@@ -200,7 +202,10 @@ def link_2_nodes(network, node_a, node_b, state4distribution=None,
         q_conn_b.ports["C_classical"].connect(charlie.ports["entanglement_"
                                                             "request_inputB2C"])
 
-class QCNode4DQCNetwork(Node):
+class QpuNode(Node):
+    """Class for creating QPU nodes (QPU including the classical control for 
+        that QPU)
+    """
     def __init__(self, name, comm_qubit_positions=(0, 1),
                  comm_qubits_free=[0, 1],
                  ebit_ready=False, ID=None, qmemory=None, port_names=None):
@@ -214,7 +219,7 @@ def create_dqc_network(
                 *args4qproc,
                 state4distribution=None, #ks.b00 defined in function body
                 node_list=None,
-                num_nodes=2,
+                num_qpus=2,
                 node_distance=2e-3, ent_dist_rate=0,
                 quantum_topology = None, 
                 classical_topology = None,
@@ -245,9 +250,9 @@ def create_dqc_network(
         an EPR pair is requested. Default is |phi^+> Bell state (formalism not
         fixed to ket)
     node_list :  list of netsquid.components.nodes.Node objects, optional
-        List of nodes to be included in network. Overrides num_nodes if
+        List of nodes to be included in network. Overrides num_qpus if
         specified.
-    num_nodes : int (>=2), optional
+    num_qpus : int (>=2), optional
         The number of identical nodes to be included in the network. Each node 
         has 5 data qubits and two communication qubits. Must be at least 2 to 
         avoid trivial scenario (if you have no connections there is no need)
@@ -295,16 +300,16 @@ def create_dqc_network(
     if node_comm_qubits_free is None:
         node_comm_qubits_free = [0, 1]
         
-    if num_nodes < 2:
-        raise ValueError("num_nodes must be at least 2")
-    if type(num_nodes) is not int:
-        raise TypeError("num_nodes must be an integer")
+    if num_qpus < 2:
+        raise ValueError("num_qpus must be at least 2")
+    if type(num_qpus) is not int:
+        raise TypeError("num_qpus must be an integer")
 
     # Create a network
     network = Network(name)
-    def _create_nodes(num_nodes2create=num_nodes, starting_index=0):
-        node_list = []
-        for ii in range(num_nodes2create):
+    def _create_qpus(num_qpus2create=num_qpus, starting_index=0):
+        qpu_list = []
+        for ii in range(num_qpus2create):
             #need to instantiate a new processor object each time with a 
             #new function call. Otherwise, the code is trying to add the 
             #same processor object to different nodes, as opposed to a copy
@@ -314,21 +319,21 @@ def create_dqc_network(
             #change the values if needed.
             qproc = custom_qprocessor_func(*args4qproc, **kwargs4qproc)
             qproc.name = f"qproc4node_{ii+starting_index}"
-            node = QCNode4DQCNetwork(
+            qpu = QpuNode(
                         f"node_{ii+starting_index}", 
                         comm_qubit_positions=node_comm_qubit_positions,
                         comm_qubits_free=node_comm_qubits_free,
                         ebit_ready=nodes_have_ebit_ready, qmemory=qproc)
-            node_list = node_list + [node] #appending node to node_list
-        return node_list
+            qpu_list = qpu_list + [qpu] #appending node to node_list
+        return qpu_list
     if node_list is None:
-        node_list = _create_nodes(num_nodes2create=num_nodes)
+        node_list = _create_qpus(num_qpus2create=num_qpus)
         
     network.add_nodes(node_list)
     if quantum_topology is None and classical_topology is None:
         #create network with linear topology
-        def _handle_even_num_nodes(num_nodes_considered):
-            for ii in range(num_nodes_considered-1):
+        def _handle_even_num_qpus(num_qpus_considered):
+            for ii in range(num_qpus_considered-1):
                 node_1 = network.get_node(f"node_{ii}")
                 node_2 = network.get_node(f"node_{ii+1}")
                 link_2_nodes(network, node_1, node_2, 
@@ -338,15 +343,15 @@ def create_dqc_network(
                              create_classical_2way_link=create_classical_2way_link, 
                              create_entangling_link=create_entangling_link)
                 
-        if (num_nodes % 2) == 0:  #if num_nodes is even
-            _handle_even_num_nodes(num_nodes)
-        else: #if num_nodes is odd
-            #handle first num_nodes-1 nodes
-            num_nodes_considered = num_nodes - 1
-            _handle_even_num_nodes(num_nodes_considered)
+        if (num_qpus % 2) == 0:  #if num_qpus is even
+            _handle_even_num_qpus(num_qpus)
+        else: #if num_qpus is odd
+            #handle first num_qpus-1 nodes
+            num_qpus_considered = num_qpus - 1
+            _handle_even_num_qpus(num_qpus_considered)
             #handle the rest
-            node_1 = network.get_node(f"node_{num_nodes-2}") 
-            node_2 = network.get_node(f"node_{num_nodes-1}") #num_nodes-1 is 
+            node_1 = network.get_node(f"node_{num_qpus-2}") 
+            node_2 = network.get_node(f"node_{num_qpus-1}") #num_qpus-1 is 
                                                              #max index
             link_2_nodes(network, node_1, node_2, 
                          state4distribution=state4distribution,
@@ -358,11 +363,12 @@ def create_dqc_network(
             #if index is to large for number of nodes in network
                 nodes_needed = ((quantum_topology[-1])[1] - 
                                 (len(network.nodes) - 1))
-                extra_nodes = _create_nodes(num_nodes2create=nodes_needed,
-                                           starting_index=num_nodes)
+                extra_nodes = _create_qpus(num_qpus2create=nodes_needed,
+                                           starting_index=num_qpus)
                 network.add_nodes(extra_nodes)
-                print("WARNING: num_nodes was overwritten because there were"
-                      " not enough nodes to realise the requested topology")
+                warnings.warn("WARNING: num_qpus was overwritten because there"
+                              " were not enough nodes to realise the requested"
+                              " topology")
                 
             for ii in range(len(quantum_topology)):
                 indices = quantum_topology[ii]
@@ -378,11 +384,12 @@ def create_dqc_network(
             #if index is to large for number of nodes in network
                 nodes_needed = ((classical_topology[-1])[1] - 
                                 (len(network.nodes) - 1))
-                extra_nodes = _create_nodes(num_nodes2create=nodes_needed,
-                                           starting_index=num_nodes)
+                extra_nodes = _create_qpus(num_qpus2create=nodes_needed,
+                                           starting_index=num_qpus)
                 network.add_nodes(extra_nodes)
-                print("WARNING: num_nodes was overwritten because there were"
-                      " not enough nodes to realise the requested topology")
+                warnings.warn("WARNING: num_qpus was overwritten because there"
+                              " were not enough nodes to realise the requested"
+                              " topology")
                 
             for ii in range(len(classical_topology)):
                 indices = classical_topology[ii]
