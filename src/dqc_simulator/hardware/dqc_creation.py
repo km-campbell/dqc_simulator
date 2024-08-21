@@ -76,13 +76,115 @@ class EntanglingConnection(Connection):
                               forward_input=[(f"{other_node_initial}_classical",
                                               "send")])
 
+def create_abstract_entangling_link(network, node_a, node_b,
+                                    state4distribution, 
+                                    node_distance, 
+                                    ent_dist_rate):
+    """ Sets up an abstract entangling link between QPUs
+    Input:
+    network : netsquid.nodes.network.Network
+        The entire network.
+    node_a :  object created using netsquid.nodes.Node class
+        A network node
+    node_b : object created using netsquid.nodes.Node class
+        A network node
+    state4distribution : numpy.ndarray 
+        The entangled state distributed between nodes when
+        an EPR pair is requested. Default is |phi^+> Bell state (formalism not
+        fixed to ket)
+    node_distance : float, optional
+        Distance between adjacent nodes in km.
+    ent_dist_rate : float, optional
+        The rate of entanglement distribution [Hz].
+    create_classical_2way_link : bool, optional
+        Whether a two-way classical link should be created between all nodes
+        (True) or not (False). 
+    create_entangling_link : bool, optional
+        Whether a two-way quantum link should be created between all nodes
+        (True) or not (False). Nodes can request entangled pairs using this
+        link. 
+        
+    Notes: 
+    """
+    #Create an intermediary node to generate entangled pairs and distribute them
+    #to certain nodes. This is an abstraction of a repeater chain and control
+    charlie = Node(
+        f"Charlie_{node_a.name}<->{node_b.name}")
+    qsource = QSource(f"qsource_{charlie.name}", 
+                      StateSampler([state4distribution], [1.0]), num_ports=2,
+                      status=SourceStatus.EXTERNAL) 
+    charlie.add_subcomponent(qsource, 
+                             name=f"qsource_{charlie.name}")
+    charlie.add_ports(["entanglement_request_inputA2C", 
+                       "entanglement_request_inputB2C"])
+    network.add_nodes([charlie])
+    def _add_connection2charlie(node, other_node_initial):
+        if ent_dist_rate > 0 :
+            ent_dist_time = 1e9/ent_dist_rate
+        elif ent_dist_rate == 0.:
+            ent_dist_time = 0
+        else:
+            raise ValueError(f"{ent_dist_rate} is not a valid entanglement "
+                             f"distribution rate. The rate must be >= 0")
+        q_conn = EntanglingConnection(
+                    delay=ent_dist_time, 
+                    other_node_initial=other_node_initial,
+                    name=(f"EntanglingConnection{other_node_initial}C_"
+                          f"{node_a.name}<->{node_b.name}"))
+        if node is node_a:
+            ii=0
+        else:
+            ii=1
+        network.add_connection(
+            node, charlie, connection=q_conn, 
+            label=f"quantum{other_node_initial}C",
+            port_name_node1=(f"quantum_input_from_charlie0_{node_a.name}<"
+                             f"->{node_b.name}"),
+            port_name_node2=f"qout{ii}")
+        node.add_ports([f"request_entanglement_{node_a.name}<->{node_b.name}",
+                        (f"quantum_input_from_charlie1_{node_a.name}<->"
+                         f"{node_b.name}")])
+        charlie.add_ports(f"qout{ii+2}")
+        #disconnecting generically named ports and connecting better named ones
+        q_conn.ports["A"].disconnect()
+        q_conn.ports["B"].disconnect()
+        charlie.ports[f"qout{ii}"].connect(q_conn.ports["C_quantum0"])
+        charlie.ports[f"qout{ii+2}"].connect(q_conn.ports["C_quantum1"])
+        q_conn.ports[f"{other_node_initial}_quantum0"].connect(
+            node.ports[f"quantum_input_from_charlie0_{node_a.name}<->"
+                       f"{node_b.name}"])
+        q_conn.ports[f"{other_node_initial}_quantum1"].connect(
+            node.ports[f"quantum_input_from_charlie1_{node_a.name}<->"
+                       f"{node_b.name}"])
+        node.ports[f"quantum_input_from_charlie0_{node_a.name}<->"
+                   f"{node_b.name}"].forward_input(
+                       node.qmemory.ports['qin0'])
+        node.ports[f"quantum_input_from_charlie1_{node_a.name}<->"
+                   f"{node_b.name}"].forward_input(
+                       node.qmemory.ports['qin1'])
+        node.ports[f"request_entanglement_{node_a.name}<->"
+                   f"{node_b.name}"].connect(
+            q_conn.ports[f"{other_node_initial}_classical"])
+        
+        return q_conn
+    
+    #add the entangling connections between each node and the qsource
+    q_conn_a = _add_connection2charlie(node_a, "A")
+    q_conn_b = _add_connection2charlie(node_b, "B")
+    q_conn_a.ports["C_classical"].connect(charlie.ports["entanglement_"
+                                                        "request_inputA2C"])
+    q_conn_b.ports["C_classical"].connect(charlie.ports["entanglement_"
+                                                        "request_inputB2C"])
 
-def link_2_nodes(network, node_a, node_b, state4distribution=None, 
+
+def link_2_qpus(network, node_a, node_b, state4distribution=None, 
                  node_distance=2e-3, ent_dist_rate=0,
                  create_classical_2way_link=True,
                  create_entangling_link=True):
-    """ Sets up a link between nodes.
+    """ Sets up a link between QPUs.
     Input:
+    network : netsquid.nodes.network.Network
+        The entire network.
     node_a :  object created using netsquid.nodes.Node class
     A network node
     node_b : object created using netsquid.nodes.Node class
@@ -133,75 +235,10 @@ def link_2_nodes(network, node_a, node_b, state4distribution=None,
                                port_name_node2=(f"classical_connection_"
                                                 f"{node_b.name}->{node_a.name}"))
     if create_entangling_link: #(is True)
-        #Create an intermediary node to generate entangled pairs and distribute them
-        #to certain nodes. This is an abstraction of a repeater chain and control
-        charlie = Node(
-            f"Charlie_{node_a.name}<->{node_b.name}")
-        qsource = QSource(f"qsource_{charlie.name}", 
-                          StateSampler([state4distribution], [1.0]), num_ports=2,
-                          status=SourceStatus.EXTERNAL) 
-        charlie.add_subcomponent(qsource, 
-                                 name=f"qsource_{charlie.name}")
-        charlie.add_ports(["entanglement_request_inputA2C", 
-                           "entanglement_request_inputB2C"])
-        network.add_nodes([charlie])
-        def _add_connection2charlie(node, other_node_initial):
-            if ent_dist_rate > 0 :
-                ent_dist_time = 1e9/ent_dist_rate
-            elif ent_dist_rate == 0.:
-                ent_dist_time = 0
-            else:
-                raise ValueError(f"{ent_dist_rate} is not a valid entanglement "
-                                 f"distribution rate. The rate must be >= 0")
-            q_conn = EntanglingConnection(
-                        delay=ent_dist_time, 
-                        other_node_initial=other_node_initial,
-                        name=(f"EntanglingConnection{other_node_initial}C_"
-                              f"{node_a.name}<->{node_b.name}"))
-            if node is node_a:
-                ii=0
-            else:
-                ii=1
-            network.add_connection(
-                node, charlie, connection=q_conn, 
-                label=f"quantum{other_node_initial}C",
-                port_name_node1=(f"quantum_input_from_charlie0_{node_a.name}<"
-                                 f"->{node_b.name}"),
-                port_name_node2=f"qout{ii}")
-            node.add_ports([f"request_entanglement_{node_a.name}<->{node_b.name}",
-                            (f"quantum_input_from_charlie1_{node_a.name}<->"
-                             f"{node_b.name}")])
-            charlie.add_ports(f"qout{ii+2}")
-            #disconnecting generically named ports and connecting better named ones
-            q_conn.ports["A"].disconnect()
-            q_conn.ports["B"].disconnect()
-            charlie.ports[f"qout{ii}"].connect(q_conn.ports["C_quantum0"])
-            charlie.ports[f"qout{ii+2}"].connect(q_conn.ports["C_quantum1"])
-            q_conn.ports[f"{other_node_initial}_quantum0"].connect(
-                node.ports[f"quantum_input_from_charlie0_{node_a.name}<->"
-                           f"{node_b.name}"])
-            q_conn.ports[f"{other_node_initial}_quantum1"].connect(
-                node.ports[f"quantum_input_from_charlie1_{node_a.name}<->"
-                           f"{node_b.name}"])
-            node.ports[f"quantum_input_from_charlie0_{node_a.name}<->"
-                       f"{node_b.name}"].forward_input(
-                           node.qmemory.ports['qin0'])
-            node.ports[f"quantum_input_from_charlie1_{node_a.name}<->"
-                       f"{node_b.name}"].forward_input(
-                           node.qmemory.ports['qin1'])
-            node.ports[f"request_entanglement_{node_a.name}<->"
-                       f"{node_b.name}"].connect(
-                q_conn.ports[f"{other_node_initial}_classical"])
-            
-            return q_conn
-        
-        #add the entangling connections between each node and the qsource
-        q_conn_a = _add_connection2charlie(node_a, "A")
-        q_conn_b = _add_connection2charlie(node_b, "B")
-        q_conn_a.ports["C_classical"].connect(charlie.ports["entanglement_"
-                                                            "request_inputA2C"])
-        q_conn_b.ports["C_classical"].connect(charlie.ports["entanglement_"
-                                                            "request_inputB2C"])
+        create_abstract_entangling_link(network, node_a, node_b,
+                                        state4distribution, 
+                                        node_distance, 
+                                        ent_dist_rate)
 
 class QpuNode(Node):
     """Class for creating QPU nodes (QPU including the classical control for 
@@ -341,7 +378,7 @@ def create_dqc_network(
             for ii in range(num_qpus_considered-1):
                 node_1 = network.get_node(f"node_{ii}")
                 node_2 = network.get_node(f"node_{ii+1}")
-                link_2_nodes(network, node_1, node_2, 
+                link_2_qpus(network, node_1, node_2, 
                              state4distribution=state4distribution,
                              node_distance=node_distance, 
                              ent_dist_rate=ent_dist_rate,
@@ -358,7 +395,7 @@ def create_dqc_network(
             node_1 = network.get_node(f"node_{num_qpus-2}") 
             node_2 = network.get_node(f"node_{num_qpus-1}") #num_qpus-1 is 
                                                              #max index
-            link_2_nodes(network, node_1, node_2, 
+            link_2_qpus(network, node_1, node_2, 
                          state4distribution=state4distribution,
                          create_classical_2way_link=create_classical_2way_link, 
                          create_entangling_link=create_entangling_link)
@@ -379,7 +416,7 @@ def create_dqc_network(
                 indices = quantum_topology[ii]
                 node_a = network.get_node(f"node_{indices[0]}")
                 node_b = network.get_node(f"node_{indices[1]}")
-                link_2_nodes(network, node_a, node_b,
+                link_2_qpus(network, node_a, node_b,
                              state4distribution=state4distribution, 
                              node_distance=node_distance,  
                              create_classical_2way_link=False,
@@ -400,7 +437,7 @@ def create_dqc_network(
                 indices = classical_topology[ii]
                 node_a = network.get_node(f"node_{indices[0]}")
                 node_b = network.get_node(f"node_{indices[1]}")
-                link_2_nodes(network, node_a, node_b,
+                link_2_qpus(network, node_a, node_b,
                              state4distribution=state4distribution, 
                              node_distance=node_distance,
                              create_classical_2way_link=True,

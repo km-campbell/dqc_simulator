@@ -5,6 +5,8 @@ Created on Tue Oct 17 09:55:37 2023
 @author: kenny
 """
 
+#DEPRECATED BUT WOULD BE GOOD TO UPDATE AND GET THESE TESTS WORKING
+
 #integration tests to determine if the circuits can be run.
 
 import unittest
