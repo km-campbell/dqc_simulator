@@ -116,17 +116,7 @@ def link_2_nodes(network, node_a, node_b, state4distribution=None,
         raise ValueError("""At least one of create_classical_2way_link and
                          create_entangling_link must be True otherwise
                          the function call would be redundant""")
-    #Create an intermediary node to generate entangled pairs and distribute them
-    #to certain nodes. This is an abstraction of a repeater chain and control
-    charlie = Node(
-        f"Charlie_{node_a.name}<->{node_b.name}")
-    qsource = QSource(f"qsource_{charlie.name}", 
-                      StateSampler([state4distribution], [1.0]), num_ports=2,
-                      status=SourceStatus.EXTERNAL) 
-    charlie.add_subcomponent(qsource, 
-                             name=f"qsource_{charlie.name}")
-    charlie.add_ports(["entanglement_request_inputA2C", 
-                       "entanglement_request_inputB2C"])
+
 
     # Set up classical connection between nodes:
     if create_classical_2way_link:    #(is True)
@@ -143,6 +133,17 @@ def link_2_nodes(network, node_a, node_b, state4distribution=None,
                                port_name_node2=(f"classical_connection_"
                                                 f"{node_b.name}->{node_a.name}"))
     if create_entangling_link: #(is True)
+        #Create an intermediary node to generate entangled pairs and distribute them
+        #to certain nodes. This is an abstraction of a repeater chain and control
+        charlie = Node(
+            f"Charlie_{node_a.name}<->{node_b.name}")
+        qsource = QSource(f"qsource_{charlie.name}", 
+                          StateSampler([state4distribution], [1.0]), num_ports=2,
+                          status=SourceStatus.EXTERNAL) 
+        charlie.add_subcomponent(qsource, 
+                                 name=f"qsource_{charlie.name}")
+        charlie.add_ports(["entanglement_request_inputA2C", 
+                           "entanglement_request_inputB2C"])
         network.add_nodes([charlie])
         def _add_connection2charlie(node, other_node_initial):
             if ent_dist_rate > 0 :

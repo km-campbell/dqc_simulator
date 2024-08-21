@@ -840,8 +840,7 @@ class dqcMasterProtocol(Protocol):
                  background_protocol_lookup=None,
                  compiler_func=sort_greedily_by_node_and_time,
                  **kwargs):
-        #TO DO: add additional argument background_protocol_lookup to all calls of 
-        #DqcMasterProtocol
+
         super().__init__(*args, **kwargs)
         self.partitioned_gates = partitioned_gates
         self.network = network
@@ -857,7 +856,7 @@ class dqcMasterProtocol(Protocol):
         qpu_dict = {}
         for node_name, node in self.network.nodes.items():
             if isinstance(node, QpuNode): #isinstance also checks if node 
-                                              #is subclass of QPU node
+                                          #is subclass of QPU node
                 qpu_dict[node_name] = node
             else:
                 node_type = type(node)
@@ -865,36 +864,7 @@ class dqcMasterProtocol(Protocol):
                                          node=node,
                                          name=f"{node_name}_protocol")
                 background_protocol.start()
-                
-                #if isinstance(node, table_key): #where table_key is the subclass of node
-                    #start table[table_key] protocol on node
- 
-# =============================================================================
-#         for qpu_name in qpu_op_dict:
-#             qpu_dict[qpu_name] = self.network.get_node(qpu_name)
-# =============================================================================
-        #TO DO: replace following for loop with function to abstract the 
-        #functionality. This will allow any entangling protocol to be started
-        #This may require a change to the input to the __init__ method, 
-        #necessitating updates to all calls to dqcMasterProtocol. A keyword
-        #argument may circumvent this.
-        #start_entangling_protocols may be a good name for the function.
-# =============================================================================
-#         self.start_entangling_protocols(self.network) #TO DO: add more arguments 
-#                                                       #as necessary
-# =============================================================================
-# =============================================================================
-#         start_entangling_protocols(entangling_protocols, network) # TO DO: write code for this function
-# =============================================================================
-        #IF THIS DOESN'T work then uncomment block below
-# =============================================================================
-#         for node_name in dict(self.network.nodes):
-#             if node_name.startswith("Charlie"):
-#                 charlie = self.network.get_node(node_name)
-#                 entangling_protocol = AbstractFromPhotonsEntangleProtocol(
-#                     node=charlie, name=f"{node_name}_protocol")
-#                 entangling_protocol.start()
-# =============================================================================
+
         #initialising dummy event expression 
         dummy_entity = pydynaa.Entity()
         evtype_dummy = pydynaa.EventType("dummy_event", "dummy event")
