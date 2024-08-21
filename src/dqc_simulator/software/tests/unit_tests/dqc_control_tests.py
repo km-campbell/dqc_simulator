@@ -20,7 +20,7 @@ from netsquid.qubits.qformalism import QFormalism
 from netsquid.protocols import Protocol
 from netsquid.protocols.protocol import Signals
 
-from dqc_simulator.hardware.dqc_creation import (link_2_nodes, 
+from dqc_simulator.hardware.dqc_creation import (link_2_qpus, 
                                                  create_dqc_network)
 from dqc_simulator.hardware.quantum_processors import (
                                                 create_processor,
@@ -49,7 +49,7 @@ loggers['netsquid'].setLevel(logging.WARNING)
 class Test_entangling(unittest.TestCase):
     """ 
     Testing AbstractFromPhotonsEntangleProtocol does what it should. Note it is sensible to 
-    also test the link_2_nodes function separately
+    also test the link_2_qpus function separately
     """
     #defining code to be used at the start of all subsequent test functions
     #in the class. Anything defined this way must be prepended with self. in 
@@ -76,7 +76,7 @@ class Test_entangling(unittest.TestCase):
         self.node_a = Node("Alice", qmemory=create_processor(alpha, beta, depolar_rate, dephase_rate))
         self.node_b = Node("Bob", qmemory=create_processor(alpha, beta, depolar_rate, dephase_rate))
         self.network.add_nodes([self.node_a, self.node_b])
-        link_2_nodes(self.network, self.node_a,
+        link_2_qpus(self.network, self.node_a,
                      self.node_b, state4distribution=self.Werner_State, 
                     node_distance=4e-3,
                     create_classical_2way_link=True,
@@ -802,7 +802,7 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 #         print(f"node_op_dict is {node_op_dict}")
 # =============================================================================
         master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+                                compiler_func=sort_greedily_by_node_and_time)
 # =============================================================================
 #         self.charlie_ab_protocol.start()
 #         self.charlie_bc_protocol.start()
@@ -822,7 +822,7 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
     def test_can_run_many_single_qubit_gates_with_one_command(self):
         gate_tuples = [(instr.INSTR_INIT, [2, 3, 4, 5], "node_0")]
         master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+                              compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
         qubits = self.node_a.qmemory.pop([2, 3, 4, 5])

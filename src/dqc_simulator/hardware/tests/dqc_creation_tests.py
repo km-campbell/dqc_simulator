@@ -18,7 +18,7 @@ from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
 from dqc_simulator.hardware.noise_models import ( 
                                                  AnalyticalDepolarisationModel)
 from dqc_simulator.hardware.quantum_processors import create_processor
-from dqc_simulator.hardware.dqc_creation import (link_2_nodes,
+from dqc_simulator.hardware.dqc_creation import (link_2_qpus,
                                                  create_dqc_network)
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_T_DAGGER, 
                                        INSTR_CH, INSTR_CT)
@@ -42,9 +42,9 @@ from dqc_simulator.qlib.states import werner_state
 
 #I think rx_output is deleted if not immediately used. You can test this with
 #your old network, which you know works.
-class Test_link_2_nodes(unittest.TestCase):
+class Test_link_2_qpus(unittest.TestCase):
     """ 
-    Testing that the link_2_nodes functions does what its name suggests
+    Testing that the link_2_qpus functions does what its name suggests
     """
     #defining code to be used at the start of all subsequent test functions
     #in the class. Anything defined this way must be prepended with self. in 
@@ -68,25 +68,25 @@ class Test_link_2_nodes(unittest.TestCase):
             self.alpha, self.beta, self.depolar_rate, self.dephase_rate))
         self.network.add_nodes([self.node_a, self.node_b])
     def test_right_num_nodes(self):
-        link_2_nodes(self.network, self.node_a, self.node_b)
+        link_2_qpus(self.network, self.node_a, self.node_b)
         self.assertEqual(len(self.network.nodes), 3) #Should have Alice, Bob and 
                                                 #Charlie
     def test_can_create_only_classical_link(self):
-        link_2_nodes(self.network, self.node_a, self.node_b, 
+        link_2_qpus(self.network, self.node_a, self.node_b, 
                      state4distribution=ks.b00, 
                      node_distance=4e-3, 
                      create_classical_2way_link=True,
                      create_entangling_link=False)
         self.assertEqual(len(self.network.connections), 1)
     def test_can_create_only_quantum_link(self):
-        link_2_nodes(self.network, self.node_a, self.node_b, 
+        link_2_qpus(self.network, self.node_a, self.node_b, 
                      state4distribution=ks.b00, 
                      node_distance=4e-3, 
                      create_classical_2way_link=False,
                      create_entangling_link=True)
         self.assertEqual(len(self.network.connections), 2)
     def test_can_create_quantum_and_classical_link(self):
-        link_2_nodes(self.network, self.node_a, self.node_b, 
+        link_2_qpus(self.network, self.node_a, self.node_b, 
                      state4distribution=ks.b00, 
                      node_distance=4e-3, 
                      create_classical_2way_link=True,
