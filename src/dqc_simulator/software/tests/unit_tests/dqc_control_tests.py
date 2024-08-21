@@ -273,9 +273,9 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         alice_qubit, = alice.qmemory.pop(0)
         bob_qubit, = bob.qmemory.pop(0)
         print(f"in test_can_distribute_arbitrary_state, Alice's qstate is"
-              f'{alice_qubit.qstate.qrepr}')
+              f' {alice_qubit.qstate.qrepr}')
         print(f"in test_can_distribute_arbitrary_state, Bob's qstate is"
-              f'{bob_qubit.qstate.qrepr}')
+              f' {bob_qubit.qstate.qrepr}')
         fidelity = qapi.fidelity([alice_qubit, bob_qubit],
                                  werner_state(0.5))
         print(f'in test_can_distribute_arbitrary_state, desired state is:'
@@ -310,13 +310,13 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         alice_qubit, = alice.qmemory.pop(0)
         bob_qubit, = bob.qmemory.pop(0)
         print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
-              f"Alice's qstate is {alice_qubit.qstate.qrepr}")
+              f" Alice's qstate is {alice_qubit.qstate.qrepr}")
         print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
               " Bob's qstate is {bob_qubit.qstate.qrepr}")
         fidelity = qapi.fidelity([alice_qubit, bob_qubit],
                                  werner_state(0.5))
         print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
-              " desired state is: {werner_state(0.5)}")
+              f" desired state is: {werner_state(0.5)}")
         self.assertAlmostEqual(fidelity, 1.000, 3)
         
 
