@@ -786,7 +786,7 @@ class dqcMasterProtocol(Protocol):
         self.partitioned_gates = partitioned_gates
         self.network = network
         self.compiler_func = compiler_func
-        if background_protocol_lookup == None:
+        if background_protocol_lookup is None:
             #defaulting to starting AbstractFromPhotonsEntangleProtocol on 
             #anything that is not a QpuNode
             self.background_protocol_lookup = ( 

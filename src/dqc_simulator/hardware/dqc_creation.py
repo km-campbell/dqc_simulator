@@ -181,7 +181,8 @@ def create_abstract_entangling_link(network, node_a, node_b,
 def link_2_qpus(network, node_a, node_b, state4distribution=None, 
                  node_distance=2e-3, ent_dist_rate=0,
                  want_classical_2way_link=True,
-                 want_entangling_link=True):
+                 want_entangling_link=True,
+                 create_entangling_link=None):
     """ Sets up a link between QPUs.
     Input:
     network : netsquid.nodes.network.Network
@@ -214,15 +215,18 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
     #fix-pythons-mutable-default-argument-issue
     if state4distribution is None:
         state4distribution = ks.b00
+        
+    if create_entangling_link is None:
+        create_entangling_link = create_abstract_entangling_link
+        
     
     if want_classical_2way_link is False and want_entangling_link is False:
         raise ValueError("""At least one of want_classical_2way_link and
                          want_entangling_link must be True otherwise
                          the function call would be redundant""")
 
-
     # Set up classical connection between nodes:
-    if want_classical_2way_link:    #(is True)
+    if want_classical_2way_link:
         network.add_connection(node_a, node_b,
                                channel_to=ClassicalChannel(
                                    "Channel_A2B", length=node_distance,
@@ -235,8 +239,8 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                                f"{node_a.name}->{node_b.name}"), 
                                port_name_node2=(f"classical_connection_"
                                                 f"{node_b.name}->{node_a.name}"))
-    if want_entangling_link: #(is True)
-        create_abstract_entangling_link(network, node_a, node_b,
+    if want_entangling_link:
+        create_entangling_link(network, node_a, node_b,
                                         state4distribution, 
                                         node_distance, 
                                         ent_dist_rate)
@@ -252,7 +256,7 @@ class QpuNode(Node):
         self.comm_qubit_positions = comm_qubit_positions
         self.ebit_ready = ebit_ready
         self.comm_qubits_free = comm_qubits_free
-        if comm_qubits_free == None:
+        if comm_qubits_free is None:
             self.comm_qubits_free = [0, 1]
         else:
             self.comm_qubits_free = comm_qubits_free
