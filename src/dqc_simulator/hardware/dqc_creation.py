@@ -80,7 +80,8 @@ def create_abstract_entangling_link(network, node_a, node_b,
                                     state4distribution, 
                                     node_distance, 
                                     ent_dist_rate):
-    """ Sets up an abstract entangling link between QPUs
+    """ Sets up an abstract entangling link between QPUs. Designed to work with
+        AbstractFromPhotonsEntangleProtocol.
     Input:
     network : netsquid.nodes.network.Network
         The entire network.
@@ -96,15 +97,15 @@ def create_abstract_entangling_link(network, node_a, node_b,
         Distance between adjacent nodes in km.
     ent_dist_rate : float, optional
         The rate of entanglement distribution [Hz].
-    create_classical_2way_link : bool, optional
-        Whether a two-way classical link should be created between all nodes
-        (True) or not (False). 
-    create_entangling_link : bool, optional
-        Whether a two-way quantum link should be created between all nodes
-        (True) or not (False). Nodes can request entangled pairs using this
-        link. 
         
     Notes: 
+        
+    This abstracts from the details of photon generation by treating flying
+    and communication qubits as the same thing. Restraints on the number of 
+    communication qubits can be enforced at the QPU nodes but entangled 
+    communication qubits are generated at a central quantum source and sent
+    to the QPUs. In this way, we can model error and loss but needn't simulate
+    the details of entanglement between static communication qubits and photons.
     """
     #Create an intermediary node to generate entangled pairs and distribute them
     #to certain nodes. This is an abstraction of a repeater chain and control
@@ -179,8 +180,8 @@ def create_abstract_entangling_link(network, node_a, node_b,
 
 def link_2_qpus(network, node_a, node_b, state4distribution=None, 
                  node_distance=2e-3, ent_dist_rate=0,
-                 create_classical_2way_link=True,
-                 create_entangling_link=True):
+                 want_classical_2way_link=True,
+                 want_entangling_link=True):
     """ Sets up a link between QPUs.
     Input:
     network : netsquid.nodes.network.Network
@@ -197,15 +198,15 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
         Distance between adjacent nodes in km.
     ent_dist_rate : float, optional
         The rate of entanglement distribution [Hz].
-    create_classical_2way_link : bool, optional
+    want_classical_2way_link : bool, optional
         Whether a two-way classical link should be created between all nodes
         (True) or not (False). 
-    create_entangling_link : bool, optional
+    want_entangling_link : bool, optional
         Whether a two-way quantum link should be created between all nodes
         (True) or not (False). Nodes can request entangled pairs using this
         link. 
     """
-    #instantiating default argument. Need to do in body of function for mutable
+    #instantiating default arguments. Need to do in body of function for mutable
     #objects like a numpy array because default values of functions are defined
     #only when the function is defined (not when it's called) and so mutable 
     #default values can be accidentally changed by code outwith the function.
@@ -214,14 +215,14 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
     if state4distribution is None:
         state4distribution = ks.b00
     
-    if create_classical_2way_link is False and create_entangling_link is False:
-        raise ValueError("""At least one of create_classical_2way_link and
-                         create_entangling_link must be True otherwise
+    if want_classical_2way_link is False and want_entangling_link is False:
+        raise ValueError("""At least one of want_classical_2way_link and
+                         want_entangling_link must be True otherwise
                          the function call would be redundant""")
 
 
     # Set up classical connection between nodes:
-    if create_classical_2way_link:    #(is True)
+    if want_classical_2way_link:    #(is True)
         network.add_connection(node_a, node_b,
                                channel_to=ClassicalChannel(
                                    "Channel_A2B", length=node_distance,
@@ -234,7 +235,7 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                                f"{node_a.name}->{node_b.name}"), 
                                port_name_node2=(f"classical_connection_"
                                                 f"{node_b.name}->{node_a.name}"))
-    if create_entangling_link: #(is True)
+    if want_entangling_link: #(is True)
         create_abstract_entangling_link(network, node_a, node_b,
                                         state4distribution, 
                                         node_distance, 
@@ -265,8 +266,8 @@ def create_dqc_network(
                 node_distance=2e-3, ent_dist_rate=0,
                 quantum_topology = None, 
                 classical_topology = None,
-                create_classical_2way_link=True,
-                create_entangling_link=True,
+                want_classical_2way_link=True,
+                want_entangling_link=True,
                 nodes_have_ebit_ready=False,
                 node_comm_qubits_free=None, #[0, 1] defined in function body
                 node_comm_qubit_positions=None, #(0, 1) defined in function body
@@ -308,11 +309,11 @@ def create_dqc_network(
     classical_topology: list of tuple pairs of integers, optional
             The classical network topology. Default is linear. The indices 
             refer to the nodes.to be connected should be connected in the tuple.
-    create_classical_2way_link : bool, optional
+    want_classical_2way_link : bool, optional
         Whether a two-way classical link should be created between all nodes
         (True) or not (False). Unused if classical_topology or 
         quantum_topology is not None.
-    create_entangling_link : bool, optional
+    want_entangling_link : bool, optional
         Whether a two-way quantum link should be created between all nodes 
         (True) or not (False). Nodes can request entangled pairs using this
         link. Unused if classical_topology or quantum_topology is not None.
@@ -382,8 +383,8 @@ def create_dqc_network(
                              state4distribution=state4distribution,
                              node_distance=node_distance, 
                              ent_dist_rate=ent_dist_rate,
-                             create_classical_2way_link=create_classical_2way_link, 
-                             create_entangling_link=create_entangling_link)
+                             want_classical_2way_link=want_classical_2way_link, 
+                             want_entangling_link=want_entangling_link)
                 
         if (num_qpus % 2) == 0:  #if num_qpus is even
             _handle_even_num_qpus(num_qpus)
@@ -397,8 +398,8 @@ def create_dqc_network(
                                                              #max index
             link_2_qpus(network, node_1, node_2, 
                          state4distribution=state4distribution,
-                         create_classical_2way_link=create_classical_2way_link, 
-                         create_entangling_link=create_entangling_link)
+                         want_classical_2way_link=want_classical_2way_link, 
+                         want_entangling_link=want_entangling_link)
     else:
         if quantum_topology is not None:
             if (quantum_topology[-1])[1] > (len(network.nodes)-1): 
@@ -419,8 +420,8 @@ def create_dqc_network(
                 link_2_qpus(network, node_a, node_b,
                              state4distribution=state4distribution, 
                              node_distance=node_distance,  
-                             create_classical_2way_link=False,
-                             create_entangling_link=True)
+                             want_classical_2way_link=False,
+                             want_entangling_link=True)
         if classical_topology is not None: #if classical_topology is not None
             if (classical_topology[-1])[1] > (len(network.nodes)-1): 
             #if index is to large for number of nodes in network
@@ -440,8 +441,8 @@ def create_dqc_network(
                 link_2_qpus(network, node_a, node_b,
                              state4distribution=state4distribution, 
                              node_distance=node_distance,
-                             create_classical_2way_link=True,
-                             create_entangling_link=False)
+                             want_classical_2way_link=True,
+                             want_entangling_link=False)
     return network
 
 

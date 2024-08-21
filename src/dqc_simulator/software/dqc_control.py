@@ -718,65 +718,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             self.send_signal(Signals.SUCCESS)
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
-            
-            
-# =============================================================================
-# def _initiate_abstract_entangle(network):
-#     #TO DO: think about whether to incorporate this functionality elsewhere
-#     #so that you don't need a new function for every protocol.
-#     """
-#     Starts the AbstractFromPhotonsEntangleProtocol for all relevant nodes.
-# 
-#     Parameters
-#     ----------
-#     network : netsquid.nodes.network.Network 
-#         The entire DQC network.
-#     """
-#     for node_name in dict(network.nodes):
-#         if node_name.startswith("Charlie"):
-#             charlie = network.get_node(node_name)
-#             entangling_protocol = AbstractFromPhotonsEntangleProtocol(
-#                 node=charlie, name=f"{node_name}_protocol")
-#             entangling_protocol.start()
-#             
-# def _start_entangling_protocols(network, node_roles, roles2protocol):
-#     #TO DO: evaluate if all arguments are needed
-#     """
-#     Starts all entangling protocols
-# 
-#     Parameters
-#     ----------
-#     network : TYPE
-#         DESCRIPTION.
-#     node_roles : TYPE
-#         DESCRIPTION.
-#     roles2protocol : TYPE
-#         DESCRIPTION.
-# 
-#     Returns
-#     -------
-#     None.
-# 
-#     """
-#     #TO DO: could use isinstance to identify QPUs (instances of QpuNode class or a 
-#     #subclass). Every other type of node in the network will have a protocol 
-#     #started on it initially
-#     for node in self.network.nodes.values():
-#         if not isinstance(node, QpuNode): #isinstance also checks if is subclass
-#                                           #QPU node
-#             
-#             
-#         
-# # =============================================================================
-# #         for node_name in dict(self.network.nodes):
-# #             if node_name.startswith("Charlie"):
-# #                 charlie = self.network.get_node(node_name)
-# #                 entangling_protocol = AbstractFromPhotonsEntangleProtocol(
-# #                     node=charlie, name=f"{node_name}_protocol")
-# #                 entangling_protocol.start()
-# # =============================================================================
-# =============================================================================
-
 
 class dqcMasterProtocol(Protocol):
     """ Protocol which executes a distributed quantum circuit. 

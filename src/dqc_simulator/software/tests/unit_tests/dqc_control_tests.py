@@ -79,8 +79,8 @@ class Test_entangling(unittest.TestCase):
         link_2_qpus(self.network, self.node_a,
                      self.node_b, state4distribution=self.Werner_State, 
                     node_distance=4e-3,
-                    create_classical_2way_link=True,
-                    create_entangling_link=True)
+                    want_classical_2way_link=True,
+                    want_entangling_link=True)
         self.cycle_runtime = 200 #ns
         self.charlie = self.network.get_node("Charlie_Alice<->Bob")
         self.protocol = AbstractFromPhotonsEntangleProtocol(self.charlie)
@@ -255,8 +255,8 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
                                      node_distance=4e-3,
                                      quantum_topology = None, 
                                      classical_topology = None,
-                                     create_classical_2way_link=True,
-                                     create_entangling_link=True,
+                                     want_classical_2way_link=True,
+                                     want_entangling_link=True,
                                      nodes_have_ebit_ready=False,
                                      node_comm_qubits_free=[0, 1],
                                      node_comm_qubit_positions=[0, 1],
@@ -294,8 +294,8 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
                                      node_distance=4e-3,
                                      quantum_topology = quantum_topology, 
                                      classical_topology = None,
-                                     create_classical_2way_link=False,
-                                     create_entangling_link=False,
+                                     want_classical_2way_link=False,
+                                     want_entangling_link=False,
                                      nodes_have_ebit_ready=False,
                                      node_comm_qubits_free=[0, 1],
                                      node_comm_qubit_positions=[0, 1],
@@ -339,8 +339,8 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                            node_list=None,num_qpus=2,
                            quantum_topology = None, 
                            classical_topology = None,
-                           create_classical_2way_link=True,
-                           create_entangling_link=True, name="linear network")
+                           want_classical_2way_link=True,
+                           want_entangling_link=True, name="linear network")
         node_a = network.get_node("node_0")
         node_b = network.get_node("node_1")
 # =============================================================================
@@ -392,8 +392,8 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                                      node_list=None,num_qpus=2,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
-                           create_classical_2way_link=True,
-                           create_entangling_link=True, name="linear network")
+                           want_classical_2way_link=True,
+                           want_entangling_link=True, name="linear network")
         node_a = network.get_node("node_0")
         node_b = network.get_node("node_1")
         charlie = network.get_node("Charlie_node_0<->node_1")
@@ -443,8 +443,8 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                            node_list=None,num_qpus=2,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
-                           create_classical_2way_link=True,
-                           create_entangling_link=True, name="linear network")
+                           want_classical_2way_link=True,
+                           want_entangling_link=True, name="linear network")
         node_a = network.get_node("node_0")
         node_b = network.get_node("node_1")
         node_a.ebit_ready=False
@@ -499,8 +499,8 @@ class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
                                           node_list=None,num_qpus=2,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
-                           create_classical_2way_link=True,
-                           create_entangling_link=True, name="linear network")
+                           want_classical_2way_link=True,
+                           want_entangling_link=True, name="linear network")
         node_a = network.get_node("node_0")
         node_b = network.get_node("node_1")
         node_a.ebit_ready=False
@@ -560,8 +560,8 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
                                           node_list=None, num_qpus=3,
                            node_distance=4e-3, quantum_topology = None, 
                            classical_topology = None,
-                           create_classical_2way_link=True,
-                           create_entangling_link=True,
+                           want_classical_2way_link=True,
+                           want_entangling_link=True,
                            nodes_have_ebit_ready=False,
                            node_comm_qubits_free=[0, 1],
                            node_comm_qubit_positions=[0,1],

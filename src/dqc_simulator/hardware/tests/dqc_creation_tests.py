@@ -75,22 +75,22 @@ class Test_link_2_qpus(unittest.TestCase):
         link_2_qpus(self.network, self.node_a, self.node_b, 
                      state4distribution=ks.b00, 
                      node_distance=4e-3, 
-                     create_classical_2way_link=True,
-                     create_entangling_link=False)
+                     want_classical_2way_link=True,
+                     want_entangling_link=False)
         self.assertEqual(len(self.network.connections), 1)
     def test_can_create_only_quantum_link(self):
         link_2_qpus(self.network, self.node_a, self.node_b, 
                      state4distribution=ks.b00, 
                      node_distance=4e-3, 
-                     create_classical_2way_link=False,
-                     create_entangling_link=True)
+                     want_classical_2way_link=False,
+                     want_entangling_link=True)
         self.assertEqual(len(self.network.connections), 2)
     def test_can_create_quantum_and_classical_link(self):
         link_2_qpus(self.network, self.node_a, self.node_b, 
                      state4distribution=ks.b00, 
                      node_distance=4e-3, 
-                     create_classical_2way_link=True,
-                     create_entangling_link=True)
+                     want_classical_2way_link=True,
+                     want_entangling_link=True)
         self.assertEqual(len(self.network.connections), 3)
     
                                                 
@@ -121,8 +121,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3,
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=True,
-                                  create_entangling_link=True, 
+                                  want_classical_2way_link=True,
+                                  want_entangling_link=True, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 3)
     
@@ -132,8 +132,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=True,
-                                  create_entangling_link=True, 
+                                  want_classical_2way_link=True,
+                                  want_entangling_link=True, 
                                   name="linear network")
         self.assertEqual(len(network.nodes), 3)
         
@@ -143,8 +143,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3,
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=True,
-                                  create_entangling_link=True, 
+                                  want_classical_2way_link=True,
+                                  want_entangling_link=True, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 6)
         
@@ -154,8 +154,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=True,
-                                  create_entangling_link=True, 
+                                  want_classical_2way_link=True,
+                                  want_entangling_link=True, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 9)
     
@@ -165,8 +165,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=True,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=True,
+                                  want_entangling_link=False, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 3)
 
@@ -176,8 +176,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3,
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=True, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=True, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 6)
     
@@ -189,8 +189,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 9)
 
@@ -201,8 +201,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 3)
         
@@ -213,8 +213,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = None,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="linear network")
         self.assertEqual(len(network.connections), 6)
         
@@ -226,8 +226,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                       node_distance=4e-3, 
                                       quantum_topology = quantum_topology, 
                                       classical_topology = None,
-                                      create_classical_2way_link=False,
-                                      create_entangling_link=False, 
+                                      want_classical_2way_link=False,
+                                      want_entangling_link=False, 
                                       name="linear network")
             self.assertEqual(len(network.connections), 6)
             #SHOULD SEE WARNING if this works (see test below)
@@ -242,8 +242,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                 node_distance=4e-3, 
                                 quantum_topology = quantum_topology, 
                                 classical_topology = None,
-                                create_classical_2way_link=False,
-                                create_entangling_link=False, 
+                                want_classical_2way_link=False,
+                                want_entangling_link=False, 
                                 name="linear network")
             
     def test_can_still_create_4_node_classical_network_with_wrong_num_nodes_if_topology_defined(self):
@@ -253,8 +253,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                       node_distance=4e-3, 
                                       quantum_topology = None, 
                                       classical_topology = classical_topology,
-                                      create_classical_2way_link=False,
-                                      create_entangling_link=False, 
+                                      want_classical_2way_link=False,
+                                      want_entangling_link=False, 
                                       name="linear network")
             self.assertEqual(len(network.connections), 3)
             #SHOULD SEE WARNING if this works (see test below)
@@ -269,8 +269,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                    node_distance=4e-3, 
                                    quantum_topology = None, 
                                    classical_topology = classical_topology,
-                                   create_classical_2way_link=False,
-                                   create_entangling_link=False, 
+                                   want_classical_2way_link=False,
+                                   want_entangling_link=False, 
                                    name="linear network")
             
     def test_arbitrary_network_can_be_realised(self):
@@ -281,8 +281,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="arbitrary network")
         self.assertEqual(len(network.connections), 4)
 
@@ -294,8 +294,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="circular network")
         self.assertEqual(len(network.connections), 12)
         
@@ -307,8 +307,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="arbitrary network")
         node_dict = dict(network.nodes)
         del node_dict["Charlie_node_1<->node_2"]
@@ -324,8 +324,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="arbitrary network")
         node_dict = dict(network.nodes)
         del node_dict["Charlie_node_1<->node_2"]
@@ -341,8 +341,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = quantum_topology, 
                                   classical_topology = classical_topology,
-                                  create_classical_2way_link=False,
-                                  create_entangling_link=False, 
+                                  want_classical_2way_link=False,
+                                  want_entangling_link=False, 
                                   name="arbitrary network")
         node_dict = dict(network.nodes)
         del node_dict["Charlie_node_1<->node_2"]
@@ -393,8 +393,8 @@ class TestCreateDQCNetwork(unittest.TestCase):
                                   node_distance=4e-3, 
                                   quantum_topology = None, 
                                   classical_topology = None,
-                                  create_classical_2way_link=True,
-                                  create_entangling_link=True,
+                                  want_classical_2way_link=True,
+                                  want_entangling_link=True,
                                   nodes_have_ebit_ready=False,
                                   node_comm_qubits_free=[0, 1],
                                   node_comm_qubit_positions=(0, 1),

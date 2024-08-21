@@ -64,8 +64,8 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                         node_distance=2e-3, ent_dist_rate=0,
                         quantum_topology = None, 
                         classical_topology = None,
-                        create_classical_2way_link=True,
-                        create_entangling_link=True,
+                        want_classical_2way_link=True,
+                        want_entangling_link=True,
                         nodes_have_ebit_ready=False,
                         node_comm_qubits_free=None, #[0, 1] defined in function body
                         node_comm_qubit_positions=None, #(0, 1) defined in function body
@@ -199,8 +199,8 @@ class Test_can_run_sim_from_qasm_file_with_noise(unittest.TestCase):
                         node_distance=2e-3, ent_dist_rate=1000,
                         quantum_topology = None, 
                         classical_topology = None,
-                        create_classical_2way_link=True,
-                        create_entangling_link=True,
+                        want_classical_2way_link=True,
+                        want_entangling_link=True,
                         nodes_have_ebit_ready=False,
                         node_comm_qubits_free=None, #[0, 1] defined in function body
                         node_comm_qubit_positions=None, #(0, 1) defined in function body
