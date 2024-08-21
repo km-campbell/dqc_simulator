@@ -850,6 +850,8 @@ class dqcMasterProtocol(Protocol):
             #anything that is not a QpuNode
             self.background_protocol_lookup = ( 
                             {Node : AbstractFromPhotonsEntangleProtocol})
+        else:
+            self.background_protocol_lookup = background_protocol_lookup
         
     def run(self):
         qpu_op_dict = self.compiler_func(self.partitioned_gates)

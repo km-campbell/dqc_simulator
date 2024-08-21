@@ -208,12 +208,16 @@ class QpuNode(Node):
         that QPU)
     """
     def __init__(self, name, comm_qubit_positions=(0, 1),
-                 comm_qubits_free=[0, 1],
+                 comm_qubits_free=None,
                  ebit_ready=False, ID=None, qmemory=None, port_names=None):
         super().__init__(name, ID=ID, qmemory=qmemory, port_names=port_names)
         self.comm_qubit_positions = comm_qubit_positions
-        self.comm_qubits_free = comm_qubits_free
         self.ebit_ready = ebit_ready
+        self.comm_qubits_free = comm_qubits_free
+        if comm_qubits_free == None:
+            self.comm_qubits_free = [0, 1]
+        else:
+            self.comm_qubits_free = comm_qubits_free
 
 
 def create_dqc_network(
