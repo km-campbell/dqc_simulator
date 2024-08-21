@@ -248,6 +248,7 @@ class Test_entangling(unittest.TestCase):
 class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.TestCase):
     def test_can_distribute_arbitrary_state(self):
         #TO DO: identify why this occassionally fails and fix
+        loggers['netsquid'].setLevel(logging.DEBUG)
         ns.sim_reset()
         network = create_dqc_network(state4distribution=werner_state(0.5),
                                      node_list=None, num_qpus=2,
@@ -281,9 +282,11 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         print(f'in test_can_distribute_arbitrary_state, desired state is:'
               f'{werner_state(0.5)}')
         self.assertAlmostEqual(fidelity, 1.000, 3)
+        loggers['netsquid'].setLevel(logging.WARNING)
         
     def test_can_distribute_arbitrary_state_by_specifiying_topology(self):
-        #TO DO: identify why this occassionally fails and fix
+        #TO DO: identify why this occassionally fails and fix. 
+        loggers['netsquid'].setLevel(logging.DEBUG)
         ns.sim_reset()
         quantum_topology = [(0,1)]
         network = create_dqc_network(state4distribution=werner_state(0.5),
@@ -318,6 +321,7 @@ class IntegrationTestEntangleLinkdeNodesProtocolAndcreate_dqc_network(unittest.T
         print("in test_can_distribute_arbitrary_state_by_specifying_topology,"
               f" desired state is: {werner_state(0.5)}")
         self.assertAlmostEqual(fidelity, 1.000, 3)
+        loggers['netsquid'].setLevel(logging.WARNING)
         
 
 class TestHandleCommBlockForOneNodeProtocol(unittest.TestCase):
