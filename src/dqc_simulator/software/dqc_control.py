@@ -785,7 +785,11 @@ class dqcMasterProtocol(Protocol):
         super().__init__(*args, **kwargs)
         self.partitioned_gates = partitioned_gates
         self.network = network
-        self.compiler_func = compiler_func
+        #instantiating default arguments
+        if compiler_func is None:
+            self.compiler_func = sort_greedily_by_node_and_time
+        else:
+            self.compiler_func = compiler_func
         if background_protocol_lookup is None:
             #defaulting to starting AbstractFromPhotonsEntangleProtocol on 
             #anything that is not a QpuNode
@@ -798,6 +802,9 @@ class dqcMasterProtocol(Protocol):
         qpu_op_dict = self.compiler_func(self.partitioned_gates)
         qpu_dict = {}
         for node_name, node in self.network.nodes.items():
+# =============================================================================
+#             print(node)
+# =============================================================================
             if isinstance(node, QpuNode): #isinstance also checks if node 
                                           #is subclass of QPU node
                 qpu_dict[node_name] = node

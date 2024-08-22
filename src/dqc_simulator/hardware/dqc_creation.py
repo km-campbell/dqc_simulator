@@ -51,7 +51,7 @@ class EntanglingConnection(Connection):
              "C_quantum0", "C_quantum1", "C_classical"])
         qchannel_c2other0 = QuantumChannel(f"qchannel_C2{other_node_initial}0",
                                            delay=delay)
-        qchannel_c2other1 = QuantumChannel("qchannel_C2{other_node_initial}1", 
+        qchannel_c2other1 = QuantumChannel(f"qchannel_C2{other_node_initial}1", 
                                            delay=delay)
         cchannel_other2c = ClassicalChannel(f"cchannel_{other_node_initial}2C",
                                                delay=0) #the classical delay is
@@ -275,7 +275,7 @@ def create_dqc_network(
                 nodes_have_ebit_ready=False,
                 node_comm_qubits_free=None, #[0, 1] defined in function body
                 node_comm_qubit_positions=None, #(0, 1) defined in function body
-                custom_qprocessor_func=create_processor,
+                custom_qprocessor_func=None,
                 name="linear network",
                 **kwargs4qproc):
     """A Network with nodes "Alice" and "Bob",
@@ -346,14 +346,14 @@ def create_dqc_network(
         node_comm_qubit_positions = (0, 1)
     if node_comm_qubits_free is None:
         node_comm_qubits_free = [0, 1]
+    if custom_qprocessor_func is None:
+        custom_qprocessor_func = create_processor
         
     if num_qpus < 2:
         raise ValueError("num_qpus must be at least 2")
     if type(num_qpus) is not int:
         raise TypeError("num_qpus must be an integer")
 
-    # Create a network
-    network = Network(name)
     def _create_qpus(num_qpus2create=num_qpus, starting_index=0):
         qpu_list = []
         for ii in range(num_qpus2create):
@@ -373,33 +373,46 @@ def create_dqc_network(
                         ebit_ready=nodes_have_ebit_ready, qmemory=qproc)
             qpu_list = qpu_list + [qpu] #appending node to node_list
         return qpu_list
+    
+    def _handle_even_num_qpus(network, num_qpus_considered):
+        """
+        Subroutine for creating linear network with even number of QPUs
+
+        Parameters
+        ----------
+        network : TYPE
+            DESCRIPTION.
+        num_qpus_considered : TYPE
+            DESCRIPTION.
+        """
+        for ii in range(num_qpus_considered-1):
+            node_1 = network.get_node(f"node_{ii}")
+            node_2 = network.get_node(f"node_{ii+1}")
+            link_2_qpus(network, node_1, node_2, 
+                         state4distribution=state4distribution,
+                         node_distance=node_distance, 
+                         ent_dist_rate=ent_dist_rate,
+                         want_classical_2way_link=want_classical_2way_link, 
+                         want_entangling_link=want_entangling_link)
+    
+    network = Network(name)
+
     if node_list is None:
         node_list = _create_qpus(num_qpus2create=num_qpus)
         
     network.add_nodes(node_list)
     if quantum_topology is None and classical_topology is None:
-        #create network with linear topology
-        def _handle_even_num_qpus(num_qpus_considered):
-            for ii in range(num_qpus_considered-1):
-                node_1 = network.get_node(f"node_{ii}")
-                node_2 = network.get_node(f"node_{ii+1}")
-                link_2_qpus(network, node_1, node_2, 
-                             state4distribution=state4distribution,
-                             node_distance=node_distance, 
-                             ent_dist_rate=ent_dist_rate,
-                             want_classical_2way_link=want_classical_2way_link, 
-                             want_entangling_link=want_entangling_link)
-                
+        #create network with linear topology 
         if (num_qpus % 2) == 0:  #if num_qpus is even
-            _handle_even_num_qpus(num_qpus)
+            _handle_even_num_qpus(network, num_qpus)
         else: #if num_qpus is odd
             #handle first num_qpus-1 nodes
             num_qpus_considered = num_qpus - 1
-            _handle_even_num_qpus(num_qpus_considered)
+            _handle_even_num_qpus(network, num_qpus_considered)
             #handle the rest
             node_1 = network.get_node(f"node_{num_qpus-2}") 
             node_2 = network.get_node(f"node_{num_qpus-1}") #num_qpus-1 is 
-                                                             #max index
+                                                            #max index
             link_2_qpus(network, node_1, node_2, 
                          state4distribution=state4distribution,
                          want_classical_2way_link=want_classical_2way_link, 
@@ -428,7 +441,7 @@ def create_dqc_network(
                              want_entangling_link=True)
         if classical_topology is not None: #if classical_topology is not None
             if (classical_topology[-1])[1] > (len(network.nodes)-1): 
-            #if index is to large for number of nodes in network
+            #if index is to large for number of QPUs in network
                 nodes_needed = ((classical_topology[-1])[1] - 
                                 (len(network.nodes) - 1))
                 extra_nodes = _create_qpus(num_qpus2create=nodes_needed,

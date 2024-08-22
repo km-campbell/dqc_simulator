@@ -556,16 +556,17 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
         #making 3 node linear network:
         self.alpha = 1/np.sqrt(2)
         self.beta = 1j/np.sqrt(2)
-        self.network = create_dqc_network(state4distribution=ks.b00,
-                                          node_list=None, num_qpus=3,
-                           node_distance=4e-3, quantum_topology = None, 
-                           classical_topology = None,
-                           want_classical_2way_link=True,
-                           want_entangling_link=True,
-                           nodes_have_ebit_ready=False,
-                           node_comm_qubits_free=[0, 1],
-                           node_comm_qubit_positions=[0,1],
-                           name="linear network")
+        self.network = create_dqc_network(
+                               state4distribution=ks.b00,
+                               node_list=None, num_qpus=3,
+                               node_distance=4e-3, quantum_topology=None, 
+                               classical_topology=None,
+                               want_classical_2way_link=True,
+                               want_entangling_link=True,
+                               nodes_have_ebit_ready=False,
+                               node_comm_qubits_free=[0, 1],
+                               node_comm_qubit_positions=[0,1],
+                               name="linear network")
         #if node_comm_qubits_free is not explicitly specified then the tests don't
         #work. I HAVEN'T GOT THE VAGUEST IDEA WHY
         self.node_a = self.network.get_node("node_0")
@@ -603,8 +604,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
 # =============================================================================
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
         node_a = self.network.get_node("node_0")
@@ -634,9 +636,12 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
                         "node_1", "cat"),
                        (instr.INSTR_CNOT, 2, "node_1", 2,
                         "node_2", "cat")]
-        node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+# =============================================================================
+#         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
+# =============================================================================
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
         node_a = self.network.get_node("node_0")
@@ -665,8 +670,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
 # =============================================================================
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
 # =============================================================================
@@ -702,9 +708,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_1", 2,
                         "node_2", "tp_risky"),
                        ([], -1, "node_2", -1, "node_1", "tp_risky")]
-        node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
 # =============================================================================
 #         self.charlie_ab_protocol.start()
 #         self.charlie_bc_protocol.start()
@@ -740,8 +746,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
 # =============================================================================
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
 # =============================================================================
 #         self.charlie_ab_protocol.start()
 #         self.charlie_bc_protocol.start()
@@ -769,8 +776,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
 # =============================================================================
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                          compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
 # =============================================================================
@@ -781,7 +789,7 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
         node_b = self.network.get_node("node_1")
         alice_comm_qubit, = node_a.qmemory.pop(0)
         comm_qubits_free_at_end = (len(node_a.comm_qubits_free) + 
-                                len(node_b.comm_qubits_free))
+                                   len(node_b.comm_qubits_free))
         comm_qubits_free_at_beginning = (len(node_a.comm_qubit_positions)
                                          + len(node_b.comm_qubit_positions))
         net_comm_qubits_used = (comm_qubits_free_at_end - 
@@ -805,8 +813,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
 # =============================================================================
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                                compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
 # =============================================================================
 #         self.charlie_ab_protocol.start()
 #         self.charlie_bc_protocol.start()
@@ -825,8 +834,9 @@ class TestDQCmasterProtocolWithGreedyCompiler(unittest.TestCase):
         
     def test_can_run_many_single_qubit_gates_with_one_command(self):
         gate_tuples = [(instr.INSTR_INIT, [2, 3, 4, 5], "node_0")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network,
-                              compiler_func=sort_greedily_by_node_and_time)
+        master_protocol = dqcMasterProtocol(
+                             gate_tuples, self.network,
+                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
         qubits = self.node_a.qmemory.pop([2, 3, 4, 5])
