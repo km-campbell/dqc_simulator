@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May 18 10:13:44 2023
-
-@author: kenny
+Noise models for acting on simulated QPUs.
 """
 
 #custom noise models
@@ -11,33 +9,40 @@ Created on Thu May 18 10:13:44 2023
 
 import numpy as np
 
+import netsquid as ns
 from netsquid.components.models.qerrormodels import QuantumErrorModel
 from netsquid.qubits import qubitapi as qapi
 from netsquid.util.constrainedmap import ValueConstraint
 from netsquid.qubits.dmutil import partialtrace, reorder_dm
+from netsquid.qubits.qformalism import QFormalism
 
 #To take analytical approach of applying a channel rather than an operator,
 #you will need to specify that the density matrix formalism is used
 #and also work within that formalism specifically. This means you need 
 #to access the dm itself.
 
-#for implementing DMs analytically, the following may be useful:
-import netsquid as ns
-from netsquid.qubits import qubitapi as qapi
-from netsquid.components.qprogram import QuantumProgram
-from netsquid.qubits.qformalism import QFormalism, set_qstate_formalism
-from netsquid.components import instructions as instr
-from netsquid.qubits import ketstates as ks
-
-
-#TO DO: figure our how to formulate maths as latex in docstring
-
 
 def apply_analytical_depolarisation2dm(qubits, p_error):
-    r"""
-    Applies a depolarisation channel of the form 
-    :math: `\rho_out = (1 - p_error) rho_in 
+    """
+    Helper function
+    
+    Assumes that :class: `~netsquid.qubits.dmtools.DenseDMRepr` is used.
+    
+    Parameters
+    ----------
+    qubits : :class: `~netsquid.qubits.qubit.Qubit` obj or list of them
+        The qubits upon which to act depolarising noise.
+    p_error : float
+        The probability of a qubit being depolarised in this channel. See 
+        the notes section.
+    
+    Notes
+    -----
+    Applies a depolarisation channel of the form: 
+    .. :math: 
+            `\rho_out = (1 - p_error) rho_{in}
            + p_error/dim{i, j} Tr_{i,j} (rho_in) o_times I_{i, j}'.
+           
     This circumvents the need for repeated runs, as it is not probabilistic.
     It is equivalent to equations (2) and (3) in
     QuantumRepeaters:The Role of Imperfect Local Operations in Quantum 
@@ -50,12 +55,8 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
     This noise model is designed to be used after a gate or only on one qubit
     at a time because it assumes all qubits share a qstate. This assumption 
     is good if the qubits have been acted on by a multi-qubit gate
-    INPUT: 
-        qubit: :class: netsquid.qubits.Qubit obj or list
-            The qubit upon which the depolarisation channel should act
-        p_error
     """ 
-    if type(qubits) == ns.qubits.qubit.Qubit:
+    if isinstance(qubits, ns.qubits.qubit.Qubit):
 # =============================================================================
 #         print(f'The qubit {qubits} has state {qubits.qstate.qrepr}')
 # =============================================================================
@@ -116,35 +117,42 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
 #for non-commercial research use. It follows the standard structure of a 
 #QuantumErrorModel
 class AnalyticalDepolarisationModel(QuantumErrorModel):
-    def __init__(self, p_error, time_independent=True, **kwargs):
-        r"""
-        Based on netsquid.components.models.DepolarNoiseModel but adjusted to
-        be applied analytically and within the DM formalism only. This is 
-        intended to avoid the need for multiple runs and thus reduce 
-        computation time. However, this model inappropriate for systems with  
-        many qubits because of the restriction to the memory-intensive DM 
-        formalism.
+    """
+    Noise model for applying analytical depolarising noise to a qubit.
+    
+    Based on :class: `~netsquid.components.models.DepolarNoiseModel` but 
+    adjusted to 
+    be applied analytically and within the DM formalism only. This is 
+    intended to avoid the need for multiple runs and thus reduce 
+    computation time. However, this model is inappropriate for systems with 
+    many qubits because of the restriction to the memory-intensive DM 
+    formalism.
 
-        Parameters
-        ----------
-        p_error : float
-            Probability that the qubits are depolarised. If``time_independent``
-            is True (default), then this a probability as defined in
-            :math: `\rho_out = (1 - p_error) rho_in 
-                   + p_error/dim{i, j} Tr_{i,j} (rho_in) o_times I_{i, j}'.
-            If ``time_independent`` is False,
-            then p_{error} is the exponential depolarizing rate per unit time
-            [Hz], such that 
-            :math: `\rho_{out} = (1 - p_{error}) rho_{in} 
-                   + prob_{error}/dim{i, j} Tr_{i,j} (rho_{in})
-                   o_times I_{i, j}'
-            with :math: `prob_{error} = 1 - e^{\delta t p_{error} * e^{-9}}',
-            where :math: `\delta t' is the time qubits spend on a component
-            (eg, a quantum memory).
-        time_independent : bool, optional
-            Whether or not the probability of a depolarisation error occurring
-            depends on time. The default is True.
-        """
+    Parameters
+    ----------
+    p_error : float
+        Probability that the qubits are depolarised. If `time_independent`
+        is True (default), then this a probability as defined in
+        .. :math: 
+                `\rho_out = (1 - p_error) rho_in 
+               + p_error/dim{i, j} Tr_{i,j} (rho_in) o_times I_{i, j}'.
+               
+        If `time_independent` is False,
+        then p_{error} is the exponential depolarizing rate per unit time
+        [Hz], such that 
+        .. :math:
+                `\rho_{out} = (1 - p_{error}) rho_{in} 
+               + prob_{error}/dim{i, j} Tr_{i,j} (rho_{in})
+               o_times I_{i, j}'
+               
+        with :math: `prob_{error} = 1 - e^{\delta t p_{error} * e^{-9}}',
+        where :math: `\delta t' is the time qubits spend on a component
+        (eg, a quantum memory).
+    time_independent : bool, optional
+        Whether or not the probability of a depolarisation error occurring
+        depends on time. The default is True.
+    """
+    def __init__(self, p_error, time_independent=True, **kwargs):
         super().__init__(**kwargs)
         # NOTE time independence should be set *before* the rate
         self.add_property('time_independent', time_independent,

@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr  6 15:15:00 2023
-
-@author: kenny
+Unit tests of dqc_control.py and some fast integration tests.
 """
 
 import functools as ft

@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Apr  4 12:40:42 2023
+Software for controlling the simulated DQC hardware.
 
-@author: kenny
+Designed to act on hardware created using 
+:mod: `~dqc_simulator.hardware.dqc_creation`
 """
 
 import pydynaa
@@ -22,7 +23,15 @@ from dqc_simulator.hardware.dqc_creation import QpuNode
 #second index being the comm qubit of the node it is requesting entanlgement 
 #with
 class AbstractFromPhotonsEntangleProtocol(NodeProtocol):
-    """ This abstracts from the details of photon generation by treating flying
+    """ Abstract protocol for generating entanglement.
+    
+    An abstract way of generating photons designed to act on a specific 
+    instance of :class: `~netsquid.nodes.node.Node` created within 
+    :func: `~dqc_simulator.hardware.dqc_creation.create_abstract_entangling_link`.
+    
+    Notes
+    -----
+    This abstracts from the details of photon generation by treating flying
     and communication qubits as the same thing. Restraints on the number of 
     communication qubits can be enforced at the QPU nodes but entangled 
     communication qubits are generated at a central quantum source and sent
@@ -111,47 +120,40 @@ class AbstractFromPhotonsEntangleProtocol(NodeProtocol):
             
 
 class HandleCommBlockForOneNodeProtocol(NodeProtocol):
-    """Carries out the parts of the protocol on one node. This is designed 
-    such that it can carry out all parts of a circuit on one node which will be 
+    """Does everything that happens in a given time slice on one QPU 
+    
+    This is designed 
+    such that it can carry out all parts of a circuit on one QPU which will be 
     compiled using the greedy algorithm but is also 
     capable of doing a single communication block if used as a subprotocol
     and fed only the gate tuples for that block.
     
-        INPUT:
-            gate_tuples: list or list-like iterable of tuples 
-                        (first entry may be list of tuples if there are
-                         remote gates)
-                The gates to be conducted. Remote gates may have a list of 
-                tuples as the first entry of this list if in the recv role to
-                allow several local
-                gates to be applied as part of the remote gate.
-                Each gate_tuple in gate_tuples4this_node_and_time must have
-                form:
-                1) for single-qubit gate: (gate_type, qubit_index)
-                2) for two-qubit gate: (gate_type, qubit_index1, qubit_index2)
-                3) for remote gate primitive:
-                        either : i) (data_qubit_index or sometimes
-                                     index of qubit to be
-                                     teleported/distributed, 
-                                     other_node_name, scheme, role).
-                                             OR
-                                 ii) (other_node_name, scheme, role)
-                                
-                                      
-                    where othernode_name is the name attribute of a
-                    netsquid.nodes.Node object, and gate_type is an
-                    instruction from netsquid.components.instructions
-                    
-            comm_qubits_free: list of indices, optional
-            Should be in order from lowest to highest
-            comm_qubit_positions: list of indices, optional
-            The memory positions allocated to comm-qubits. This enforces
-            the topology. It is distinct from comm-qubits free which
-            #initialises the comm-qubits free on a node at the point in time
-            #the first gate tuple inputted occurs
-            ebits_ready : bool, optional
-            Initialises whether the node has any comm-qubits entangled with 
-            those on another node
+    Parameters
+    ----------
+    gate_tuples : list of tuples 
+        The gates to be conducted. Remote gates may have a list of 
+        tuples as the first entry of this list if in the recv role to
+        allow several local
+        gates to be applied as part of the remote gate.
+        Each gate_tuple in gate_tuples4this_node_and_time must have
+        form:
+        1) for single-qubit gate: (gate_type, qubit_index)
+        2) for two-qubit gate: (gate_type, qubit_index1, qubit_index2)
+        3) for remote gate primitive:
+                either : i) (data_qubit_index or sometimes
+                             index of qubit to be
+                             teleported/distributed, 
+                             other_node_name, scheme, role).
+                                     OR
+                         ii) (other_node_name, scheme, role)
+                        
+                              
+            where othernode_name is the name attribute of a
+            netsquid.nodes.Node object, and gate_type is an
+            instruction from netsquid.components.instructions
+    *args, **kwargs:
+        All positional and keyword arguments inherited from 
+        :class: `~netsquid.protocols.nodeprotocols.NodeProtocol`
     """
     #The core idea of what follows is to add instructions to a QuantumProgram
     #until remote gates occur, at which point the program will be run to that 
@@ -175,8 +177,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
                              gate_op):
         """
-        A subroutine to handle the possibility that the gate_op is not defined
-        in the gate instruction. Such a scenario can be useful because it 
+        Handles the possibility gate_op is not defined in the gate instruction.
+
+        Such a scenario can be useful because it 
         allows one to define one PhysicalInstruction for a variety of gates,
         making it possible to implement gates of the form 
         gate_name(list_of_parameters) without having to define a 
@@ -722,39 +725,44 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
 class dqcMasterProtocol(Protocol):
     """ Protocol which executes a distributed quantum circuit. 
     
-    INPUT: 
-        partitioned_gates:  list of tuples.
-            The gates implemented in the entire circuit. The tuples should be
-            of the form:
-            1) single-qubit gate: (gate_instr, qubit, node_name)
-            2) two-qubit gate: (list of instructions or gate_instruction if
-                                local,qubit0, node0_name, qubit1, node1_name,
-                                scheme) 
-                                #can later extend this to multi-qubit gates
-                                #keeping scheme as last element
-                                list of instructions: list
-                                    list of same form as partitioned_gates
-                                    containing the local gates to be conducted
-                                    as part of the remote gate. Ie, for
-                                    remote-cnot this would contain the cnot 
-                                    (but not the gates used for bsm or
-                                     correction).
-                                    Note if this is given as empty list and 
-                                    scheme = "tp" then it will just do a
-                                    teleportation
-        network : netsquid.nodes.network.Network
-            Wraps all simulated hardware.
-        background_protocol_lookup : dict
-            Lookup table with keys being subclasses of netsquid.nodes.node.Node
-            and protocols being non-QPU subclasses of 
-            netsquid.protocols.protocol.Protocol. This is used to start all 
-            protocols that exist outside of time slice structure and must be 
-            initialised to make the network function.
-        compiler_func: function, optional
-            The compiler function to be used to split partitioned_gates into
-            protocols by node and time-slice
+    Parameters
+    ----------
+    partitioned_gates:  list of tuples.
+        The gates implemented in the entire circuit. The tuples should be
+        of the form:
+        1) single-qubit gate: (gate_instr, qubit, node_name)
+        2) two-qubit gate: (list of instructions or gate_instruction if
+                            local,qubit0, node0_name, qubit1, node1_name,
+                            scheme) 
+                            #can later extend this to multi-qubit gates
+                            #keeping scheme as last element
+                            list of instructions: list
+                                list of same form as partitioned_gates
+                                containing the local gates to be conducted
+                                as part of the remote gate. Ie, for
+                                remote-cnot this would contain the cnot 
+                                (but not the gates used for bsm or
+                                 correction).
+                                Note if this is given as empty list and 
+                                scheme = "tp" then it will just do a
+                                teleportation
+    network : :class: `~netsquid.nodes.network.Network`
+        Wraps all simulated hardware.
+    background_protocol_lookup : dict
+        Lookup table with keys being subclasses of netsquid.nodes.node.Node
+        and protocols being non-QPU subclasses of 
+        netsquid.protocols.protocol.Protocol. This is used to start all 
+        protocols that exist outside of time slice structure and must be 
+        initialised to make the network function.
+    compiler_func: function, optional
+        The compiler function to be used to split partitioned_gates into
+        protocols by node and time-slice.
+    *args, **kwargs
+        Allows positional and keyword arguments inherited from 
+        :class: `~netsquid.protocols.protocol.Protocol` to be specified.
             
-    Notes:        
+    Notes
+    -----
         This protocol violates locality by splitting everything into time slices. 
         Each time slice
         obeys locality but the entire network is instantaneously made aware when a 
@@ -777,7 +785,7 @@ class dqcMasterProtocol(Protocol):
         slice).
     """
     def __init__(self, partitioned_gates, network,
-                 *args, 
+                 *args, #remove as Protocol has no positional args?
                  background_protocol_lookup=None,
                  compiler_func=sort_greedily_by_node_and_time,
                  **kwargs):

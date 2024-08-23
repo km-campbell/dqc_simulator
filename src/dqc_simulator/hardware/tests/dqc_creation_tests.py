@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Dec  6 19:11:14 2022
-
-@author: kenny
+Unit tests for dqc_creation.py
 """
 
 import unittest, warnings

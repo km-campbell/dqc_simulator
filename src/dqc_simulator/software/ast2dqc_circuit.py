@@ -1,48 +1,66 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Sep 29 16:17:01 2023
+Tools for the rough parsing of an abstract syntax tree.
 
-@author: kenny
+This module defines classes that are used to parse an abstract syntax tree 
+created using :func: `~dqc_simulator.software.qasm2ast.qasm2ast`, which is 
+adapted from the open source nuqasm2 package. It heavily uses the openQASM 2.0
+grammar. The abstract syntax tree is parsed into a 
+:class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`.
+
+Notes
+-----
+This module uses open source code written by pyparsing module author Paul 
+McGuire
+(https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
+in accordance with the MIT license. This is marked with an appropriate comment
+or in the docstring notes at the relevant points in the script.
+
+A key difference between my code and a proper QISKIT parser is that I implement
+ the standard library gates primarily as built in gates (ie, as literals)
+ rather than building them from openQASM’s two native gate sets as macros whose
+ expansion is deferred until runtime (which is what is done by openQASM 2.0). 
+ This means that all of my gates are basically implemented as native gates. 
+ This aligns with NetSquid’s platform agnostic philosophy. I feel that any 
+ breaking down of gates into subroutines, should be done for specific platforms
+ and included in compilation (not just at runtime). All of this means I am not 
+ strictly parsing openQASM 2.0 but rather directly converting it to something
+ else.
+
 """
 
-#NOTE: this module uses code written by pyparsing module author Paul McGuire
-#(https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
-#in accordance with the MIT license. This is marked with an appropriate comment
-#at the relevant points in the script.
 
 import abc
-import re
 import operator
-import functools as ft
+import warnings
 
 import numpy as np
-import pandas
 import pyparsing as pp
 from netsquid.components import instructions as instr
 
 from dqc_simulator.software.dqc_circuit import DqcCircuit
-from dqc_simulator.software.qasm2ast import (qasm2ast, ASTType, 
+from dqc_simulator.software.qasm2ast import (ASTType, 
                                              QasmParsingElement)
 from dqc_simulator.qlib import gates
 from dqc_simulator.qlib import circuit_identities as macros
-#Note a key difference between my code and a proper QISKIT parser is that I 
-#implement the standard library gates primarily as built in gates (ie, as literals) rather than
-#building them from openQASM's two native gate sets as macros whose expansion 
-#is deferred until runtime (which is what is
-#done by openQASM 2.0). This means that all of my gates are basically
-# implemented as native
-#gates. This aligns with NetSquid's platform agnostic philosophy. I feel that 
-#any breaking down of gates into subroutines, should be done for specific 
-#platforms and included in compilation (not just at runtime). All of this means
-#I am not parsing openQASM 2.0 but rather directly converting it to something 
-#else
+
 
 
     
 class ExpQasm(QasmParsingElement):
-    #slightly modifying code written by pyparsing module author Paul McGuire
-    #(https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
-    #in accordance with the MIT license:
+    """
+    Used to interpret mathematical expressions.
+    
+    Defines <exp> non-terminal defined in openQASM 2.0 grammar.
+    
+    Notes
+    -----
+    This is slightly modified from code written by pyparsing module author Paul 
+    McGuire
+    (https://github.com/pyparsing/pyparsing/blob/master/examples/fourFn.py)
+    and used in accordance with the MIT license:
+    """
+    
     def __init__(self):
         self.exp_qasmStack = []
         
@@ -92,7 +110,8 @@ class ExpQasm(QasmParsingElement):
             )
         ).setParseAction(self._push_unary_minus)
     
-        # by defining exponentiation as "atom [ ^ factor ]..." instead of "atom [ ^ atom ]...", we get right-to-left
+        # by defining exponentiation as "atom [ ^ factor ]..." instead of
+        #"atom [ ^ atom ]...", we get right-to-left
         # exponents, instead of left-to-right that is, 2^3^2 = 2^(3^2), not (2^3)^2.
         factor = pp.Forward()
         factor <<= atom + (expop + factor).setParseAction(self._push_first)[...]
@@ -122,6 +141,9 @@ class ExpQasm(QasmParsingElement):
 
 
 class NonTerminalInterpreter(QasmParsingElement, metaclass=abc.ABCMeta):   
+    """Abstract base class for a non-terminal interpreter
+    """
+    
     @abc.abstractmethod
     def interpret(self, unparsed_terminal_token):
         """
@@ -146,6 +168,19 @@ class NonTerminalInterpreter(QasmParsingElement, metaclass=abc.ABCMeta):
                                   "defining a subclass.")
     
 class ExpQasmInterpreter(NonTerminalInterpreter):
+    """
+    Interprets mathematical expressions in string form as python objects.
+    
+    Attributes
+    ----------
+    unaryop_funcs : dict
+        Lookup table of unary functions relating strings with the function 
+        name to the corresponding from `numpy` objects
+    arith_op_funcs : dict
+        Lookup table relating strings containing symbols to basic arithmetic 
+        operators.
+    """
+    
     def __init__(self):
         pass #just defining the class instance as self
     unaryop_funcs = {'sin' : np.sin, 'cos' : np.cos,'tan' : np.tan,
@@ -222,7 +257,6 @@ class ArgumentInterpreter(NonTerminalInterpreter):
             of argument ('qubit' or 'reg'), the name of the quantum register 
             as a str (reg_name) and the bit index (iff the type of argument is 
             'qubit')
-    
         """
         if '[' in argument_terminal: #is (qu)bit
             arg_type = "qubit"
@@ -248,31 +282,26 @@ class ArgumentInterpreter(NonTerminalInterpreter):
 
 class Ast2SimReadable(metaclass=abc.ABCMeta):
     """Abstract base class for various converters to simulation readable 
-    commands"""
+    commands
+    
+    Parameters
+    ----------
+    ast_c_sect_element : dict
+        An element of the AST's 'c_sect'. This typically corresponds to a 
+        parsed line of .qasm source code but in some rare instances it 
+        could be multiple lines
+        
+    dqc_circuit : instance of DqcCircuit defined above
+        The specs need to make a circuit that could run on a DQC (it may
+        actually be monolithic but is written in a DQC suitable form)
+    """
     def __init__(self, ast_c_sect_element, dqc_circuit):
-        """
-        Parameters
-        ----------
-        ast_c_sect_element : dict
-            An element of the AST's 'c_sect'. This typically corresponds to a 
-            parsed line of .qasm source code but in some rare instances it 
-            could be multiple lines
-            
-        dqc_circuit : instance of DqcCircuit defined above
-            The specs need to make a circuit that could run on a DQC (it may
-            actually be monolithic but is written in a DQC suitable form)
-
-        Returns
-        -------
-        None.
-
-        """
         self.ast_c_sect_element = ast_c_sect_element 
         self.dqc_circuit = dqc_circuit
 
     @abc.abstractmethod
     def make_sim_readable(self):
-        """
+        """        
         Should be overwritten with method taking same arguments which translates
         the qasm terminal into something intelligible by the target code.
 
@@ -281,27 +310,52 @@ class Ast2SimReadable(metaclass=abc.ABCMeta):
         terminal : str
             A QASM terminal symbol.
             
-        Returns
+        Raises
         -------
-        Subclasses should overwrite this method to return an updated instance 
-        of the DqcCircuit class
+            `NotImplementedError`
         """
         raise NotImplementedError
 
 class AstUnknown(Ast2SimReadable):
+    """For handling unknown cases
+    """
     def make_sim_readable(self):
+        """
+        Raises
+        ------
+        ValueError
+            Error due to unrecognised element in the abstract syntax tree
+        """
         raise ValueError(f"Unknown element {self.ast_c_sect_element} "
                          "identified while parsing. There may have been an"
                          " error the .qasm file or a failure to recognise the "
                          "issue when parsing.")
         
 class AstComment(Ast2SimReadable):
+    """Interprets comments in AST
+    """
     def make_sim_readable(self):
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            The unchanged DQC circuit.
+
+        """
         return self.dqc_circuit #This ignores comments in the source code,
              #as they are not needed in the gate_list to be interpreted
         
 class AstQreg(Ast2SimReadable):
+    """Interprets qreg commands found in AST.
+    """
+    
     def make_sim_readable(self):
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            The updated DQC circuit.
+        """
         qreg_name = self.ast_c_sect_element['qreg_name']
         qreg_size = self.ast_c_sect_element['qreg_num']
         self.dqc_circuit.qregs[qreg_name] = {'size' : int(qreg_size),
@@ -311,7 +365,16 @@ class AstQreg(Ast2SimReadable):
         return self.dqc_circuit
 
 class AstCreg(Ast2SimReadable):
+    """Interprets creg commands found in AST.
+    """
+    
     def make_sim_readable(self):
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            The updated DQC circuit.
+        """
         creg_name = self.ast_c_sect_element['creg_name']
         creg_number = self.ast_c_sect_element['creg_num']
         self.dqc_circuit.cregs[creg_name] = int(creg_number)
@@ -320,9 +383,17 @@ class AstCreg(Ast2SimReadable):
         return self.dqc_circuit
 
 class AstMeasure(Ast2SimReadable):
-        
+    """Interprets measure commands found in AST.
+    """
     def make_sim_readable(self):
-        print("WARNING: measurement present in .qasm code but ignored")
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            An unchanged DQC circuit. Right now, measurements specified in 
+            the abstract syntax tree are ignored.
+        """
+        warnings.warn("WARNING: measurement present in .qasm code but ignored")
         return self.dqc_circuit #FOR NOW THIS DOES NOTHING AND MEASUREMENTS
                                 #ARE SIMPLY IGNORED. I would like to make this 
                                 #optional in the future, so that I can analyse
@@ -348,15 +419,31 @@ class AstMeasure(Ast2SimReadable):
 # =============================================================================
         
 class AstBarrier(Ast2SimReadable):
+    """Interprets barrier commands found in AST
+    """
+    
     def make_sim_readable(self):
-        print("WARNING: 'barrier' command present in .qasm code but ignored")
-        return self.dqc_circuit #FOR NOW THIS DOES NOTHING AND THE BARRIER 
-                                #COMMAND IS SIMPLY IGNORED. 
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            An unchanged DQC circuit. Right now, the barrier command is
+            ignored.
+        """
+        warnings.warn("WARNING: 'barrier' command present in .qasm code but"
+                      " ignored")
+        return self.dqc_circuit #For now, this does nothing and the barrier 
+                                #command is simply ignored. 
         
 class AstGate(Ast2SimReadable):
+    """Interprets definitions and calls of quantum gates.
+    """
+    
     def _add_gate_spec_with_params2circuit(self, params, gate_name, gate_args):
         """
-        Adds new gate specifications to self.dqc_circuit.ops
+        Adds new gate specs.
+        
+        Adds new gate specifications to `self.dqc_circuit.ops`
 
         Parameters
         ----------
@@ -376,6 +463,8 @@ class AstGate(Ast2SimReadable):
         
     def _add_gate_spec_without_params2circuit(self, gate_name, gate_args):
         """
+        Adds new gate specs.
+        
         Adds new gate specifications to self.dqc_circuit.ops
 
         Parameters
@@ -455,8 +544,13 @@ class AstGate(Ast2SimReadable):
                                  reg2_name]
                     _add_gate_spec2circuit(*gate_spec_elems, gate_args)
                     
-        
     def make_sim_readable(self):
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            The updated DQC circuit.
+        """
         arg_interpreter = ArgumentInterpreter().interpret
         param_interpreter = ExpQasmInterpreter().interpret
         params = self.ast_c_sect_element['param_list']
@@ -465,7 +559,8 @@ class AstGate(Ast2SimReadable):
         #define list of macros
         if gate_name in self.dqc_circuit.gate_macros:
             if params != None:
-                subgates = self.dqc_circuit.gate_macros[gate_name](*params, *args) 
+                subgates = self.dqc_circuit.gate_macros[gate_name](*params,
+                                                                   *args) 
                                                  #gate macros should be dict
                                                  #of funcs which return expanded
                                                  #macro, generated in InterpretGSect
@@ -501,7 +596,16 @@ class AstBlank(Ast2SimReadable):
                                   'in the parser is yet')
         
 class AstDeclaration_Qasm_2_0(Ast2SimReadable):
+    """Interprets document preamble
+    """
+    
     def make_sim_readable(self):
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            The updated DQC circuit.
+        """
         return self.dqc_circuit #do nothing. The error raised if this is not
              #the first line of uncommented code in the file should already 
              #have been raised by the parser and so this line should do nothing
@@ -509,7 +613,16 @@ class AstDeclaration_Qasm_2_0(Ast2SimReadable):
              
         
 class AstInclude(Ast2SimReadable): 
+    """Interprets openQASM 2.0 'include' statements
+    """
+    
     def make_sim_readable(self):
+        """
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+            The updated DQC circuit.
+        """
         #TO DO: exchange this all for 'return self.dqc_circuit' once the rest
         #of the code is ready to do without it. The include statement has 
         #already been parsed into 'g_sect' when creating the ast and this 
@@ -599,14 +712,27 @@ class AstInclude(Ast2SimReadable):
 
 
 class QasmTwoUniversalSet():
-    """The native gates for openQASM 2.0 (see 
-    https://arxiv.org/abs/1707.03429 )"""
+    """The native gates for openQASM 2.0.
+    
+    See https://arxiv.org/abs/1707.03429 )
+    
+    Attributes
+    ----------
+    gates : dict
+        Lookup table relating strings that reference gates to the relevant 
+        :class: `~netsquid.components.instructions.Instruction` or function
+        that outputs an 
+        :class: `~netsquid.components.instructions.Instruction`,
+        :class: `~netsquid.qubits.operators.Operator` pair.
+        
+    """
+    
     gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
 
 
 
 def create_wrapper_with_some_args_fixed(func, args2fix):
-    """
+    """Bakes in some arguments to a function,
     
     Parameters
     ----------
@@ -619,9 +745,8 @@ def create_wrapper_with_some_args_fixed(func, args2fix):
     Returns
     -------
     wrapper : function
-        A wrapper for func which fixes some of the arguments, so that the user
-        inputs a reduced set of arguments relative to func.
-
+        A wrapper for `func` which fixes some of the arguments, so that the 
+        user inputs a reduced set of arguments relative to func.
     """
     def wrapper(*unfixed_args, **kwargs):
         unfixed_arg_iter = iter(unfixed_args)
@@ -633,9 +758,29 @@ def create_wrapper_with_some_args_fixed(func, args2fix):
 
 
 class Ast2DqcCircuitTranslator():
-    def __init__(self, ast, native_gates=QasmTwoUniversalSet.gates):
+    """
+    Parameters
+    ----------
+    ast : nested dict
+        An abstract syntax tree created from a openQASM 2.0 file using 
+        :func: `~dqc_simulator.software.qasm2ast.qasm2ast`.
+    native_gates : dicts
+        A lookup table defining the gates
+        that should be treated as native gates for the hardware. The lookup 
+        table relates strings to the relevant 
+        :class: `~netsquid.components.instructions.Instruction` or function
+        that outputs an 
+        :class: `~netsquid.components.instructions.Instruction`,
+        :class: `~netsquid.qubits.operators.Operator` pair.
+    
+    """
+    
+    def __init__(self, ast, native_gates=None):
         self.ast = ast
-        self.native_gates = native_gates
+        if native_gates is None:
+            self.native_gates = QasmTwoUniversalSet.gates
+        else:
+            self.native_gates = native_gates
         
 # =============================================================================
 #     def _interpret_fixed_subgate_params(self, subgate, gate_params,
@@ -774,7 +919,7 @@ class Ast2DqcCircuitTranslator():
         """
         def macro_func(called_params, called_args):
             """
-            A gate macro
+            A gate macro.
 
             Parameters
             ----------
@@ -833,7 +978,7 @@ class Ast2DqcCircuitTranslator():
 
     def _interpret_ast_g_sect(self, dqc_circuit):
         """
-        filtering ast['g_sect'] to see if each gate is a macro or a native gate
+        Filtering ast['g_sect'] to see if each gate is a macro or a native gate
         and for macros, expanding them to be in terms of native gates only.
         """
 
@@ -1095,7 +1240,11 @@ class Ast2DqcCircuitTranslator():
                 
     def ast2dqc_circuit(self):
         """
+        Transferring info from an AST to a form the simulator can work with.
         
+        Converts an abstract syntax tree created using
+        :func: `~dqc_simulator.software.qasm2ast.qasm2ast` into a 
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` object.
     
         Parameters
         ----------
@@ -1107,7 +1256,10 @@ class Ast2DqcCircuitTranslator():
         native_gates : dict, optional
             The native gates for the physical hardware. The default is 
             QasmTwoUniversalSet.gates.
-    
+            
+        Returns
+        -------
+        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
         """
 
         #implementing functions from <exp> in openQASM 2.0's grammar:

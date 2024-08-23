@@ -1,24 +1,25 @@
-"""
-Derived from qasmast.py.
-Classes to implement qasm2 translation to python data structures
-Working from _Open Quantum Assembly Language_
-https://arxiv.org/pdf/1707.03429.pdf
-jack j. woehr jwoehr@softwoehr.com po box 51 golden co 80402-0051
-Copyright 2019 Jack Woehr jwoehr@softwoehr.com PO Box 51, Golden, CO 80402-0051.
-Apache-2.0 license -- See LICENSE which you should have received with this code.
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+# =============================================================================
+# Derived from qasmast.py.
+# Classes to implement qasm2 translation to python data structures
+# Working from _Open Quantum Assembly Language_
+# https://arxiv.org/pdf/1707.03429.pdf
+# jack j. woehr jwoehr@softwoehr.com po box 51 golden co 80402-0051
+# Copyright 2019 Jack Woehr jwoehr@softwoehr.com PO Box 51, Golden, CO 80402-0051.
+# Apache-2.0 license -- See LICENSE which you should have received with this code.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+# 
+# MODIFIED ON 10/10/2023 BY KENNY CAMPBELL elkmc@leeds.ac.uk. I have added the 
+# qasm2ast function to wrap some of the functionality in a way convenient for my 
+# use case, which is use of the abstract sytax tree (ast) within python rather 
+# than accessing it via the command line. The qasm2ast function is modified from
+# the do_it function in the nuqasm2/nuqasm2.py script, which has the same 
+# copyright info and licensing as above. This useage is in accordance 
+# with the apache 2.0 license available at
+# licenses_of_code_parts_of_package_are_derived_from/LICENSE4qasm2ast_base_code
+# or https://www.apache.org/licenses/LICENSE-2.0
+# =============================================================================
 
-MODIFIED ON 10/10/2023 BY KENNY CAMPBELL elkmc@leeds.ac.uk. I have added the 
-qasm2ast function to wrap some of the functionality in a way convenient for my 
-use case, which is use of the abstract sytax tree (ast) within python rather 
-than accessing it via the command line. The qasm2ast function is modified from
-the do_it function in the nuqasm2/nuqasm2.py script, which has the same 
-copyright info and licensing as above. This useage is in accordance 
-with the apache 2.0 license available at
-licenses_of_code_parts_of_package_are_derived_from/LICENSE4qasm2ast_base_code
-or https://www.apache.org/licenses/LICENSE-2.0
-"""
 from enum import Enum
 import re
 import datetime
@@ -484,17 +485,28 @@ class Gate_Operation():
 
 
 class Gate_Definition():
-    """User gate definition"""
+    """User gate definition.
+    
+    Parameters
+    ----------
+    source ... 
+        source code for definition
+    filenum ...
+        index of filepath in t_sect filepaths vector
+    linenum ... 
+        line number in source file
+    param_list ... 
+        vector of gate param names
+    ops_raw_list ...
+        vector of operations as expressed in source code
+    ops_list ...
+        vector of Gate_Operation (translated ops)
+    """
 
-    def __init__(self, source, filenum, linenum, param_list, ops_raw_list, ops_list):
+    def __init__(self, source, filenum, linenum, param_list, ops_raw_list, 
+                 ops_list):
         """
         Instance structures filled in by QasmTranslator
-        source ... source code for definition
-        filenum ... index of filepath in t_sect filepaths vector
-        linenum ... line number in source file
-        param_list ... vector of gate param names
-        ops_raw_list ... vector of operations as expressed in source code
-        ops_list ... vector of Gate_Operation (translated ops)
         """
         self.gate_definition = {
             'source': source,
@@ -511,13 +523,17 @@ class Gate_Definition():
 
 
 class Source_Body():
-    """Source code body with filenum of source file"""
+    """Source code body with filenum of source 
+    
+    Parameters
+    ----------
+    filenum ... index of filepath in t_sect filepaths vector
+    source ... source lines vector
+    """
 
     def __init__(self, filenum, source):
         """
         Instance structures filled in by QasmTranslator
-        filenum ... index of filepath in t_sect filepaths vector
-        source ... source lines vector
         """
         self.source_body = {
             'filenum': filenum,
@@ -585,12 +601,17 @@ class S_Sect():
 class Source_Frame():
     """
     A pushable frame defining the source we are processing
+    
+    Parameters
+    ----------
+    filenum
+      index of filepath in t_sect filepaths vector
+    qasmsourcelines 
+        source lines vector
     """
 
     def __init__(self, filenum, qasmsourcelines):
         """
-        filenum ... index of filepath in t_sect filepaths vector
-        qasmsourcelines ... source lines vector
         Init counter to 0
         """
         self.filenum = filenum

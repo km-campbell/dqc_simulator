@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Mar 31 12:37:47 2023
+Tools for the generation of a distributed quantum computer network.
 
-@author: kenny
+These tools are designed to be controlled using software from 
+:mod: `~dqc_simulator.software.dqc_control`
 """
 
 import warnings
@@ -21,8 +22,7 @@ from dqc_simulator.hardware.quantum_processors import create_processor
 
 
 class EntanglingConnection(Connection):
-    """Designed to connect a node containing a source of entangled qubits to a 
-    QPU node
+    """Intended to connnect entanglement source and QPU.
 
     Parameters
     ----------
@@ -36,8 +36,7 @@ class EntanglingConnection(Connection):
         Letter to go in port names, to indicate which node is being connected
         to the source node
     name : str, optional
-        Name of this connection.
-
+        Name of this connection. Default is entangling connection.
     """
 
     def __init__(self, delay,
@@ -80,9 +79,12 @@ def create_abstract_entangling_link(network, node_a, node_b,
                                     state4distribution, 
                                     node_distance, 
                                     ent_dist_rate):
-    """ Sets up an abstract entangling link between QPUs. Designed to work with
-        AbstractFromPhotonsEntangleProtocol.
-    Input:
+    """ Sets up an abstract entangling link between QPUs. 
+    
+    Designed to work with AbstractFromPhotonsEntangleProtocol.
+    
+    Parameters
+    ----------
     network : netsquid.nodes.network.Network
         The entire network.
     node_a :  object created using netsquid.nodes.Node class
@@ -98,8 +100,8 @@ def create_abstract_entangling_link(network, node_a, node_b,
     ent_dist_rate : float, optional
         The rate of entanglement distribution [Hz].
         
-    Notes: 
-        
+    Notes 
+    -----
     This abstracts from the details of photon generation by treating flying
     and communication qubits as the same thing. Restraints on the number of 
     communication qubits can be enforced at the QPU nodes but entangled 
@@ -184,7 +186,9 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                  want_entangling_link=True,
                  create_entangling_link=None):
     """ Sets up a link between QPUs.
-    Input:
+    
+    Parameters
+    ----------
     network : netsquid.nodes.network.Network
         The entire network.
     node_a :  object created using netsquid.nodes.Node class
@@ -246,8 +250,9 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                                         ent_dist_rate)
 
 class QpuNode(Node):
-    """Class for creating QPU nodes (QPU including the classical control for 
-        that QPU)
+    """Creates QPU nodes.
+    
+    The QPU nodes have a QPU and all classical control functionality.
     """
     def __init__(self, name, comm_qubit_positions=(0, 1),
                  comm_qubits_free=None,
@@ -278,16 +283,18 @@ def create_dqc_network(
                 custom_qprocessor_func=None,
                 name="linear network",
                 **kwargs4qproc):
-    """A Network with nodes "Alice" and "Bob",
-    connected by an entangling connection and a classical connection.
+    """Creates a network suitable for distributed quantum computing
     
-    This class sets up the physical components of the quantum network. The default
-    topology of the network is a linear topology of the form
+    Creates a network with QPUs node_0 to node_nn
+    connected by entangling connections and/or classical connections.
+    In other words this function sets up the physical components of the
+    distributed quantum computer. The
+    default topology of the network is a linear topology of the form
     node_1 <--> node_2 <--> node_3 <--> ...
     If not manually specified with the optional node_list argument, all nodes
     will be identical.
 
-    Input
+    Parameters
     ----------
     *args4qproc : 
         The arguments for the custom_qprocessor_func specified. By default,
@@ -336,6 +343,9 @@ def create_dqc_network(
                 dephase_rate : float, optional
                     Dephasing rate of physical measurement instruction.
 
+    Returns
+    -------
+    :class: `~netsquid.components.qprocessor.QuantumProcessor`
 
     """
     

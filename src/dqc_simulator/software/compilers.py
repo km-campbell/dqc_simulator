@@ -1,8 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Sep 20 15:01:31 2023
+Distributed quantum computing compilers.
 
-@author: kenny
+These compilers take a list of gate tuples, and output a time-sliced dictionary
+of what happens on each individual QPU. 
+
+Notes
+-----
+Some compilation is also done in dqc_control.py. There common 
+subroutines used by Cat-comm and TP-comm are broken down into individual gates
+and run on individual nodes. The role of these compilers is to break a 
+monolithic quantum circuit into the lower level commands used in
+:mod: `~dqc_simulator.software.dqc_control`.
+That said, very general compilers can be defined here. The main limitations are
+that they use only intraprocessor quantum gates and the interprocessor 
+subroutines involved in Cat and TP-comm (at least for now) and that the backend
+defined in :mod: `~dqc_simulator.software.dqc_control` may not be able to cope
+with carrying out multiple inter-QPU gates on a given node within the same
+time-slice. Each time slice is intended to be 
+greedily compiled and executed by functions in 
+:mod: `~dqc_simulator.software.dqc_control` but near-arbitrary compilation can
+be done by careful choice of the time slices. 
 """
 
 #Note: some compilation is also done in dqc_control.py. There common 
@@ -22,7 +40,17 @@ from netsquid.components import instructions as instr
 
 
 
-class NodeOps():
+class QpuOps():
+    """
+    Data structure for tracking the operations of all QPUs within a DQC.
+    
+    Attributes
+    ----------
+    ops : dict
+        The operations to carry out on each QPU in a DQC.
+        
+    """
+    
     def __init__(self):
         self.ops = {}
 # =============================================================================
@@ -193,6 +221,7 @@ def find_qubit_node_pairs(partitioned_gates):
         indices acted on, node names acted on, and (for remote gates) a string 
         indicating the scheme (here this should be some placeholder string
         as the scheme is not yet decided).
+        
     Returns
     -------
     qubit_node_pairs : dict
@@ -352,6 +381,7 @@ def shared_qubit(gate0, gate1):
 
 def find_consecutive_gate(partitioned_gates, gate, gate_position):
     """
+    
     Finds the next gate to the gate from gateNindex which has shared qubits.
     Otherwise, the next gate in partitioned gates may be completely unrelated
     to the gate of interest with no need to maintain their ordering. They 
@@ -470,46 +500,46 @@ def sort_greedily_by_node_and_time(partitioned_gates):
     (rows in output array). Initialisation of qubits must be specified as 
     an instruction in the partitioned_gates input.
     
-    INPUT: 
-        partitioned_gates:  list of tuples
-            The gates in the entire circuit. The tuples should be of the form:
-            1) single-qubit gate: (gate_instr, qubit, node_name)
-            2) two-qubit gate: (list of instructions or gate_instruction or
-                                instruction_tuple if local,
-                                qubit0, node0_name, qubit1, node1_name, scheme)
-                                #can later extend this to multi-qubit gates
-                                #keeping scheme as last element
-                                list of instructions: list
-                                    list of same form as partitioned_gates containing
-                                    the local gates to be conducted as part of the
-                                    remote gate. Ie, for remote-cnot this would
-                                    contain the cnot (but not the gates used for
-                                     bsm or correction).Note if this is given as
-                                    empty list and scheme = "tp" then it will
-                                    just do a teleportation
-                                gate_instruction : instance ofnetsquid.components.instructions.Instruction
-                                    The gate instruction for the target gate
-                                instruction_tuple : tuple 
-                                    Tuple of form (gate_instruction, op), where
-                                    op is the operatution used to perform the 
-                                    gate. This form is useful if you want to give
-                                    several gates the same
-                                    netsquid.components.qprocessor.PhysicalInstruction
-                                qubit{ii}: int
-                                    The qubit index
-                                node_name: str
-                                The name of the relevant node
-                                scheme: str, optional 
-                                    Only needed for remote gates
+    Parameters
+    ----------
+    partitioned_gates:  list of tuples
+        The gates in the entire circuit. The tuples should be of the form:
+        1) single-qubit gate: (gate_instr, qubit, node_name)
+        2) two-qubit gate: (list of instructions or gate_instruction or
+                            instruction_tuple if local,
+                            qubit0, node0_name, qubit1, node1_name, scheme)
+                            #can later extend this to multi-qubit gates
+                            #keeping scheme as last element
+                            list of instructions: list
+                                list of same form as partitioned_gates containing
+                                the local gates to be conducted as part of the
+                                remote gate. Ie, for remote-cnot this would
+                                contain the cnot (but not the gates used for
+                                 bsm or correction).Note if this is given as
+                                empty list and scheme = "tp" then it will
+                                just do a teleportation
+                            gate_instruction : instance ofnetsquid.components.instructions.Instruction
+                                The gate instruction for the target gate
+                            instruction_tuple : tuple 
+                                Tuple of form (gate_instruction, op), where
+                                op is the operatution used to perform the 
+                                gate. This form is useful if you want to give
+                                several gates the same
+                                netsquid.components.qprocessor.PhysicalInstruction
+                            qubit{ii}: int
+                                The qubit index
+                            node_name: str
+                            The name of the relevant node
+                            scheme: str, optional 
+                                Only needed for remote gates
 
-                            
-
-    OUTPUT: 
-        node_op_dict: dict 
-            Dictionary with term for each node which is an list of different 
-            time slices (each time slice is a list within the list)
+    Returns
+    -------
+    dict 
+        Dictionary with term for each node which is an list of different 
+        time slices (each time slice is a list within the list)
     """
-    node_ops = NodeOps()
+    qpu_ops = QpuOps()
 
     for gate_tuple in partitioned_gates:
         if len(gate_tuple) == 3: #if single-qubit gate:
@@ -517,7 +547,7 @@ def sort_greedily_by_node_and_time(partitioned_gates):
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
             op = (gate_instr, qubit_index)
-            node_ops.add_op(node_name, op)
+            qpu_ops.add_op(node_name, op)
         elif len(gate_tuple) > 3: #if multi-qubit gate:
             qubit_index0 = gate_tuple[1]
             node0_name = gate_tuple[2]
@@ -527,7 +557,7 @@ def sort_greedily_by_node_and_time(partitioned_gates):
                 gate_instr = gate_tuple[0]
                 node_name = node0_name
                 op = (gate_instr, qubit_index0, qubit_index1)
-                node_ops.add_op(node_name, op)
+                qpu_ops.add_op(node_name, op)
             else: #if remote gate:
                 scheme = gate_tuple[-1]
                 gate_instructions = gate_tuple[0]
@@ -539,17 +569,17 @@ def sort_greedily_by_node_and_time(partitioned_gates):
                     #HandleOneNodeProtocol in
                     #dqc_simulator.softwaredqc_control.py):
                     gate_instructions = [(gate_instructions, -1, qubit_index1)]
-                if node0_name not in node_ops.ops: 
-                    node_ops.add_empty_node_entry(node0_name)
-                if node1_name not in node_ops.ops: 
-                    node_ops.add_empty_node_entry(node1_name)
+                if node0_name not in qpu_ops.ops: 
+                    qpu_ops.add_empty_node_entry(node0_name)
+                if node1_name not in qpu_ops.ops: 
+                    qpu_ops.add_empty_node_entry(node1_name)
                     
-                node_ops.make_num_time_slices_match(node0_name, node1_name)
-                node_ops.apply_remote_gate(scheme, gate_instructions, 
+                qpu_ops.make_num_time_slices_match(node0_name, node1_name)
+                qpu_ops.apply_remote_gate(scheme, gate_instructions, 
                                            qubit_index0, qubit_index1, 
                                            node0_name, node1_name)
-    node_ops.remove_empty_trailing_time_slices()
-    return node_ops.ops
+    qpu_ops.remove_empty_trailing_time_slices()
+    return qpu_ops.ops
 
 
 

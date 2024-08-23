@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 19 09:08:30 2023
+Tools for converting openQASM 2.0 files into a more readily compileable form.
 
-@author: kenny
+Converts openQASM 2.0 files into a :class:
+`~dqc_simulator.software.dqc_circuit.DqcCircuit`.
 """
 
 from netsquid.components import instructions as instr
@@ -13,6 +14,30 @@ from dqc_simulator.software.partitioner import bisect_circuit
 
 def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
                                                 include_path='.'):
+    """
+    Converts an openQASM 2.0 file into a bipartioned compileable format.
+    
+    Converts an openQASM 2.0 file describing a monolithic quantum circuit 
+    into a :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` describing
+    a bipartitioned (right down the middle) quantum circuit.
+
+    Parameters
+    ----------
+    filepath : str
+        Filepath to an openQASM 2.0 file describing a monolithic quantum
+        circuit.
+    scheme : str
+        The scheme to use for all inter-QPU (AKA remote) gates. Allowable 
+        schemes are defined by the compiler.
+    include_path : str, optional
+        Path to include in file search. The default is '.'.
+
+    Returns
+    -------
+    dqc_circuit : :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        A biparitioned distributed quantum circuit.
+    """
+    
     ast = qasm2ast(filepath, include_path=include_path)
     dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
     bisect_circuit(dqc_circuit)
@@ -27,6 +52,27 @@ def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
     return dqc_circuit
 
 def preprocess_qasm_to_compilable_monolithic(filepath, include_path='.'):
+    """
+    Converts an openQASM 2.0 file into an easier to use format.
+    
+    Converts an openQASM 2.0 file representing a monolithic quantum circuit
+    into :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` describing
+    the same thing.
+
+    Parameters
+    ----------
+    filepath : str
+        The filepath to an openQASM 2.0 file describing a monolithic quantum
+        circuit.
+    include_path : str, optional
+        Path to include in file search. The default is '.'.
+
+    Returns
+    -------
+    dqc_circuit : :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        A monolithic quantum circuit.
+
+    """
     ast = qasm2ast(filepath, include_path=include_path)
     dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
     #TO DO: add change node name and qubit indices of dqc_circuit.ops

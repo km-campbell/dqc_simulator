@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Oct 17 15:06:00 2023
-
-@author: kenny
+Tools for partitioning a quantum circuit between QPUs.
 """
 
 import abc
@@ -11,12 +9,21 @@ import math
 
 def bisect_circuit(dqc_circuit, comm_qubits_per_node=2):
     """
-    Bisects a circuit into two nodes, node_0 and node_1. For circuits with odd
+    Bisects a circuit into two QPUs, node_0 and node_1.
+    
+    For circuits with odd
     numbers of qubits, node_0 will be given the extra qubit. It also adds,
     communication qubits to each node. It is assumed that all indices of the 
     qubits in the input dqc_circuit are intended to be data qubits (so if the
     input circuit is already partitioned in some way, then this function is
     not appropriate to provide an additional bisection.)
+    
+    Parameters
+    ----------
+    dqc_circuit : :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        A monolithic quantum circuit.
+    comm_qubits_per_node : int
+        The number of qubits each QPU node has
     """
     #helper functions:
     def _assign_qubit_to_node(qubit_index, qreg_name,

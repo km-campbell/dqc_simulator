@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue May  9 15:16:05 2023
 
-@author: kenny
+# =============================================================================
+# Created on Tue May  9 15:16:05 2023
+# 
+# @author: kenny
+# =============================================================================
+"""Useful circuit identity macros.
 """
 
 from netsquid.components import instructions as instr
@@ -10,17 +13,47 @@ from netsquid.components import instructions as instr
 from dqc_simulator.qlib.gates import INSTR_T_DAGGER
 
 
-def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, ctrl_qubit2_index,
-                                   ctrl_node_name2, target_qubit_index, target_node_name, scheme="cat"):
+def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, 
+                                   ctrl_qubit2_index,
+                                   ctrl_node_name2, target_qubit_index, 
+                                   target_node_name, scheme="cat"):
     """
-    The decomposition of the toffoli gate that appears in 
-    https://quantumcomputing.stackexchange.com/questions/10315/decompose-toffoli-gate-with-minimum-cost-for-ibm-quantum-compute
-    and is used by ibm composer.
-    Lower circuit depths can be obtained with the use of ancillae qubits or 
-    approximation
-     
-    OUTPUT: list of one and two-qubit gate-tuples needed to implement the toffoli 
-    gate 
+    A macro for the decomposition of a toffoli, or CCX, gate in terms U, CX, H 
+    and T gates.
+    
+    For direct use by protocols in 
+    :mod: `~dqc_simulator.software.dqc_control`.
+
+    Parameters
+    ----------
+    ctrl_qubit1_index, ctrl_qubit_2_index : int
+        The index of the first and second control qubits of the toffoli gate
+    ctrl_node_name1, ctrl_node_name2 : str
+        The names of the QPU nodes upon which the first and second control 
+        qubits of the toffoli gate reside.
+    target_qubit_index : int
+        The index of the target qubit for the toffoli gate
+    target_node_name : str
+        DESCRIPTION.
+    scheme : str, optional
+        The remote gate scheme to use. The default is "cat" (referring to 
+        cat-comm (AKA telegate).
+
+    Returns
+    -------
+    sub_ops : list of tuples
+        The gates constituting the decomposed toffoli gate.
+        
+    Notes
+    -----
+    This decomposition of the toffoli gate is as specified in the IBM 
+    Quantum Experience standard header for openQASM 2.0 [1]_.
+    
+    References
+    ----------
+    ..[1] A. W. Cross, L. S. Bishop, J. A. Smolin, and J. M. Gambetta, Open 
+        Quantum Assembly Language, arXiv:1707.03429 [quant-ph].
+
     """
     #INSTR_T_dagger defined in my network.py module
     sub_ops = [(instr.INSTR_H, target_qubit_index, target_node_name),
@@ -46,6 +79,10 @@ def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1, ctrl_qubi
                 sub_ops[ii] = (*element, scheme)
     return sub_ops
 
+#TO DO: move the following to its own module?
+#I think that it probably violates the principle that if a module should only
+#change for one reason. See
+#https://medium.com/@aserdargun/s-o-l-i-d-design-principles-in-python-e632230d6bbe
 
 #For QASM circuits:
 
@@ -122,13 +159,56 @@ minus = ''
 
 #want list of dicts with entries 'subgate_name', 'subgate_params', 'subgate_args'
 
+#The following macros use poor variable names like a, b, c, etc. This is 
+#because they were being manually copied by hand from the openQASM 2.0 
+#specification and it was easier to avoid mistakes when using the same notation
+#they did
+
 def cz_macro(a, b):
+    """
+    Macro for CZ gate in terms of H and CX.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     h_gate = {'name' : 'h', 'params' : None, 'args' : [b]}
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
     subgates = [h_gate, cx_gate, h_gate]
     return subgates
     
 def cy_macro(a, b):
+    """
+    Macro for CY gate in terms of CX, S and S^dagger.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name' : 'sdg', 'params' : None, 'args' : [b]},
                 {'name' : 'cx', 'params' : None, 'args' : [a, b]},
                 {'name' : 's', 'params' : None, 'args' : [b]}]
@@ -136,7 +216,7 @@ def cy_macro(a, b):
 
 def swap_macro(parent_arg1, parent_arg2):
     """
-    Macro for swap gate in terms of CNOT gates.
+    Macro for swap gate in terms of CX gates.
 
     Parameters
     ----------
@@ -159,6 +239,25 @@ def swap_macro(parent_arg1, parent_arg2):
     return [subgate1, subgate2, subgate1]
 
 def ch_macro(a, b):
+    """
+    Macro for CH gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name': 'h', 'params': None, 'args' : [b]},
                 {'name' : 'sdg', 'params' : None, 'args' : [b]},
                 {'name' : 'cx', 'params': None, 'args' : [a,b]},
@@ -188,7 +287,8 @@ def ccx_macro(a, b, c):
 
     Returns
     -------
-    None.
+    subgates : list of dicts
+        The gates comprising the macro.
 
     """
     cx_common_entries = {'name' : 'cx', 'params' : None}
@@ -210,11 +310,52 @@ def ccx_macro(a, b, c):
     return subgates 
     
 def cswap_macro(a, b, c):
+    """
+    Macro for cswap gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    a : int
+        Control qubit index
+    b : int
+        Index of first qubit to be swapped
+    c : int
+        Index of second qubit to be swapped
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [c, b]}
     subgates = [cx_gate, *ccx_macro(a, b, c), cx_gate]
     return subgates
 
 def crx_macro(lambda_var, a, b):
+    """    
+    Macro for CRX gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    lambda_var : float
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name' : 'u1', 'params' : ['pi/2'], 'args' : [b]},
                 {'name' : 'cx', 'params' : None, 'args' : [a,b]},
                 {'name' : 'u3', 
@@ -227,6 +368,26 @@ def crx_macro(lambda_var, a, b):
     return subgates
 
 def cry_macro(lambda_var, a, b):
+    """    
+    Macro for CRY gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    lambda_var : float
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'ry', 'params' : [lambda_var + over2], 
                  'args' : [b]},
@@ -237,6 +398,26 @@ def cry_macro(lambda_var, a, b):
     return subgates
 
 def crz_macro(lambda_var, a, b):
+    """    
+    Macro for CRX gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    lambda_var : float
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'rz', 'params' : [lambda_var + over2], 
                  'args' : [b]},
@@ -247,6 +428,26 @@ def crz_macro(lambda_var, a, b):
     return subgates
     
 def cu1_macro(lambda_var, a, b):
+    """    
+    Macro for CU1 gate defined in IBM quantum experience standard header.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    lambda_var : float
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'u1', 'params' : [lambda_var + over2], 
                  'args' : [b]},
@@ -259,6 +460,26 @@ def cu1_macro(lambda_var, a, b):
     return subgates
     
 def cp_macro(lambda_var, a, b):
+    """    
+    Macro for CP gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    lambda_var : float
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'p', 'params' : [lambda_var + over2], 
                  'args' : [b]},
@@ -271,6 +492,27 @@ def cp_macro(lambda_var, a, b):
     return subgates
     
 def cu3_macro(theta, phi, lambda_var, c, t):
+    """    
+    Macro for CU3 gate defined by IBM standard header.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    theta : float
+    lambda_var : float
+    c : int
+        Control qubit index
+    t : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name' : 'u1', 
                  'params' : [lpar + lambda_var + plus + phi + ')/2'],
                  'args' : [c]},
@@ -289,11 +531,52 @@ def cu3_macro(theta, phi, lambda_var, c, t):
     return subgates
 
 def csx_macro(a, b):
+    """    
+    Macro for CSX gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    a : int
+        Control qubit index
+    b : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     h_gate = {'name' : 'h', 'params' : None, 'args' : [b]}
     subgates = [h_gate, *cu1_macro('pi/2', a, b), h_gate]
     return subgates
 
 def cu_macro(theta, phi, lambda_var, gamma, c, t):
+    """    
+    Macro for CU gate.
+    
+    For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
+    Further compilation will be needed before the output can be interpretted
+    by the simulator itself.
+    
+    Parameters
+    ----------
+    theta : float
+    phi : float
+    lambda_var : float
+    c : int
+        Control qubit index
+    t : int
+        Target qubit index
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name' : 'p', 'params' : [gamma], 'args' : [c]},
                 {'name' : 'p', 
                  'params' : [lpar + lambda_var + plus + phi + rpar + over2],

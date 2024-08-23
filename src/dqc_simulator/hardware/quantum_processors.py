@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Aug 14 11:02:43 2023
-
-@author: kenny
+Functions for creating specific QPUs.
 """
 
-import numpy as np
 
 from netsquid.components import instructions as instr
 from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
 from netsquid.components.models.qerrormodels import (DepolarNoiseModel, 
                                                      DephaseNoiseModel)
-from netsquid.components.models.delaymodels import (FibreDelayModel,
-                                                    FixedDelayModel)
 
 from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
@@ -35,10 +30,7 @@ from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
 
 def create_processor(alpha=1, beta=0, depolar_rate=0, dephase_rate=0, 
                      num_positions=7, name="quantum_processor"):
-    """Factory to create a quantum processor for each end node. The gate 
-    durations are too small to be physical. This processor was used for cases
-    where gate duration (as long as it was finite to avoid processor busy
-    errors) did not matter.
+    """Factory to create a quite artificial quantum processor. 
 
     Has seven memory positions and the physical instructions necessary
     for remote gates using single and two-qubit local gates.
@@ -54,10 +46,18 @@ def create_processor(alpha=1, beta=0, depolar_rate=0, dephase_rate=0,
     -------
     :class:`~netsquid.components.qprocessor.QuantumProcessor`
         A quantum processor to specification.
-
+        
+    Notes
+    -----
+    The gate durations are too small to be physical. This processor was used
+    for cases where gate duration (as long as it was finite to avoid a
+    :class: `~netsquid.components.qprocessor.ProcessorBusyError`) did not
+    matter.
     """
-    measure_noise_model = DephaseNoiseModel(dephase_rate=dephase_rate,
-                                            time_independent=True)
+# =============================================================================
+#     measure_noise_model = DephaseNoiseModel(dephase_rate=dephase_rate,
+#                                             time_independent=True)
+# =============================================================================
     x_gate_duration = 1
     physical_instructions = [
         PhysicalInstruction(instr.INSTR_INIT, duration=3, parallel=False,
@@ -109,33 +109,48 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations(
                                          alpha=1, beta=0,
                                          num_positions=20,
                                          num_comm_qubits=2):
-    
     """
-    Uses universal gate sets from Nielsen Chuang. Analytical noise is used.
-    Gate durations are taken from averages for single and two-qubit gates on
-    IonQ's Aria machine.
+    Creates quantum processor loosely based on ionQ Aria but with different
+    native gates.
     
     Parameters
     ----------
     p_depolar_error_cnot : float
         The probability of a depolarisation error after each CNOT gate.
-    
-    alpha : float, optional
-        Setting for the artificial convenience gate INSTR_ARB_GEN, which 
+    comm_qubit_depolar_rate : float
+        The depolarisation rate for communication qubits
+    data_qubit_depolar_rate : float
+        The depolarisation rate for data qubits
+    single_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 135 * 10**3.
+    two_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**3.
+    measurement_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**4.
+    alpha, beta : float, optional
+        Settings for the artificial convenience gate INSTR_ARB_GEN, which 
         initialises the state of a qubit as alpha |0> + beta |1>. The default 
-        is 1.
-    beta : float, optional
-        Setting for the artificial convenience gate INSTR_ARB_GEN, which 
-        initialises the state of a qubit as alpha |0> + beta |1>. The default
-        is 0.
+        is 1 for alpha and 0 for beta.
+    num_positions : TYPE, optional
+        DESCRIPTION. The default is 20.
+    num_comm_qubits : TYPE, optional
+        DESCRIPTION. The default is 2.
 
     Returns
     -------
-    qprocessor : netsquid.components.qprocessor
-        .
-
-    """
+    qprocessor : :class: `netsquid.components.qprocessor.QuantumProcessor
     
+    Notes
+    -----
+    Uses universal gate sets from Ref. [1]_. Analytical noise is used.
+    Gate durations are taken from averages for single and two-qubit gates on
+    IonQ's Aria machine.
+    
+    References
+    ----------
+    .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
+        Information, 10th ed. (Cambridge University Press, 2010).
+    """
     num_data_qubits = num_positions - num_comm_qubits
     cnot_depolar_model = AnalyticalDepolarisationModel(
         p_error=p_depolar_error_cnot, time_independent=True)
@@ -217,6 +232,48 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                          alpha=1, beta=0,
                                          num_positions=20,
                                          num_comm_qubits=2):
+    """
+    Creates quantum processor loosely based on ionQ Aria but with different
+    native gates.
+    
+    Parameters
+    ----------
+    p_depolar_error_cnot : float
+        The probability of a depolarisation error after each CNOT gate.
+    comm_qubit_depolar_rate : float
+        The depolarisation rate for communication qubits
+    data_qubit_depolar_rate : float
+        The depolarisation rate for data qubits
+    single_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 135 * 10**3.
+    two_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**3.
+    measurement_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**4.
+    alpha, beta : float, optional
+        Settings for the artificial convenience gate INSTR_ARB_GEN, which 
+        initialises the state of a qubit as alpha |0> + beta |1>. The default 
+        is 1 for alpha and 0 for beta.
+    num_positions : TYPE, optional
+        DESCRIPTION. The default is 20.
+    num_comm_qubits : TYPE, optional
+        DESCRIPTION. The default is 2.
+
+    Returns
+    -------
+    qprocessor : :class: `netsquid.components.qprocessor.QuantumProcessor
+    
+    Notes
+    -----
+    Uses universal gate sets from Ref. [1]_. Analytical noise is used.
+    Gate durations are taken from averages for single and two-qubit gates on
+    IonQ's Aria machine.
+    
+    References
+    ----------
+    .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
+        Information, 10th ed. (Cambridge University Press, 2010).
+    """
     num_data_qubits = num_positions - num_comm_qubits
     cnot_depolar_model = AnalyticalDepolarisationModel(
         p_error=p_depolar_error_cnot, time_independent=True)
@@ -303,6 +360,48 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                          alpha=1, beta=0,
                                          num_positions=20,
                                          num_comm_qubits=2):
+    """
+    Creates quantum processor loosely based on ionQ Aria but with different
+    native gates.
+    
+    Parameters
+    ----------
+    p_depolar_error_cnot : float
+        The probability of a depolarisation error after each CNOT gate.
+    comm_qubit_depolar_rate : float
+        The depolarisation rate for communication qubits
+    data_qubit_depolar_rate : float
+        The depolarisation rate for data qubits
+    single_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 135 * 10**3.
+    two_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**3.
+    measurement_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**4.
+    alpha, beta : float, optional
+        Settings for the artificial convenience gate INSTR_ARB_GEN, which 
+        initialises the state of a qubit as alpha |0> + beta |1>. The default 
+        is 1 for alpha and 0 for beta.
+    num_positions : TYPE, optional
+        DESCRIPTION. The default is 20.
+    num_comm_qubits : TYPE, optional
+        DESCRIPTION. The default is 2.
+
+    Returns
+    -------
+    qprocessor : :class: `netsquid.components.qprocessor.QuantumProcessor
+    
+    Notes
+    -----
+    Uses universal gate sets from Ref. [1]_. Numerical noise is used.
+    Gate durations are taken from averages for single and two-qubit gates on
+    IonQ's Aria machine.
+    
+    References
+    ----------
+    .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
+        Information, 10th ed. (Cambridge University Press, 2010).
+    """
     num_data_qubits = num_positions - num_comm_qubits
     cnot_depolar_model = DepolarNoiseModel(p_depolar_error_cnot, 
                                            time_independent=True)
@@ -375,22 +474,3 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                           (instr.INSTR_CNOT, (0, 1))],
                                           topology=None)
     return qprocessor
-
-
-
-
-
-
-
-# =============================================================================
-# def create_qproc_with_numerical_noise_ionQ_aria_durations(
-#                                          p_depolar_error_cnot,
-#                                          comm_qubit_depolar_rate,
-#                                          data_qubit_depolar_rate,
-#                                          single_qubit_gate_time=135 * 10**3,
-#                                          two_qubit_gate_time=600 * 10**3,
-#                                          measurement_time=300 * 10**3,
-#                                          alpha=1, beta=0):
-#     #NEED TO FINISH
-#     
-# =============================================================================
