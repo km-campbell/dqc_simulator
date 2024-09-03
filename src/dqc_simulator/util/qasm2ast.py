@@ -1430,9 +1430,9 @@ def qasm2ast(filepath, name='main',
     show_gate_decls : bool, optional
         Whether to include gate gate declerations in AST output. The default is 
         False.
-        include_path : str, optional
-            Path to include in file search. Default value is '.' (current 
-            working directory).
+    include_path : str, optional
+        Path to include in file search. Default value is '.' (current 
+        working directory).
 
     Returns
     -------
