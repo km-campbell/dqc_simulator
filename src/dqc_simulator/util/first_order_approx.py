@@ -1,20 +1,28 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Jan 15 12:22:33 2024
 
-@author: kenny
+# =============================================================================
+# Created on Mon Jan 15 12:22:33 2024
+# 
+# @author: kenny
+# =============================================================================
+"""
+Functions for computing the first-order approx to the output fidelity.
 """
 
 def f_out_with_ent_error_first_order(num_epr_pairs, F_werner):
     """
-    The first-order approximation to the error caused by the distribution of 
-    entangled pairs.
+    The first-order approximation to the output fidelity.
+    
+    Output fidelity in the presence of entanglement error only. Assumes linear 
+    increase to entanglement error with number of imperfect EPR pairs 
+    distributed.
 
     Parameters
     ----------
     num_epr_pairs : int
         The number of entangled pairs in the circuit. They would be EPR pairs
-        ideally but in reality the Werner state is distributed
+        in the |Phi^+> stateideally but in reality the Werner state is 
+        distributed.
     F_werner : float
         The Werner state fidelity of the distributed imperfect entangled pairs 
         (assumed to be in the Werner state).
@@ -23,7 +31,6 @@ def f_out_with_ent_error_first_order(num_epr_pairs, F_werner):
     -------
     f_out : float
         The fidelity at the output of the circuit.
-        
     """
     error = 1 - F_werner
     f_out = 1 - num_epr_pairs * error 
@@ -32,6 +39,8 @@ def f_out_with_ent_error_first_order(num_epr_pairs, F_werner):
 
 def f_out_with_exponentially_growing_ent_error(num_epr_pairs, F_werner):
     """
+    Simple approximation to the output fidelity.
+    
     A simple approximation to the error caused by the distribution of 
     entangled pairs often made in the literature. Here, the output fidelity 
     is assumed to decrease exponentially with the number of EPR pairs but
@@ -50,7 +59,6 @@ def f_out_with_exponentially_growing_ent_error(num_epr_pairs, F_werner):
     -------
     f_out : float
         The fidelity at the output of the circuit.
-        
     """
     error = 1 - F_werner
     f_out = (1 - error)**num_epr_pairs
@@ -58,6 +66,8 @@ def f_out_with_exponentially_growing_ent_error(num_epr_pairs, F_werner):
 
 def f_out_with_cnot_depol_first_order(num_cnots, p_error):
     """
+    Simple approximation to the output fidelity.
+    
     The first-order approximation to the error caused by depolarisation due to
     imperfect local gates.
 
@@ -73,7 +83,6 @@ def f_out_with_cnot_depol_first_order(num_cnots, p_error):
     -------
     f_out : float
         The fidelity at the output of the circuit.
-        
     """
     f_out = 1 - num_cnots * p_error
     #is it also worth considering:
@@ -82,6 +91,8 @@ def f_out_with_cnot_depol_first_order(num_cnots, p_error):
 
 def f_out_with_exponentially_growing_cnot_depol(num_cnots, p_error):
     """
+    Simple approximation to the output fidelity.
+    
     A common approximation to the error caused by depolarisation due to
     imperfect local gates in the literature. Here, it is assumed the gate error
     grows exponentially with the number of CNOT gates but no fitting is done
@@ -99,7 +110,6 @@ def f_out_with_exponentially_growing_cnot_depol(num_cnots, p_error):
     -------
     f_out : float
         The fidelity at the output of the circuit.
-        
     """
     f_out = (1 - p_error)**num_cnots
     return f_out
@@ -114,6 +124,8 @@ def f_out_with_mem_depol_first_order(depolar_rate, num_single_qubit_gates,
                                      ent_distr_time=1/182,
                                      node_distance=2):
     """
+    A simple approximation to the output fidelity.
+    
     The first-order approximation to the error caused by time-dependent memory
     depolarisation.
     
@@ -149,7 +161,6 @@ def f_out_with_mem_depol_first_order(depolar_rate, num_single_qubit_gates,
     -------
     f_out : float
         The fidelity at the output of the circuit.
-
     """
     #NOTE: for the following runtime calculation I make the simplifying
     #assumption that the measurement dependent gates all occur (the worst case
@@ -182,6 +193,8 @@ def f_out_with_exponentially_growing_mem_depol(
                                      ent_distr_time=1/182,
                                      node_distance=2):
     """
+    A simple approximation to the output fidelity.
+    
     The first-order approximation to the error caused by time-dependent memory
     depolarisation.
     
@@ -217,7 +230,6 @@ def f_out_with_exponentially_growing_mem_depol(
     -------
     f_out : float
         The fidelity at the output of the circuit.
-
     """
     #NOTE: for the following runtime calculation I make the simplifying
     #assumption that the measurement dependent gates all occur (the worst case

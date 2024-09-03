@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+# =============================================================================
+# Created on Wed Jan 31 12:26:58 2024
+# 
+# @author: kenny
+# =============================================================================
 """
-Created on Wed Jan 31 12:26:58 2024
-
-@author: kenny
+Info on each remote gate scheme.
 """
 
 #The resource costs associated with implementing a single remote CX using 

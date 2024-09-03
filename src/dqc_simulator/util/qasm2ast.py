@@ -1,29 +1,39 @@
+# =============================================================================
+# Based on qasmast.py from nuqasm2 package
+# Working from _Open Quantum Assembly Language_
+# https://arxiv.org/pdf/1707.03429.pdf
+# jack j. woehr jwoehr@softwoehr.com po box 51 golden co 80402-0051
+# Copyright 2019 Jack Woehr jwoehr@softwoehr.com PO Box 51, Golden, CO 80402-0051.
+# Apache-2.0 license -- See LICENSE which you should have received with this code.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+# WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+# 
+# MODIFIED ON 10/10/2023 BY KENNY CAMPBELL elkmc@leeds.ac.uk. I have added the 
+# qasm2ast function to wrap some of the functionality in a way convenient for my 
+# use case, which is use of the abstract sytax tree (ast) within python rather 
+# than accessing it via the command line. The qasm2ast function is modified from
+# the do_it function in the nuqasm2/nuqasm2.py script, which has the same 
+# copyright info and licensing as above. This useage is in accordance 
+# with the apache 2.0 license available at
+# licenses_of_code_parts_of_package_are_derived_from/LICENSE4qasm2ast_base_code
+# or https://www.apache.org/licenses/LICENSE-2.0
+# =============================================================================
 """
-qasmast.py
-Classes to implement qasm2 translation to python data structures
-Working from _Open Quantum Assembly Language_
-https://arxiv.org/pdf/1707.03429.pdf
-jack j. woehr jwoehr@softwoehr.com po box 51 golden co 80402-0051
-Copyright 2019 Jack Woehr jwoehr@softwoehr.com PO Box 51, Golden, CO 80402-0051.
-Apache-2.0 license -- See LICENSE which you should have received with this code.
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-WITHOUT ANY EXPRESS OR IMPLIED WARRANTIES.
+Classes to implement qasm2 translation to python data structures.
 
-MODIFIED ON 10/10/2023 BY KENNY CAMPBELL elkmc@leeds.ac.uk. I have added the 
-qasm2ast function to wrap some of the functionality in a way convenient for my 
-use case, which is use of the abstract sytax tree (ast) within python rather 
-than accessing it via the command line. The qasm2ast function is modified from
-the do_it function in the nuqasm2/nuqasm2.py script, which has the same 
-copyright info and licensing as above. This useage is in accordance 
-with the apache 2.0 license available at
-licenses_of_code_parts_of_package_are_derived_from/LICENSE4qasm2ast_base_code
-or https://www.apache.org/licenses/LICENSE-2.0
+Notes
+-----
+This is a modified version of :mod: `~nuqasm2.qasmast`. The modifications are 
+mainly to convert from the command line interface used by 
+:mod: `~nuqasm2.qasmast` 
+to the typical python interface.
 """
+
+
 from enum import Enum
 import re
 import datetime
 import os
-import sys
 from functools import wraps
 
 
@@ -67,6 +77,7 @@ class QTRegEx():
 
 class ASTType(Enum):
     """Enums designating element types."""
+    
     UNKNOWN = 0
     COMMENT = 100
     QREG = 20
@@ -84,8 +95,17 @@ class ASTType(Enum):
     @classmethod
     def astType(cls, source):
         """
-        Return enum indicating line type
-        source is source code
+        The line types that can be handled by the parser.
+
+        Parameters
+        ----------
+        source : str
+            A line from the  source code (.qasm file) to be parsed.
+
+        Returns
+        -------
+        :class: `~enum.Enum`
+            Enumerator indicating line type.
         """
         if source == '':
             return cls.BLANK
@@ -124,8 +144,17 @@ class ASTType(Enum):
     @classmethod
     def ast_eol_comment(cls, source):
         """
-        Return an end-of-line comment if present or None if absent
-        source is source code
+        Handles comments in source code
+
+        Parameters
+        ----------
+        source : str
+            A line from the  source code (.qasm file) to be parsed.
+
+        Returns
+        -------
+        x : str
+            The commented line with leading and trailing spaces removed.
         """
         x = QTRegEx.EOL_COMMENT.search(source)
         if x:
@@ -135,12 +164,23 @@ class ASTType(Enum):
 
 class ASTElement():
     """
-    ASTElement
-    Superclass of all ASTElement classes
-    Knows linenum, ast_type, source, text
-    linenum is source array line number
-    source is source code
-    eol_comment is any end-of-line comment, if present
+    A base class for AST elements.
+    
+    Parameters
+    ----------
+    filenum : int
+        Index of filepath in :class: `T_Sect` 
+        filepaths vector.
+    linenum : int
+        The linenumber of the source code line being parsed.
+    ast_type : element of :class: `ASTType`
+    source : str
+        A line from the  source code (.qasm file) to be parsed.
+    save_element_source : bool
+        Whether to save the relevant unparsed source code line or not. Default
+        is False.
+    eol_comment : str or None
+        The end of line comment (if there is one).
     """
 
     def _eol_comment(f):
@@ -153,7 +193,8 @@ class ASTElement():
             return ast
         return wrapped
 
-    def __init__(self, filenum, linenum, ast_type, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, ast_type, source,
+                 save_element_source=False, eol_comment=None):
         """Instance from qasm source code and parse into key:value pairs"""
         self.filenum = filenum
         self.linenum = linenum
@@ -165,7 +206,8 @@ class ASTElement():
     @_eol_comment
     def out(self):
         """Returns self as a dict structure"""
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type,
+        return {'filenum': self.filenum, 'linenum': self.linenum, 
+                'type': self.ast_type,
                 'source': self.source if self.save_element_source else None}
 
     @staticmethod
@@ -179,68 +221,68 @@ class ASTElement():
 
 class ASTElementUnknown(ASTElement):
     """
-    ASTElementUnknown
     An unknown ASTElement, unimplemented or error
-    Knows linenum, ast_type, source
     """
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False,
+                 eol_comment=None):
         super(ASTElementUnknown, self).__init__(
-            filenum, linenum, ASTType.UNKNOWN, source, save_element_source, eol_comment)
+            filenum, linenum, ASTType.UNKNOWN, source, save_element_source, 
+            eol_comment)
 
 
 class ASTElementComment(ASTElement):
     """
-    ASTElementComment
     A programmer comment element
-    Knows linenum, ast_type, source
     """
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False,
+                 eol_comment=None):
         super(ASTElementComment, self).__init__(
-            filenum, linenum, ASTType.COMMENT, source, save_element_source, eol_comment)
+            filenum, linenum, ASTType.COMMENT, source, save_element_source,
+            eol_comment)
 
 
 class ASTElementDeclarationQasm2_0(ASTElement):
     """
-    ASTElementDeclarationQasm2_0
     Obligatory declaration
-    Knows linenum, ast_type, source
     """
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False, 
+                 eol_comment=None):
         super(ASTElementDeclarationQasm2_0, self).__init__(
-            filenum, linenum, ASTType.DECLARATION_QASM_2_0, source, save_element_source, eol_comment)
+            filenum, linenum, ASTType.DECLARATION_QASM_2_0, source,
+            save_element_source, eol_comment)
 
 
 class ASTElementInclude(ASTElement):
     """
-    ASTElementInclude
-    A programmer comment element
-    Knows linenum, ast_type, source, include
+    For handling openQASM2 include statements
     """
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False,
+                 eol_comment=None):
         super(ASTElementInclude, self).__init__(
-            filenum, linenum, ASTType.INCLUDE, source, save_element_source, eol_comment)
+            filenum, linenum, ASTType.INCLUDE, source, save_element_source, 
+            eol_comment)
         x = QTRegEx.INCLUDE_TARGET.search(source)
         self.include = x.group(1)
 
     @ASTElement._eol_comment
     def out(self):
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type,
+        return {'filenum': self.filenum, 'linenum': self.linenum, 
+                'type': self.ast_type,
                 'source': self.source if self.save_element_source else None,
                 'include': self.include}
 
 
 class ASTElementQReg(ASTElement):
     """
-    ASTElementQReg
-    A QReg declaration
-    Knows linenum, ast_type, source, qreg_name, qreg_num
+    For handling qreg declarations
     """
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False,
+                 eol_comment=None):
         super(ASTElementQReg, self).__init__(
             filenum, linenum, ASTType.QREG, source, save_element_source, eol_comment)
         x = QTRegEx.REG_DECL.match(self.source)
@@ -249,16 +291,15 @@ class ASTElementQReg(ASTElement):
 
     @ASTElement._eol_comment
     def out(self):
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type,
+        return {'filenum': self.filenum, 'linenum': self.linenum,
+                'type': self.ast_type,
                 'source': self.source if self.save_element_source else None,
                 'qreg_name': self.qreg_name, 'qreg_num': self.qreg_num}
 
 
 class ASTElementCReg(ASTElement):
     """
-    ASTElementCReg
-    A CReg declaration
-    Knows linenum, ast_type, source, creg_name, creg_num
+    For handling creg declarations
     """
 
     def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
@@ -277,9 +318,7 @@ class ASTElementCReg(ASTElement):
 
 class ASTElementMeasure(ASTElement):
     """
-    ASTElementMeasure
-    A measurement
-    Knows linenum, ast_type, source, source_reg, target_reg
+    For handing measure commands
     """
 
     def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
@@ -298,9 +337,7 @@ class ASTElementMeasure(ASTElement):
 
 class ASTElementBarrier(ASTElement):
     """
-    ASTElementBarrier
-    A barrier
-    Knows linenum, ast_type, source, reg_list
+    For handling barrier commands
     """
 
     def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
@@ -314,21 +351,22 @@ class ASTElementBarrier(ASTElement):
 
     @ASTElement._eol_comment
     def out(self):
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type,
+        return {'filenum': self.filenum, 'linenum': self.linenum, 
+                'type': self.ast_type,
                 'source': self.source if self.save_element_source else None,
                 'reg_list': self.reg_list}
 
 
 class ASTElementOp(ASTElement):
     """
-    ASTElementOp
-    An operator
-    Knows linenum, ast_type, source, op, param_list, reg_list
+    For handling openQASM2 gate operations and subgate operations
     """
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False,
+                 eol_comment=None):
         super(ASTElementOp, self).__init__(
-            filenum, linenum, ASTType.OP, source, save_element_source, eol_comment)
+            filenum, linenum, ASTType.OP, source, save_element_source, 
+            eol_comment)
         x = QTRegEx.OP_AND_ARGS.match(self.source)
         op_and_args = x.group(1)
         x = QTRegEx.OP_PARAM_LIST.match(op_and_args)
@@ -344,7 +382,8 @@ class ASTElementOp(ASTElement):
 
     @ASTElement._eol_comment
     def out(self):
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type,
+        return {'filenum': self.filenum, 'linenum': self.linenum, 
+                'type': self.ast_type,
                 'source': self.source if self.save_element_source else None,
                 'op': self.op,
                 'param_list': self.param_list, 'reg_list': self.reg_list}
@@ -352,10 +391,7 @@ class ASTElementOp(ASTElement):
 
 class ASTElementCtl2(ASTElement):
     """
-    ASTElementCtl2
     Control-flow with binary operator
-    Knows linenum, ast_type, source, ctl, expression_op,
-    expression_param_list, op, param_list, reg_list
     """
 
     def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
@@ -380,7 +416,8 @@ class ASTElementCtl2(ASTElement):
 
     @ASTElement._eol_comment
     def out(self):
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type,
+        return {'filenum': self.filenum, 'linenum': self.linenum,
+                'type': self.ast_type,
                 'source': self.source if self.save_element_source else None,
                 'ctl': self.ctl,
                 'expression_op': self.expression_op,
@@ -392,48 +429,82 @@ class ASTElementCtl2(ASTElement):
 class ASTElementGateDefinitionPlaceholder(ASTElement):
     """So something will show up in the c_sect when a gate definition starts"""
 
-    def __init__(self, filenum, linenum, source, save_element_source=False, eol_comment=None):
+    def __init__(self, filenum, linenum, source, save_element_source=False,
+                 eol_comment=None):
         super(ASTElementGateDefinitionPlaceholder, self).__init__(
             filenum, linenum, ASTType.GATE, None, None)
 
     @ASTElement._eol_comment
     def out(self):
         """Returns self as a dict structure"""
-        return {'filenum': self.filenum, 'linenum': self.linenum, 'type': self.ast_type}
+        return {'filenum': self.filenum, 'linenum': self.linenum,
+                'type': self.ast_type}
 
 
 class Gate_Operation():
     """
-    One operation in a gate operation list
+    One operation in a gate operation list.
+    
+    Parameters
+    ----------
+    op : str
+        The gate name.
+    op_param_list : list of str
+        List of parameter values for the gate.
+    op_reg_list : list of str
+        The names of the quantum registers to act on.
+        
+    Attributes
+    ----------
+    operation : dict
+        Dict of the input parameters.
+        
+    Notes
+    -----
+    I think that there is an issue with the output of op_reg_list inherrited 
+    from the original :mod: `~nuqasm2.qasmast` 
+    code. The output is the name of the declared qreg for native openQASM 2 
+    gates but is the name of the qubit arguments given for gates defined in 
+    standard header.
     """
 
     def __init__(self, op, op_param_list, op_reg_list):
-        """
-        Init operation step
-        op ... operator
-        op_param_list ... parameter list for operator
-        op_param_list ... register list for operator
-        """
-        self. operation = {
+        """Instance structures filled in by :class: `QasmTranslator`"""
+        self.operation = {
             'op': op,
             'op_param_list': op_param_list,
             'op_reg_list': op_reg_list
-        }
+            }
 
 
 class Gate_Definition():
-    """User gate definition"""
-
-    def __init__(self, source, filenum, linenum, param_list, ops_raw_list, ops_list):
-        """
-        Instance structures filled in by QasmTranslator
-        source ... source code for definition
-        filenum ... index of filepath in t_sect filepaths vector
-        linenum ... line number in source file
-        param_list ... vector of gate param names
-        ops_raw_list ... vector of operations as expressed in source code
-        ops_list ... vector of Gate_Operation (translated ops)
-        """
+    """
+    User gate definition.
+    
+    Parameters
+    ----------
+    source : str
+        The line to be parsed from the source file.
+    filenum : int
+        Index of filepath in :class: `T_Sect` filepaths vector.
+    linenum : int
+        Line number in source file
+    param_list : list of str
+        Vector of gate parameter names
+    ops_raw_list : list of str
+        Vecotr of operations as expressed in source code.
+    ops_list : list of dict
+        Vector of :class: `Gate_Operation` (translated operations)
+        
+    Attributes
+    ----------
+    gate_definition : dict
+        Dictionary of the input paramters.
+    """
+    
+    def __init__(self, source, filenum, linenum, param_list, ops_raw_list,
+                 ops_list):
+        """Instance structures filled in by :class: `QasmTranslator`."""
         self.gate_definition = {
             'source': source,
             'filenum': filenum,
@@ -449,14 +520,24 @@ class Gate_Definition():
 
 
 class Source_Body():
-    """Source code body with filenum of source file"""
+    """
+    Source code body with file number of source file.
+    
+    Parameters
+    ----------
+    filenum : int
+        Index of filepath in :class: `T_Sect` filepaths vector.
+    source : str
+        The line to be parsed from the source file.
+        
+    Attributes
+    ----------
+    source_body : dict
+        Dictionary of the input paramters.
+    """
 
     def __init__(self, filenum, source):
-        """
-        Instance structures filled in by QasmTranslator
-        filenum ... index of filepath in t_sect filepaths vector
-        source ... source lines vector
-        """
+        """Instance structures filled in by :class: `QasmTranslator`."""
         self.source_body = {
             'filenum': filenum,
             'source': source
@@ -464,10 +545,22 @@ class Source_Body():
 
 
 class T_Sect():
-    """Translation overhead section of translation unit"""
+    """
+    Translation overhead section of output AST.
+    
+    Parameters
+    ----------
+    name : str
+        The name of the translation unit. Default value is 'main'.
+    
+    Attributes
+    ----------
+    t_sect : dict
+        The t_sect of the AST. Will be filled in by :class: `QasmTranslator`.
+    """
 
     def __init__(self, name):
-        """Instance structures filled in by QasmTranslator"""
+        """Instance structures filled in by :class: `QasmTranslator`."""
         self.t_sect = {
             'name': name,
             'filepaths': [],
@@ -483,28 +576,48 @@ class T_Sect():
 
 
 class C_Sect():
-    """Code section of translation unit"""
+    """
+    Code section of output AST.
+    
+    Attributes
+    ----------
+    c_sect : list
+        The c_sect of the output AST. Vector of :class: `ASTElement`.
+    """
 
     def __init__(self):
         """
-        Instance structures filled in by QasmTranslator
-        Vector of ASTElement
+        Instance structures filled in by :class: `QasmTranslator`.
         """
         self.c_sect = []
 
 
 class G_Sect():
-    """User gate definition section of translation unit"""
+    """
+    User gate definition section of output AST
+    
+    Attributes
+    ----------
+    g_sect : list
+        The user gate section of the output AST, to be filled in by 
+        :class: `QasmTranslator`.
+        
+    """
 
     def __init__(self):
-        """Instance structures filled in by QasmTranslator"""
+        """Instance structures filled in by :class: `QasmTranslator`."""
         self.g_sect = []
 
 
 class S_Sect():
     """
-    Source code section
-    Vector of Source_Body
+    Source code section of output AST.
+    
+    Attributes
+    ----------
+    s_sect : list
+        Vector of :class: `Source_Body` to be filled in by 
+        :class: `QasmTranslator`.
     """
 
     def __init__(self):
@@ -512,6 +625,16 @@ class S_Sect():
         self.s_sect = []
 
     def append(self, sourcebody):
+        """
+        Appends the source body to the s_sect
+        
+        Appends `sourcebody` to :attr: `S_Sect.s_sect`.
+
+        Parameters
+        ----------
+        sourcebody : dict
+            As generated by :attr: `Source_Body.source_body`.
+        """
         self.s_sect.append(sourcebody)
 
 
@@ -523,17 +646,26 @@ class S_Sect():
 class Source_Frame():
     """
     A pushable frame defining the source we are processing
+    
+    Parameters
+    ----------
+    filenum : int
+        Index of filepath in :attr: `T_Sect.t_sect` filepaths vector.
+    qasmsourcelines : list of str
+        List of the lines from the source code (.qasm) file.
+    
+    Attributes
+    ----------
+    linenum : int
+        The index of a line from the source code file.
     """
 
     def __init__(self, filenum, qasmsourcelines):
         """
-        filenum ... index of filepath in t_sect filepaths vector
-        qasmsourcelines ... source lines vector
-        Init counter to 0
         """
         self.filenum = filenum
         self.qasmsourcelines = qasmsourcelines
-        self.linenum = 0
+        self.linenum = 0 #initialise counter to 0.
 
     def next(self):
         """ Return next source line and increment counter"""
@@ -549,7 +681,14 @@ class Source_Frame():
 
 
 class Source_Frame_Stack():
-    """Stack of source frames so we can nest into include files"""
+    """
+    Stack of source frames so we can nest into include files
+    
+    Attributes
+    ----------
+    frames : list
+        The stack.
+    """
 
     def __init__(self):
         """Create the stack"""
@@ -558,8 +697,13 @@ class Source_Frame_Stack():
     def push(self, filenum, qasmsourcelines):
         """
         Create and push a frame
-        filenum ... index of filepath in t_sect filepaths vector
-        qasmsourcelines ... source lines vector
+        
+        Parameters
+        ----------
+        filenum : int
+            Index of filepath in :attr: `T_Sect.t_sect` filepaths vector.
+        qasmsourcelines : list of str
+            List of the lines from the source code (.qasm) file.
         """
         self.frames.append(Source_Frame(filenum, qasmsourcelines))
 
@@ -588,6 +732,7 @@ class Source_Frame_Stack():
         return self.tos().filenum
 
     def nth_qasmline(self, n):
+        """Return nth qasm line"""
         return self.tos().nth_qasmline(n)
 
 
@@ -597,7 +742,49 @@ class Source_Frame_Stack():
 
 
 class QasmTranslator():
-    """Translation of a Qasm unit"""
+    """
+    Translation of a Qasm unit.
+    
+    Does not read in from file, expects code handed to it.
+    
+    Parameters
+    ----------
+    qasmsourcelines : list of str
+        List of the lines from the source code (.qasm) file.
+    name : str
+        User-defined name for translation unit.
+    filepath : str or None
+        The filepath to the source code file (informational only). Default 
+        value is None.
+    no_unknown : bool
+        True if an unknown element is encountered. Default value is False.
+    save_pgm_source : bool
+        True if program source should be embedded in output. Default value is 
+        False
+    save_element_source : bool
+        True if element source should be embedded in output. Default value is 
+        False.
+    save_gate_source : bool
+        True if user gate source should be embedded in output. Default value 
+        is False.
+    save_gate_decls : bool
+        True if gate declaration should be noted in c_sect. Default value is 
+        False.
+    include_path : str
+        Path to include in file search. Default value is '.' (current 
+        working directory).
+        
+    Attributes
+    ----------
+    t_sect : :class: `T_Sect`
+    c_sect : :class: `C_Sect`
+    g_sect : :class: `G_Sect`
+    s_sect : :class: `S_Sect`
+    translation : dict
+        Dictionary containing all of the sections (t_sect, c_sect, etc).
+    source_frame_stack : :class: `Source_Frame_Stack`
+    
+    """
 
     def __init__(self, qasmsourcelines,
                  name='main',
@@ -609,16 +796,6 @@ class QasmTranslator():
                  include_path='.'):
         """
         Init from source lines in an array.
-        Does not read in from file, expects code handed to it.
-        qasmsourcelines = the source code
-        name = user-defined name for translation unit
-        no_unknown = True if raises on unknown element
-        filepath = source code filepath (informational only)
-        save_pgm_source = True if program source should be embedded in output
-        save_element_source = True if element source should be embedded in output
-        save_gate_source = True if user gate source should be embedded in output
-        show_gate_decls = True if gate declaration should be noted in c_sect
-        include_path is path for include file search
         """
 
         # Control factors
@@ -659,17 +836,39 @@ class QasmTranslator():
                        include_path='.'):
         """
         Instance QasmTranslator from a file handle reading in all lines.
+        
         Does not close file handle.
-        file_handle = open read file containing qasm source
-        name = user-defined name for translation unit
-        no_unknown = True if raises on unknown element
-        filepath = source code filepath (informational only)
-        datetime = datetime informational
-        save_pgm_source = True if program source should be embedded in output
-        save_element_source = True if element source should be embedded in outpu
-        save_gate_source = True if user gate source should be embedded in output
-        show_gate_decls = True if gate declaration should be noted in c_sect
-        include_path is path for include file search
+        
+        Parameters
+        ----------
+        qasmsourcelines : list of str
+            List of the lines from the source code (.qasm) file.
+        name : str
+            User-defined name for translation unit.
+        filepath : str or None
+            The filepath to the source code file (informational only). Default 
+            value is None.
+        no_unknown : bool
+            True if an unknown element is encountered. Default value is False.
+        save_pgm_source : bool
+            True if program source should be embedded in output. Default value is 
+            False
+        save_element_source : bool
+            True if element source should be embedded in output. Default value is 
+            False.
+        save_gate_source : bool
+            True if user gate source should be embedded in output. Default value 
+            is False.
+        save_gate_decls : bool
+            True if gate declaration should be noted in c_sect. Default value is 
+            False.
+        include_path : str
+            Path to include in file search. Default value is '.' (current 
+            working directory).
+            
+        Returns
+        -------
+        qt : :class: `QasmTranslator`
         """
         qasmsourcelines = []
         for line in file_handle:
@@ -691,18 +890,41 @@ class QasmTranslator():
                  show_gate_decls=False,
                  include_path='.'):
         """
-        Instance QasmTranslator from a filepath.
-        Opens file 'r' reading in all lines and closes file.
-        filepath = source code filepath for loading and informational
-        no_unknown = True if raises on unknown element
-        save_pgm_source = True if program source should be embedded in output
-        save_element_source = True if element source should be embedded in outpu
-        save_gate_source = True if user gate source should be embedded in output
-        show_gate_decls = True if gate declaration should be noted in c_sect
-        include_path is path for include file search
+        Create parser given filepath.
+        
+        Creates :class: `QasmTranslator` given filepath. Opens file indicated 
+        by `filepath`, reads in all lines and closes file.
+
+        filepath : str or None
+            The filepath to the source code file (informational only). Default 
+            value is None.
+        name : str
+            User-defined name for translation unit.
+        no_unknown : bool
+            True if an unknown element is encountered. Default value is False.
+        save_pgm_source : bool
+            True if program source should be embedded in output. Default value is 
+            False
+        save_element_source : bool
+            True if element source should be embedded in output. Default value is 
+            False.
+        save_gate_source : bool
+            True if user gate source should be embedded in output. Default value 
+            is False.
+        save_gate_decls : bool
+            True if gate declaration should be noted in c_sect. Default value is 
+            False.
+        include_path : str
+            Path to include in file search. Default value is '.' (current 
+            working directory).
+            
+        Returns
+        -------
+        qt : :class: `QasmTranslator`
         """
         if not os.path.exists(filepath) or not os.access(filepath, os.R_OK):
-            raise Qasm_Cannot_Read_File_Exception(None, None, None, None, filepath)
+            raise Qasm_Cannot_Read_File_Exception(None, None, None, None, 
+                                                  filepath)
         qasmsourcelines = []
         file_handle = open(filepath, 'r')
         for line in file_handle:
@@ -831,7 +1053,8 @@ class QasmTranslator():
     def translate(self):
         """
         Translate the qasm source into the desired representation.
-        Use get_translation() to retrieve the translated source.
+        
+        Use `get_translation()` to retrieve the translated source.
         """
         self.get_t_sect()[
             'datetime_start'] = datetime.datetime.now().isoformat()
@@ -973,7 +1196,7 @@ class QasmTranslator():
         ).isoformat()
 
     def get_translation(self):
-        """Retrieve translation created by translate()"""
+        """Retrieve translation created by `translate()`"""
         return self.translation
 
     # #########################
@@ -1005,21 +1228,22 @@ class QasmTranslator():
         return self.get_filepaths()[n] if n < len(self.get_filepaths()) else None
 
     def get_datetime_start(self):
-        """Retrieve datetime from translation created by translate()"""
+        """Retrieve datetime from translation created by `translate()`"""
         return self.get_t_sect()['datetime_start']
 
     def get_datetime_finish(self):
-        """Retrieve datetime from translation created by translate()"""
+        """Retrieve datetime from translation created by `translate()`"""
         return self.get_t_sect()['datetime_finish']
 
     def get_nth_ast(self, n):
-        """Retrieve nth element in c_sect from translation created by translate()"""
+        """Retrieve nth element in c_sect from translation created by
+        `translate()`"""
         return self.get_c_sect()[n]
 
     def get_nth_ast_type(self, n):
         """
         Retrieve AST type of nth c_sect element
-        from translation created by translate()
+        from translation created by `translate()`
         """
         return self.get_nth_ast(n)['type']
 
@@ -1033,14 +1257,14 @@ class QasmTranslator():
     def get_source(self, filenum):
         """
         Retrieve original source code of qasm file
-        number n that was translated by translate()
+        number n that was translated by `translate()`
         """
         return self.get_s_sect()[filenum] if filenum < len(self.get_s_sect()) else None
 
     def get_nth_user_gate(self, index):
         """
         Get nth user_gate definition
-        from translation created by translate()
+        from translation created by `translate()`
         """
         return self.get_g_sect()[index]
 
@@ -1188,35 +1412,35 @@ def qasm2ast(filepath, name='main',
              save_gate_source=False, show_gate_decls=False,
              include_path='.'):
     """
-        
-    
-        Parameters
-        ----------
-        filepaths : list
-            The filepaths to the QASM code.
-        name : str, optional
-            A name for the translation unit (QasmTranslator. The default is 'main'.
-        save_pgm_source : bool, optional
-            Whether to include program source in AST. The default is False.
-        save_element_source : bool, optional
-            Whether to include element (typically a line of QASM code) in AST. The 
-            default is False.
-        save_gate_source : bool, optional
-            Whether to include gate source in AST output. The default is False.
-        show_gate_decls : bool, optional
-            Whether to include gate gate declerations in AST output. The default is False.
-        include_path : TYPE, optional
-            DESCRIPTION. The default is '.'.
-    
-        Returns
-        -------
-        ast : dict of dicts
-            An abstract syntax tree (AST) parsed from the QASM
-            code given by the filename from filepath. The filename is the key
-            for the dictionary
-    
-        """
-    
+    Parses a .qasm source file to an abstract syntax tree.
+
+    Parameters
+    ----------
+    filepaths : list
+        The filepaths to the QASM code.
+    name : str, optional
+        A name for the translation unit (QasmTranslator. The default is 'main'.
+    save_pgm_source : bool, optional
+        Whether to include program source in AST. The default is False.
+    save_element_source : bool, optional
+        Whether to include element (typically a line of QASM code) in AST. The 
+        default is False.
+    save_gate_source : bool, optional
+        Whether to include gate source in AST output. The default is False.
+    show_gate_decls : bool, optional
+        Whether to include gate gate declerations in AST output. The default is 
+        False.
+        include_path : str, optional
+            Path to include in file search. Default value is '.' (current 
+            working directory).
+
+    Returns
+    -------
+    ast : dict of dicts
+        An abstract syntax tree (AST) parsed from the QASM
+        code given by the filename from filepath. The filename is the key
+        for the dictionary.
+    """
     def _handle_error(err, erring_filepath):
         """Print out exception packet"""
         print("Error: " + erring_filepath)

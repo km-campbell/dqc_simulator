@@ -1,8 +1,20 @@
 # -*- coding: utf-8 -*-
+# =============================================================================
+# Created on Wed Sep 20 12:13:12 2023
+# 
+# @author: kenny
+# =============================================================================
 """
-Created on Wed Sep 20 12:13:12 2023
+Additional quantum gates to those included natively in NetSquid.
 
-@author: kenny
+The gates defined in this module are 
+:class: `~netsquid.components.instructions.Instruction` objects or tuples
+containing :class: `~netsquid.components.instructions.Instruction` objects or
+functions returning :class: `~netsquid.components.instructions.Instruction`
+ objects or tuples containing instructions and 
+:class: `~netsquid.qubits.operators.Operator` objects to be used by those 
+instructions. In short, the gates in this module are intended for backend use 
+and will utilised directly by the simulation.
 """
 
 #This script defines additional quantum gates to those included natively in 
@@ -11,18 +23,66 @@ Created on Wed Sep 20 12:13:12 2023
 
 import numpy as np
 
+from netsquid.components import instructions as instr
 from netsquid.qubits.operators import (Operator, H, T, I, S, Y,
                                        create_rotation_op)
-from netsquid.components import instructions as instr
 
 
 def make_state_gen_op(alpha, beta):
+    """
+    For making operators that generate arbitrary, pure, single-qubit states.
+
+    Parameters
+    ----------
+    alpha, beta : float
+        The coefficients of |0> and |1>, respectively, in the state to 
+        generate.
+
+    Returns
+    -------
+    state_gen_op : :class: `~netsquid.qubits.operators.Operator`
+        An operator describing a fictitious quantum gate which can create an
+        arbitrary single qubit gate.
+    """
     state_gen_op = Operator("state_generating_op", 
                             np.array([[alpha, 0], [0, beta]]) @ 
                             np.array([[1, 1], [1, -1]]))
     return state_gen_op
 
 def INSTR_ARB_GEN(alpha, beta):
+    """
+    For generating arbitrary quantum states.
+    
+    Creates :class: `~netsquid.components.instructions.Instruction` that 
+    generates arbitrary quantum states.
+
+    Parameters
+    ----------
+    alpha, beta : float
+        The coefficients of |0> and |1>, respectively, in the state to 
+        generate.
+
+    Raises
+    ------
+    ValueError
+        Alerts user to erroneous choice of `alpha` and `beta`, which would 
+        generate an unnormalised quantum state.
+
+    Returns
+    -------
+    instruction : :class: `~netsquid.components.instructions.Instruction`
+        An instruction that creates arbitrary quantum states.
+        
+    Notes
+    -----
+    This function will be deprecated in a future version. It was implemented
+    to allow arbitrary quantum states to be generated, however, I would like
+    to do this using :func: `~dqc_simulator.qlib.make_state_gen_op`
+    and an instruction :class: `~netsquid.components.instructions.Instruction`
+    without an operator in the future. This will avoid the need to bake 
+    `alpha` and `beta` into the 
+    :class: `~netsquid.components.qprocessor.QuantumProcessor`.
+    """
     #THIS WILL BE DEPRECATED IN FUTURE VERSION
     total_probability_q1 = abs(alpha)**2 + abs(beta)**2
     if round(total_probability_q1, 3) !=1.000:
@@ -56,7 +116,7 @@ INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME = instr.IGate('neglibible_time_instr',
 
 def INSTR_U(theta, phi, lambda_var, controlled=False):
     """
-    (controlled) single qubit unitary
+    (controlled) single qubit unitary in sim backend-readable format.
 
     Parameters
     ----------
@@ -66,16 +126,20 @@ def INSTR_U(theta, phi, lambda_var, controlled=False):
         An angle in radians.
     lambda_var : float
         An angle in radians.
+    controlled : bool
+        Whether the gate should be controlled (ie, a CU gate is applied rather
+        than a U gate) or not. Default is False.
 
     Returns
     -------
     instructionNop : tuple
-        The NetSquid instruction and operation needed to carry out this gate.
-        Here the instruction essentially indicates all relevant metadata and 
+        The NetSquid :class: `~netsquid.components.instructions.Instruction`
+        and operation :class: `~netsquid.qubits.operators.Operator`
+        needed to carry out this gate.
+        Here, the instruction essentially indicates all relevant metadata and 
         can be used to dictate which noise should be applied to the gate, 
-        while the operation is the matrix used to apply the actual quantum 
+        while the operator is the matrix used to apply the actual quantum 
         operation defining the gate.
-
     """
     a11 = np.exp(-1j * (phi + lambda_var)/2) * np.cos(theta/2)
     a12 = -np.exp(-1j * (phi - lambda_var)/2) * np.sin(theta/2)
@@ -115,7 +179,7 @@ def _add_options2single_qubit_gate(op, controlled, conjugate):
 
 def instrNop_RZ(angle, controlled=False, conjugate=False):
     """
-    
+    Defines RZ gate in sim backend-readable format.
 
     Parameters
     ----------
@@ -131,10 +195,12 @@ def instrNop_RZ(angle, controlled=False, conjugate=False):
     Returns
     -------
     instructionNop : tuple
-        The NetSquid instruction and operation needed to carry out this gate.
-        Here the instruction essentially indicates all relevant metadata and 
+        The NetSquid :class: `~netsquid.components.instructions.Instruction`
+        and operation :class: `~netsquid.qubits.operators.Operator`
+        needed to carry out this gate.
+        Here, the instruction essentially indicates all relevant metadata and 
         can be used to dictate which noise should be applied to the gate, 
-        while the operation is the matrix used to apply the actual quantum 
+        while the operator is the matrix used to apply the actual quantum 
         operation defining the gate.
 
     """

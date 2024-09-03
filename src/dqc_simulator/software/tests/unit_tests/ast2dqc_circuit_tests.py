@@ -329,7 +329,6 @@ class Test_ast2dqc_circuit(unittest.TestCase):
     def test_wstate_indep_qiskit_5(self):
         dqc_circuit = self._get_dqc_circuit('wstate_indep_qiskit_5.qasm')
 
-    #13 of the circuits can run as-is
 
 
 if __name__ == '__main__':

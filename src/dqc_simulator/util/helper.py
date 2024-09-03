@@ -19,32 +19,41 @@ from netsquid.util.datacollector import DataCollector
 from netsquid.qubits.dmutil import reorder_dm
 
 def get_data_qubit_indices(node, num_indices):
-    """ A convenience function for obtaining the indices of data qubits for a
-    given node.
+    """
+    Convenience function for obtaining data qubit indices.
     
-    INPUT: node: netsquid.nodes.Node object
-            The node whose data qubits should be recovered.
-           num_indices: int
-           The number of data qubit indices requested
+    Gives the data qubit indices associated with a specific QPU `node`.
     
-    OUTPUT: list of the indices requested
+    Parameters
+    ----------
+    node: :class: `~dqc_simulator.hardware.QpuNode`
+        The QPU node whose data qubits should be recovered.
+    num_indices: int
+        The number of data qubit indices requested
+    
+    Returns
+    -------
+    index_list : list
+        The data qubit indices requested.
     """
     starting_data_qubit_index = len(node.comm_qubit_positions)
     end = starting_data_qubit_index + num_indices
     index_list = [ii for ii in range(starting_data_qubit_index, end)]
     return index_list
 
-#_idx for debugging only REMOVE ONCE debugged
-from netsquid.qubits.qubit import Qubit
-def _idx(qubits):
-    # This helper function is always executed together with _qrepr, so we skip safety checks
-    # and combining.
-    if isinstance(qubits, Qubit):
-        return qubits.qstate.indices_of([qubits])
-    elif isinstance(qubits, list):
-        return qubits[0].qstate.indices_of(qubits)
-    else:
-        raise TypeError("The qubits must be given as a list or a single Qubit.")
+# =============================================================================
+# #_idx for debugging only REMOVE ONCE debugged
+# from netsquid.qubits.qubit import Qubit
+# def _idx(qubits):
+#     # This helper function is always executed together with _qrepr, so we skip safety checks
+#     # and combining.
+#     if isinstance(qubits, Qubit):
+#         return qubits.qstate.indices_of([qubits])
+#     elif isinstance(qubits, list):
+#         return qubits[0].qstate.indices_of(qubits)
+#     else:
+#         raise TypeError("The qubits must be given as a list or a single Qubit.")
+# =============================================================================
 
 
 def get_data_collector(master_protocol, qubit_indices_2b_checked,
@@ -64,7 +73,7 @@ def get_data_collector(master_protocol, qubit_indices_2b_checked,
 
     Returns
     -------
-    :class:`~netsquid.util.datacollector.DataCollector`
+    dc : :class:`~netsquid.util.datacollector.DataCollector`
         Data collector to record fidelity.
     """
     def collect_fidelity_data(evexpr):
@@ -130,18 +139,21 @@ def get_data_collector(master_protocol, qubit_indices_2b_checked,
 
 def get_data_collector4dm(master_protocol, qubit_indices_2b_checked,
                           desired_state):
-    """ Sets up data collector for simulation in which qubits_indices_2b_checked
-    share a dm. This avoids the sensitivity to the ordering of the qubits to 
+    """Creates a data collector with a specific configuration.
+    
+    Sets up :class:`~netsquid.util.datacollector.DataCollector` for simulation 
+    in which `qubits_indices_2b_checked` share a dm. This avoids the 
+    sensitivity to the ordering of the qubits to 
     be checked in the list produced below but at the cost of requiring desired
     state to be a density matrix.
 
     Parameters
     ----------
-    master_protocol: :class: netsquid.protocols.protocol.Protocol
+    master_protocol: :class: `~netsquid.protocols.protocol.Protocol`
         Protocol to run the DQC circuit.
     qubits_2b_checked: list of tuples of form (list of indices, node)
         The qubits whose state should be checked against a known state
-    desired_state: :class: numpy.ndarray
+    desired_state: array
         The ideal state which the actual state should be compared to. Must be 
         given as a density matrix.
 

@@ -261,7 +261,7 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
 
     Returns
     -------
-    qprocessor : :class: `netsquid.components.qprocessor.QuantumProcessor
+    qprocessor : :class: `~netsquid.components.qprocessor.QuantumProcessor`
     
     Notes
     -----

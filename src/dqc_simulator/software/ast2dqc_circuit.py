@@ -1245,17 +1245,6 @@ class Ast2DqcCircuitTranslator():
         Converts an abstract syntax tree created using
         :func: `~dqc_simulator.software.qasm2ast.qasm2ast` into a 
         :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` object.
-    
-        Parameters
-        ----------
-        ast : dict of nested dicts and lists
-            Abstract syntax tree of the form produced by 
-            dqc_simulator.software.qasm2ast.qasm2ast(filepath) and detailed in 
-            https://github.com/jwoehr/nuqasm2/blob/main/doc/nuqasm_ast.md.
-            TO DO: add to documentation for this project.
-        native_gates : dict, optional
-            The native gates for the physical hardware. The default is 
-            QasmTwoUniversalSet.gates.
             
         Returns
         -------

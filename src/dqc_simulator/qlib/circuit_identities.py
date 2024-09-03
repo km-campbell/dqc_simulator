@@ -346,6 +346,7 @@ def crx_macro(lambda_var, a, b):
     Parameters
     ----------
     lambda_var : float
+        The rotation angle
     a : int
         Control qubit index
     b : int
@@ -355,6 +356,12 @@ def crx_macro(lambda_var, a, b):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for further info on lambda_var in the context of the CRZ gate.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     subgates = [{'name' : 'u1', 'params' : ['pi/2'], 'args' : [b]},
                 {'name' : 'cx', 'params' : None, 'args' : [a,b]},
@@ -378,6 +385,7 @@ def cry_macro(lambda_var, a, b):
     Parameters
     ----------
     lambda_var : float
+        The rotation angle
     a : int
         Control qubit index
     b : int
@@ -387,6 +395,12 @@ def cry_macro(lambda_var, a, b):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for further info on lambda_var in the context of the CRZ gate.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'ry', 'params' : [lambda_var + over2], 
@@ -408,6 +422,7 @@ def crz_macro(lambda_var, a, b):
     Parameters
     ----------
     lambda_var : float
+        The rotation angle
     a : int
         Control qubit index
     b : int
@@ -417,6 +432,12 @@ def crz_macro(lambda_var, a, b):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+    
+    References
+    ----------
+    See [1]_ for further info on lambda_var in the context of the CRZ gate.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'rz', 'params' : [lambda_var + over2], 
@@ -438,6 +459,7 @@ def cu1_macro(lambda_var, a, b):
     Parameters
     ----------
     lambda_var : float
+        The phase applied.
     a : int
         Control qubit index
     b : int
@@ -447,6 +469,12 @@ def cu1_macro(lambda_var, a, b):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for further info on lambda_var.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'u1', 'params' : [lambda_var + over2], 
@@ -461,7 +489,7 @@ def cu1_macro(lambda_var, a, b):
     
 def cp_macro(lambda_var, a, b):
     """    
-    Macro for CP gate.
+    Macro for CP(lambda_var) gate (alias of CU1 gate).
     
     For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
     Further compilation will be needed before the output can be interpretted
@@ -470,6 +498,7 @@ def cp_macro(lambda_var, a, b):
     Parameters
     ----------
     lambda_var : float
+        The phase.
     a : int
         Control qubit index
     b : int
@@ -479,6 +508,12 @@ def cp_macro(lambda_var, a, b):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for adiscussion of lambda_var.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a,b]}
     subgates = [{'name' : 'p', 'params' : [lambda_var + over2], 
@@ -512,6 +547,12 @@ def cu3_macro(theta, phi, lambda_var, c, t):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for adiscussion of theta, phi, and lambda_var.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     subgates = [{'name' : 'u1', 
                  'params' : [lpar + lambda_var + plus + phi + ')/2'],
@@ -556,7 +597,7 @@ def csx_macro(a, b):
 
 def cu_macro(theta, phi, lambda_var, gamma, c, t):
     """    
-    Macro for CU gate.
+    Macro for CU(theta, phi, lambda_var) gate.
     
     For internal use by :mod: `~dqc_simulator.software.ast2dqc_circuit`. 
     Further compilation will be needed before the output can be interpretted
@@ -576,6 +617,12 @@ def cu_macro(theta, phi, lambda_var, gamma, c, t):
     -------
     subgates : list of dicts
         The gates comprising the macro.
+    
+    References
+    ----------
+    See [1]_ for adiscussion of theta, phi, and lambda_var.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
     """
     subgates = [{'name' : 'p', 'params' : [gamma], 'args' : [c]},
                 {'name' : 'p', 
@@ -597,6 +644,26 @@ def cu_macro(theta, phi, lambda_var, gamma, c, t):
 
 
 def rxx_macro(theta, a, b):
+    """
+    Macro for RXX(theta) gate.
+
+    Parameters
+    ----------
+    theta : float
+    a : int
+        First qubit index
+    b : int
+        Second qubit index
+
+    subgates : list of dicts
+        The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for adiscussion of theta.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
+    """
     h_gate = {'name' : 'h', 'params' : None, 'args' : [b]}
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
     subgates = [{'name' : 'u3', 'params' : ['pi/2', theta, '0'],
@@ -609,6 +676,27 @@ def rxx_macro(theta, a, b):
     return subgates 
 
 def rzz_macro(theta, a, b):
+    """
+    Macro for RZZ(theta) gate
+
+    Parameters
+    ----------
+    theta : float
+        The rotation angle
+    a, b : int
+        The index of the first and second qubits, respectively.
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+        
+    References
+    ----------
+    See [1]_ for adiscussion of theta.
+    
+    .. [1] https://arxiv.org/abs/1707.03429
+    """
     cx_gate = {'name' : 'cx', 'params' : None, 'args' : [a, b]}
     subgates = [cx_gate, 
                 {'name' : 'u1', 'params' : [theta], 'args' : [b]},
@@ -616,6 +704,22 @@ def rzz_macro(theta, a, b):
     return subgates
 
 def rccx_macro(a, b, c):
+    """
+    Macro for RCCX gate
+
+    Parameters
+    ----------
+    a, b : int
+        The indices of the control qubit
+    c : int
+        the index of the target qubit
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+
+    """
     subgates = [{'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [c]},
                 {'name' : 'u1', 'params' : ['pi/4'], 'args' : [c]},
                 {'name' : 'cx', 'params' : None, 'args' : [b, c]},
@@ -628,6 +732,21 @@ def rccx_macro(a, b, c):
     return subgates
     
 def rc3x_macro(a, b, c, d):
+    """
+    Macro for RCCCX gate.
+
+    Parameters
+    ----------
+    a, b, c : int
+        The indices of the control qubits
+    d : int
+        Index of the target qubit
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name' : 'u2', 'params' : ['0', 'pi'], 'args' : [d]},
                 {'name' : 'u1', 'params' : ['pi/4'], 'args' : [d]},
                 {'name' : 'cx', 'params' : None, 'args' : [c, d]},
@@ -649,6 +768,21 @@ def rc3x_macro(a, b, c, d):
     return subgates
 
 def c3x_macro(a, b, c, d):
+    """
+    Macro for CCCX gate.
+
+    Parameters
+    ----------
+    a, b, c : int
+        The indices of the control qubits
+    d : int
+        Index of the target qubit
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     subgates = [{'name' : 'h', 'params' : None, 'args' : [d]},
                 {'name' : 'p', 'params' : ['pi/8'], 'args' : [a]},
                 {'name' : 'p', 'params' : ['pi/8'], 'args' : [b]},
@@ -683,6 +817,21 @@ def c3x_macro(a, b, c, d):
     return subgates
 
 def c3sqrtx_macro(a, b, c, d):
+    """
+    Macro for RCCCSqrt(X) gate.
+
+    Parameters
+    ----------
+    a, b, c : int
+        The indices of the control qubits
+    d : int
+        Index of the target qubit
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     h_gate = {'name' : 'h', 'params' : None, 'args' : [d]}
     subgates = [h_gate,
                 *cu1_macro('pi/8', a, d),
@@ -714,6 +863,21 @@ def c3sqrtx_macro(a, b, c, d):
     return subgates
 
 def c4x_macro(a, b, c, d, e):
+    """
+    Macro for CCCCX gate.
+
+    Parameters
+    ----------
+    a, b, c, d : int
+        The indices of the control qubits
+    e : int
+        Index of the target qubit
+
+    Returns
+    -------
+    subgates : list of dicts
+        The gates comprising the macro.
+    """
     h_gate = {'name' : 'h', 'params' : None, 'args' : [e]}
     subgates = [h_gate,
                 *cu1_macro('pi/2', d, e),
