@@ -756,7 +756,12 @@ class dqcMasterProtocol(Protocol):
         initialised to make the network function.
     compiler_func: function, optional
         The compiler function to be used to split partitioned_gates into
-        protocols by node and time-slice.
+        protocols by node and time-slice. If None (default), then 
+        :func: `~dqc_simulator.software.compilers.sort_greedily_by_node_and_time`
+        is used.
+    allowed_qpu_types : tuple or subclass of :class: `~netsquid.nodes.node.Node`
+        The class(es) that should be interpretted as QPU nodes. These should be
+        distinct from those used for other purposes.
     *args, **kwargs
         Allows positional and keyword arguments inherited from 
         :class: `~netsquid.protocols.protocol.Protocol` to be specified.
@@ -787,7 +792,8 @@ class dqcMasterProtocol(Protocol):
     def __init__(self, partitioned_gates, network,
                  *args, #remove as Protocol has no positional args?
                  background_protocol_lookup=None,
-                 compiler_func=sort_greedily_by_node_and_time,
+                 compiler_func=None,
+                 allowed_qpu_types=None,
                  **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -805,6 +811,10 @@ class dqcMasterProtocol(Protocol):
                             {Node : AbstractFromPhotonsEntangleProtocol})
         else:
             self.background_protocol_lookup = background_protocol_lookup
+        if allowed_qpu_types is None:
+            self.allowed_qpu_types = QpuNode
+        else:
+            self.allowed_qpu_types = allowed_qpu_types
         
     def run(self):
         qpu_op_dict = self.compiler_func(self.partitioned_gates)
@@ -813,8 +823,8 @@ class dqcMasterProtocol(Protocol):
 # =============================================================================
 #             print(node)
 # =============================================================================
-            if isinstance(node, QpuNode): #isinstance also checks if node 
-                                          #is subclass of QPU node
+            if isinstance(node, self.allowed_qpu_types): #isinstance also 
+                                                         #looks for subclasses
                 qpu_dict[node_name] = node
             else:
                 node_type = type(node)
