@@ -1,8 +1,7 @@
-dqc\_simulator.software package
-===============================
+dqc\_simulator.software
+=======================
 
-Submodules
-----------
+
 
 dqc\_simulator.software.ast2dqc\_circuit module
 -----------------------------------------------
@@ -68,10 +67,3 @@ dqc\_simulator.software.transpiler module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: dqc_simulator.software
-   :members:
-   :undoc-members:
-   :show-inheritance:

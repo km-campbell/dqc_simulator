@@ -6,6 +6,7 @@
 Welcome to dqc_simulator's documentation!
 =========================================
 
+
 .. todolist::
 
 .. toctree::
@@ -13,13 +14,14 @@ Welcome to dqc_simulator's documentation!
    :caption: Contents:
    
    installation
-   usage    
+   usage
+   License<LICENSE>    
 
 .. toctree::
    :maxdepth: 2
    :caption: API reference 
 
-   dqc_simulator
+   api_reference
 
 Indices and tables
 ------------------

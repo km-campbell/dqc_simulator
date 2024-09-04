@@ -1,8 +1,6 @@
-dqc\_simulator.util package
-===========================
+dqc\_simulator.util
+===================
 
-Submodules
-----------
 
 dqc\_simulator.util.first\_order\_approx module
 -----------------------------------------------
@@ -24,14 +22,6 @@ dqc\_simulator.util.qasm2ast module
 -----------------------------------
 
 .. automodule:: dqc_simulator.util.qasm2ast
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: dqc_simulator.util
    :members:
    :undoc-members:
    :show-inheritance:

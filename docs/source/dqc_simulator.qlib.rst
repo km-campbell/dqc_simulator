@@ -1,8 +1,5 @@
-dqc\_simulator.qlib package
-===========================
-
-Submodules
-----------
+dqc\_simulator.qlib 
+===================
 
 dqc\_simulator.qlib.circuit\_identities module
 ----------------------------------------------
@@ -44,10 +41,3 @@ dqc\_simulator.qlib.states module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: dqc_simulator.qlib
-   :members:
-   :undoc-members:
-   :show-inheritance:

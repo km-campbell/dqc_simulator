@@ -43,6 +43,8 @@ templates_path = ['_templates']
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = []
 
+#The suffixes of source filenames.
+source_suffix = ['.rst', '.md']
 
 # -- Options for HTML output -------------------------------------------------
 

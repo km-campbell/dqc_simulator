@@ -1,8 +1,6 @@
-dqc\_simulator.hardware package
-===============================
+dqc\_simulator.hardware
+=======================
 
-Submodules
-----------
 
 dqc\_simulator.hardware.dqc\_creation module
 --------------------------------------------
@@ -28,10 +26,4 @@ dqc\_simulator.hardware.quantum\_processors module
    :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
 
-.. automodule:: dqc_simulator.hardware
-   :members:
-   :undoc-members:
-   :show-inheritance:
