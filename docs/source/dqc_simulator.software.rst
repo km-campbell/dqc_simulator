@@ -1,6 +1,12 @@
 dqc\_simulator.software
 =======================
 
+.. todo::
+
+   Could potentially change way control qubits are managed using
+   :attr: `~netsquid.components.qmemory.MemoryPosition.in_use`
+   flag and corresponding `pydynaa` events. Could also 
+   make use of `~netsquid-qrepchain.processing_nodes.CommunicationMemoryManager`
 
 
 dqc\_simulator.software.ast2dqc\_circuit module

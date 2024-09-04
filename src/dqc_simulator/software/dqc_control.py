@@ -763,26 +763,26 @@ class dqcMasterProtocol(Protocol):
             
     Notes
     -----
-        This protocol violates locality by splitting everything into time slices. 
-        Each time slice
-        obeys locality but the entire network is instantaneously made aware when a 
-        time slice ends. This is intended to be an easier-to-implement abstraction
-        of each node knowing the entire circuit and having a time slice 
-        counter of things it is allowed to do on that time slice before waiting a 
-        certain amount of time (the max time for operations on any QPU in the 
-        entire circuit) prior to evaluating the operations it has for that time slice.
-        This construction is a compromise between retaining the 
-        user's ability to easily use and test their own almost arbitrary compilation 
-        schemes (global sequencing can be enforced using the time slices,
-        simplifying the coding of compilers to the production of nested lists of 
-        gate tuples) and an easier to use framework that waits for resources to 
-        become available
-        and greedily conducts operations as soon as possible, which can be achieved
-        by putting everything in one time slice. A limitation of the framework is
-        that a given QPU may not be able to do subprotocols for more than one remote
-        gate at once even if there are enough resources to do so (I am essentially
-        assuming that each QPU can be involved in only one remote gate per time 
-        slice).
+    This protocol violates locality by splitting everything into time slices. 
+    Each time slice
+    obeys locality but the entire network is instantaneously made aware when a 
+    time slice ends. This is intended to be an easier-to-implement abstraction
+    of each node knowing the entire circuit and having a time slice 
+    counter of things it is allowed to do on that time slice before waiting a 
+    certain amount of time (the max time for operations on any QPU in the 
+    entire circuit) prior to evaluating the operations it has for that time slice.
+    This construction is a compromise between retaining the 
+    user's ability to easily use and test their own almost arbitrary compilation 
+    schemes (global sequencing can be enforced using the time slices,
+    simplifying the coding of compilers to the production of nested lists of 
+    gate tuples) and an easier to use framework that waits for resources to 
+    become available
+    and greedily conducts operations as soon as possible, which can be achieved
+    by putting everything in one time slice. A limitation of the framework is
+    that a given QPU may not be able to do subprotocols for more than one remote
+    gate at once even if there are enough resources to do so (I am essentially
+    assuming that each QPU can be involved in only one remote gate per time 
+    slice).
     """
     def __init__(self, partitioned_gates, network,
                  *args, #remove as Protocol has no positional args?
