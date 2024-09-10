@@ -1,38 +1,45 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Oct 17 14:13:35 2023
+# =============================================================================
+# # -*- coding: utf-8 -*-
+# 
+# Created on Tue Oct 17 14:13:35 2023
+# 
+# @author: kenny
+# =============================================================================
 
-@author: kenny
+"""
+Defining a convenience class for encapsulating meta info on DQC circuits.
 """
 
 class DqcCircuit():
+    """ 
+    Convenience class for encapsulating meta info on DQC circuits
+    
+    Parameters
+        ----------
+        qregs : dict of dicts
+            The quantum registers and their associated info. Subdicts
+            should have the keys 'size', and 'starting_index', and integer
+            values for each.
+        cregs : dict
+            The classical registers and their associated sizes.
+        native_gates : dict
+            The gates native to the processor upon which the DQC circuit
+            will be enacted.
+        ops : list of lists
+            The operations (such as gates, initialisations or measurements)
+            in the quantum circuit written in a way dqc_simulator can 
+            understand.
+        qreg2node_lookup : dict or None, optional
+            A mapping from qreg names to node names. This can be used to 
+            specify the partitioning of the circuit manually by associating
+            each qreg with an appropriate node name
+        circuit_type : str or None, optional
+            Meta info indicating what is left to do to the circuit
+             Can be 'monolithic', 'unpartitioned' 'prepped4partitioning',
+             or 'partitioned'. TO DO: add more options like 'optimised'.
+    """
     def __init__(self, qregs, cregs, native_gates, ops,
                  qreg2node_lookup=None, circuit_type=None):
-        """ 
-        Parameters
-            ----------
-            qregs : dict of dicts
-                The quantum registers and their associated info. Subdicts
-                should have the keys 'size', and 'starting_index', and integer
-                values for each.
-            cregs : dict
-                The classical registers and their associated sizes.
-            native_gates : dict
-                The gates native to the processor upon which the DQC circuit
-                will be enacted.
-            ops : list of lists
-                The operations (such as gates, initialisations or measurements)
-                in the quantum circuit written in a way dqc_simulator can 
-                understand.
-            qreg2node_lookup : dict or None, optional
-                A mapping from qreg names to node names. This can be used to 
-                specify the partitioning of the circuit manually by associating
-                each qreg with an appropriate node name
-            circuit_type : str or None, optional
-                Meta info indicating what is left to do to the circuit
-                 Can be 'monolithic', 'unpartitioned' 'prepped4partitioning',
-                 or 'partitioned'. TO DO: add more options like 'optimised'.
-        """
         self.qregs = qregs 
         self.cregs = cregs
         self.native_gates = native_gates

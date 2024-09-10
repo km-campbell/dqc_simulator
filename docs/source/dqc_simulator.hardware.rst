@@ -1,29 +1,12 @@
 dqc\_simulator.hardware
 =======================
 
+.. toctree::
+   :caption: Modules
+   :maxdepth: 2
 
-dqc\_simulator.hardware.dqc\_creation module
---------------------------------------------
-
-.. automodule:: dqc_simulator.hardware.dqc_creation
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.hardware.noise\_models module
---------------------------------------------
-
-.. automodule:: dqc_simulator.hardware.noise_models
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.hardware.quantum\_processors module
---------------------------------------------------
-
-.. automodule:: dqc_simulator.hardware.quantum_processors
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   hardware/dqc_simulator.hardware.connections
+   hardware/dqc_simulator.hardware.dqc_creation
+   hardware/dqc_simulator.hardware.noise_models
+   hardware/dqc_simulator.hardware.quantum_processors
 

@@ -1,43 +1,13 @@
 dqc\_simulator.qlib 
 ===================
 
-dqc\_simulator.qlib.circuit\_identities module
-----------------------------------------------
+.. toctree::
+   :caption: Modules
+   :maxdepth: 2
 
-.. automodule:: dqc_simulator.qlib.circuit_identities
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.qlib.circuits module
------------------------------------
-
-.. automodule:: dqc_simulator.qlib.circuits
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.qlib.gates module
---------------------------------
-
-.. automodule:: dqc_simulator.qlib.gates
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.qlib.remote\_gate\_scheme\_info module
------------------------------------------------------
-
-.. automodule:: dqc_simulator.qlib.remote_gate_scheme_info
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.qlib.states module
----------------------------------
-
-.. automodule:: dqc_simulator.qlib.states
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+   qlib/dqc_simulator.qlib.circuit_identities
+   qlib/dqc_simulator.qlib.circuits
+   qlib/dqc_simulator.qlib.gates
+   qlib/dqc_simulator.qlib.remote_gate_scheme_info
+   qlib/dqc_simulator.qlib.states
+   

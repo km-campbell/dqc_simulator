@@ -1,27 +1,10 @@
 dqc\_simulator.util
 ===================
 
+.. toctree::
+   :caption: Modules
+   :maxdepth: 2
 
-dqc\_simulator.util.first\_order\_approx module
------------------------------------------------
-
-.. automodule:: dqc_simulator.util.first_order_approx
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.util.helper module
----------------------------------
-
-.. automodule:: dqc_simulator.util.helper
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-dqc\_simulator.util.qasm2ast module
------------------------------------
-
-.. automodule:: dqc_simulator.util.qasm2ast
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   util/dqc_simulator.util.first_order_approx
+   util/dqc_simulator.util.helper
+   util/dqc_simulator.util.qasm2ast
