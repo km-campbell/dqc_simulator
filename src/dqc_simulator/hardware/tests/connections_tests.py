@@ -67,6 +67,7 @@ class TestBlackBoxEntanglingQsourceConnection(unittest.TestCase):
         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
     
+    
 # =============================================================================
 #     def test_can_distribute_3pairs_of_entangled_qubits(self):
 # =============================================================================
