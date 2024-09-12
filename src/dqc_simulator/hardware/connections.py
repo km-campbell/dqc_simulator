@@ -17,7 +17,6 @@ from netsquid.nodes.connections import Connection
 from netsquid.qubits import StateSampler
 
 
-
 #DELETE COMMENTS BELOW ONCE FINISHED REFACTORING
 
 #Changelog relative to original entangling connection (things likely to 
@@ -97,10 +96,14 @@ class BlackBoxEntanglingQsourceConnection(Connection):
                                                      delay=0)
                                                     #TO DO: revisit delay
                                                     #as commented above
-        qsource = QSource(f"qsource", 
+        qsource = QSource("qsource", 
                           StateSampler([state4distribution], [1.0]),
                           num_ports=2,
                           status=SourceStatus.EXTERNAL) 
+        #adding extra trigger port and then forwareding that to the trigger so
+        #that two classical connections can be connected to the trigger.
+        qsource.add_ports(["extra_trigger"])
+        qsource.ports["extra_trigger"].forward_input(qsource.ports["trigger"])
         #TO DO: tinker with qsource to see if it can be made to emit 
         #multiple pairs of entangled photons
         #Adding channels and forwarding to and from the connection's 
@@ -121,8 +124,10 @@ class BlackBoxEntanglingQsourceConnection(Connection):
         #overall Connection
         qsource.ports["qout0"].connect(qchannel_qsource2A.ports["send"])
         qsource.ports["qout1"].connect(qchannel_qsource2B.ports["send"])
-        qsource.ports["trigger"].connect(cchannelA2qsource_trigger["recv"])
-        qsource.ports["trigger"].connect(cchannelB2qsource_trigger["recv"])
+        qsource.ports["trigger"].connect(
+                                    cchannelA2qsource_trigger.ports["recv"])
+        qsource.ports["extra_trigger"].connect(
+                                    cchannelB2qsource_trigger.ports["recv"])
 
 
 #TO DO:
