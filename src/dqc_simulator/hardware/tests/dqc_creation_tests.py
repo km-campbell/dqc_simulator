@@ -82,6 +82,7 @@ class Test_link_2_qpus(unittest.TestCase):
                      node_distance=4e-3, 
                      want_classical_2way_link=False,
                      want_entangling_link=True)
+        #NOTE: desired result will change from 2 to 1 when code refactored
         self.assertEqual(len(self.network.connections), 2)
     def test_can_create_quantum_and_classical_link(self):
         link_2_qpus(self.network, self.node_a, self.node_b, 
@@ -89,7 +90,13 @@ class Test_link_2_qpus(unittest.TestCase):
                      node_distance=4e-3, 
                      want_classical_2way_link=True,
                      want_entangling_link=True)
+        #NOTE: desired result will change from 3 to 2 when code refactored.
         self.assertEqual(len(self.network.connections), 3)
+    #TO DO: once code is refactored make some tests more akin to what you have
+    #for connections_tests. As the default behaviour is to use the connection 
+    #(BlackBoxEntanglingQsourceConnection) from there, it some of the tests 
+    #could be the same but with a different set up (due to the fact that some
+    #of the setup is now happening within link_2_nodes)
     
                                                 
         

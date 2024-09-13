@@ -111,11 +111,15 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
     to the QPUs. In this way, we can model error and loss but needn't simulate
     the details of entanglement between static communication qubits and photons.
     """
+    #commented out block below is for after refactor
 # =============================================================================
 #     connection = BlackBoxEntanglingQsourceConnection(
 #                     delay=1/ent_dist_rate,
 #                     state4distribution=state4distribution,)
 # =============================================================================
+    #commented out block below is for jogging memory of what to do with code
+    #above. It is taken from tests and so has incorrect uses of self and is not
+    #all relevant.
 # =============================================================================
 #         self.connection = BlackBoxEntanglingQsourceConnection(
 #                               delay=10,
