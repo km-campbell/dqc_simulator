@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
+# =============================================================================
+# Created on Wed Sep 20 14:28:30 2023
+# 
+# @author: kenny
+# =============================================================================
 """
-Created on Wed Sep 20 14:28:30 2023
+Provides helper functions.
 
-@author: kenny
+The helper functions are intended to smooth the process of working with the
+simulator and also aid development.
 """
 
 #This module provides utility functions for smoothing 
@@ -17,6 +23,31 @@ from netsquid.protocols.protocol import Signals
 from netsquid.qubits import qubitapi as qapi
 from netsquid.util.datacollector import DataCollector
 from netsquid.qubits.dmutil import reorder_dm
+
+def create_wrapper_with_some_args_fixed(func, args2fix):
+    """Bakes in some arguments to a function,
+    
+    Parameters
+    ----------
+    func : function
+        The function to create a wrapper for.
+    args2fix : dict
+        The relative postion of the argument (key in dict) that should be fixed
+        and the value to fix it to (value in dict).
+
+    Returns
+    -------
+    wrapper : function
+        A wrapper for `func` which fixes some of the arguments, so that the 
+        user inputs a reduced set of arguments relative to func.
+    """
+    def func_wrapper(*unfixed_args, **kwargs):
+        unfixed_arg_iter = iter(unfixed_args)
+        num_pos_args4func = len(args2fix) + len([*unfixed_args])
+        wrapper = func(*(args2fix[ii] if ii in args2fix else next(unfixed_arg_iter)
+                         for ii in range(num_pos_args4func)), **kwargs)
+        return wrapper
+    return func_wrapper
 
 def get_data_qubit_indices(node, num_indices):
     """

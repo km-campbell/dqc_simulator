@@ -45,7 +45,6 @@ from dqc_simulator.qlib import gates
 from dqc_simulator.qlib import circuit_identities as macros
 
 
-
     
 class ExpQasm(QasmParsingElement):
     """
@@ -728,33 +727,6 @@ class QasmTwoUniversalSet():
     """
     
     gates = {"U" : gates.INSTR_U, "CX" : instr.INSTR_CNOT}
-
-
-
-def create_wrapper_with_some_args_fixed(func, args2fix):
-    """Bakes in some arguments to a function,
-    
-    Parameters
-    ----------
-    func : function
-        The function to create a wrapper for.
-    args2fix : dict
-        The relative postion of the argument (key in dict) that should be fixed
-        and the value to fix it to (value in dict).
-
-    Returns
-    -------
-    wrapper : function
-        A wrapper for `func` which fixes some of the arguments, so that the 
-        user inputs a reduced set of arguments relative to func.
-    """
-    def wrapper(*unfixed_args, **kwargs):
-        unfixed_arg_iter = iter(unfixed_args)
-        num_pos_args4func = len(args2fix) + len([*unfixed_args])
-        wrapper = func(*(args2fix[ii] if ii in args2fix else next(unfixed_arg_iter)
-                         for ii in range(num_pos_args4func)), **kwargs)
-        return wrapper
-
 
 
 class Ast2DqcCircuitTranslator():
