@@ -24,16 +24,19 @@ from netsquid.qubits import qubitapi as qapi
 from netsquid.util.datacollector import DataCollector
 from netsquid.qubits.dmutil import reorder_dm
 
-def create_wrapper_with_some_args_fixed(func, args2fix):
+def create_wrapper_with_some_args_fixed(func, args2fix, **kwargs2fix):
     """Bakes in some arguments to a function,
     
     Parameters
     ----------
     func : function
         The function to create a wrapper for.
-    args2fix : dict
+    args2fix : dict or None
         The relative postion of the argument (key in dict) that should be fixed
         and the value to fix it to (value in dict).
+    kwargs2fix
+        The keyword arguments to fix (specified in the normal way not 
+        aggregated)
 
     Returns
     -------
@@ -42,10 +45,15 @@ def create_wrapper_with_some_args_fixed(func, args2fix):
         user inputs a reduced set of arguments relative to func.
     """
     def func_wrapper(*unfixed_args, **kwargs):
-        unfixed_arg_iter = iter(unfixed_args)
-        num_pos_args4func = len(args2fix) + len([*unfixed_args])
-        wrapper = func(*(args2fix[ii] if ii in args2fix else next(unfixed_arg_iter)
-                         for ii in range(num_pos_args4func)), **kwargs)
+        if args2fix is None:
+            wrapper = func(*unfixed_args, **kwargs2fix, **kwargs)
+        else:
+            unfixed_arg_iter = iter(unfixed_args)
+            num_pos_args4func = len(args2fix) + len([*unfixed_args])
+            wrapper = func(*(args2fix[ii] if ii in args2fix else next(unfixed_arg_iter)
+                             for ii in range(num_pos_args4func)), 
+                           **kwargs2fix, 
+                           **kwargs)
         return wrapper
     return func_wrapper
 
