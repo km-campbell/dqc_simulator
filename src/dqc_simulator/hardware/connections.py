@@ -77,7 +77,7 @@ class BlackBoxEntanglingQsourceConnection(Connection):
     def __init__(self, delay,
                  state4distribution,
                  port_number=1, 
-                 name="EntanglingQsourceConnection"):
+                 name="BlackBoxEntanglingQsourceConnection"):
         super().__init__(name=name)
         qchannel_qsource2A = QuantumChannel("qchannel_qsource2A",
                                             delay=delay)
