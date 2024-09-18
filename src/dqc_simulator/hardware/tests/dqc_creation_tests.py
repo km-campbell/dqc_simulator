@@ -77,23 +77,17 @@ class Test_link_2_qpus(unittest.TestCase):
         fidelity = qapi.fidelity([qubit_qpu0, qubit_qpu1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
         
-    #the following test fails but the error message suggests the output is out
-    #need to think on this.
-# =============================================================================
-#     def test_can_create_only_entangling_link(self):
-#         link_2_qpus(self.network, self.qpu0, self.qpu1, 
-#                     want_classical_2way_link=False,
-#                     want_entangling_link=True)
-#         print(self.network.connections)
-#         with self.subTest(msg="wrong number of entangling connections"):
-#             self.assertEqual(len(self.network.connections), 1)
-#         with self.subTest(msg="wrong type of connection"):
-#             print(type(list(self.network.connections.values())[0]))
-#             print(isinstance(list(self.network.connections.values())[0],
-#                              BlackBoxEntanglingQsourceConnection))
-#             self.assertIsInstance(list(self.network.connections.values())[0],
-#                                   BlackBoxEntanglingQsourceConnection)
-# =============================================================================
+    #the following test previously failed but the error message suggested the
+    #output was right. Need to think on this.
+    def test_can_create_only_entangling_link(self):
+        link_2_qpus(self.network, self.qpu0, self.qpu1, 
+                    want_classical_2way_link=False,
+                    want_entangling_link=True)
+        with self.subTest(msg="wrong number of entangling connections"):
+            self.assertEqual(len(self.network.connections), 1)
+        with self.subTest(msg="wrong type of connection"):
+            self.assertIsInstance(list(self.network.connections.values())[0],
+                                  BlackBoxEntanglingQsourceConnection)
             
     def test_can_create_only_classical_link(self):
         link_2_qpus(self.network, self.qpu0, self.qpu1, 

@@ -297,7 +297,8 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                                     models={"delay_model": FibreDelayModel()}), 
                                label="classical")
     if want_entangling_link:
-        create_entangling_link(network, node_a, node_b)
+        create_entangling_link(network, node_a, node_b,
+                               **kwargs4create_entangling_link)
 
 class QpuNode(Node):
     """Creates QPU nodes.
@@ -327,6 +328,7 @@ def create_dqc_network(
                 classical_topology = None,
                 want_classical_2way_link=True,
                 want_entangling_link=True,
+                create_entangling_link=None,
                 nodes_have_ebit_ready=False,
                 node_comm_qubits_free=None, #[0, 1] defined in function body
                 node_comm_qubit_positions=None, #(0, 1) defined in function body
@@ -378,6 +380,9 @@ def create_dqc_network(
         Whether a two-way quantum link should be created between all nodes 
         (True) or not (False). Nodes can request entangled pairs using this
         link. Unused if classical_topology or quantum_topology is not None.
+    create_entangling_link : func, optional
+        The function to use in order to create an entangling link. By default,
+        :func: `create_black_box_central_source_entangling_link` is used.
     custom_qprocessor_func: function or None, optional
         Creates the quantum processor object to use on each node. It must
         be able to run with no arguments. If unspecified then
@@ -395,8 +400,8 @@ def create_dqc_network(
 
     Returns
     -------
-    :class: `~netsquid.components.qprocessor.QuantumProcessor`
-
+    network : :class: `~netsquid.nodes.network.Network`
+        The simulated hardware for a distributed quantum computer.
     """
     
     #initialising default arguments
@@ -409,6 +414,7 @@ def create_dqc_network(
     if custom_qprocessor_func is None:
         custom_qprocessor_func = create_processor
         
+        
     if num_qpus < 2:
         raise ValueError("num_qpus must be at least 2")
     if type(num_qpus) is not int:
@@ -420,10 +426,8 @@ def create_dqc_network(
             #need to instantiate a new processor object each time with a 
             #new function call. Otherwise, the code is trying to add the 
             #same processor object to different nodes, as opposed to a copy
-            #of it. Maybe look into taking processor creation function into
-            #the entire create_dqc_network function rather than doing if 
-            #statement. The difficulty is in ensuring that I can still
-            #change the values if needed.
+            #of it. Therefore, it makes most sense to define this here within
+            #create_dqc_network
             qproc = custom_qprocessor_func(*args4qproc, **kwargs4qproc)
             qproc.name = f"qproc4node_{ii+starting_index}"
             qpu = QpuNode(
