@@ -14,10 +14,11 @@ simulator and also aid development.
 #This module provides utility functions for smoothing 
 #the process of working with the simulator.
 
+
+
+import inspect
+
 import pydynaa
-
-import numpy as np 
-
 from netsquid.qubits.dmtools import DenseDMRepr
 from netsquid.protocols.protocol import Signals
 from netsquid.qubits import qubitapi as qapi
@@ -56,6 +57,36 @@ def create_wrapper_with_some_args_fixed(func, args2fix, **kwargs2fix):
                            **kwargs)
         return wrapper
     return func_wrapper
+
+
+def filter_kwargs4internal_functions(funcs_with_kwargs, kwargs):
+    """
+    Filters keyword arguments specified by a parent function for use in calls
+    to functions within the definition of the parent function.
+
+    Parameters
+    ----------
+    funcs_with_kwargs : list or tuple of functions
+        The internal functions needing keyword arguments
+    kwargs : dict
+        The keyword argument.
+
+    Returns
+    -------
+    sorted_kwargs : dict of dicts
+        The kwargs for each different function. Key is function and values are
+        kwargs to be unpacked in each function call.
+    """
+    sorted_kwargs = {}
+    for func in funcs_with_kwargs:
+        #making list of positional and keyword arguments
+        arg_names = list(inspect.signature(func).parameters) 
+        #filtering for only the kwargs and associating them with their values
+        kwargs4func = {arg_name : kwargs[arg_name] for arg_name in arg_names 
+                       if arg_name in kwargs}
+        sorted_kwargs[func] = kwargs4func
+    return sorted_kwargs
+    
 
 def get_data_qubit_indices(node, num_indices):
     """

@@ -7,7 +7,8 @@
 
 import unittest
 
-from dqc_simulator.util.helper import create_wrapper_with_some_args_fixed
+from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
+                                       filter_kwargs4internal_functions)
 
 
 class TestCreateWrapper(unittest.TestCase):
@@ -38,7 +39,26 @@ class TestCreateWrapper(unittest.TestCase):
         self.assertEqual(wrapped_func(-3, e=5),
                          {"a" : 1, "b" : -3, "c": 2, "d" : 4, "e" : 5})
 
-
+class Test_filter_kwargs4internal_functions(unittest.TestCase):
+    
+    def child_func1(self, a, b=2, c=3):
+        return {'a' : a, 'b' : b, 'c' : c}
+    
+    def child_func2(self, d, e=4, f=5):
+        return {'d' : d, 'e' : e, 'f' : f}
+    
+    def parent_func_role(self, **kwargs):
+        return kwargs
+    
+    def test_output_as_expected_for_two_sets_of_kwargs(self):
+        kwargs_from_parent = self.parent_func_role(b=2, c=3, e=4, f=5)
+        actual_output = filter_kwargs4internal_functions([self.child_func1,
+                                                          self.child_func2], 
+                                                         kwargs_from_parent)
+        expected_output = {self.child_func1 : {'b' : 2, 'c' : 3},
+                           self.child_func2 : {'e' : 4, 'f' : 5}}
+        self.assertEqual(actual_output, expected_output)
+        
 
 
 
