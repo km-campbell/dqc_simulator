@@ -20,7 +20,8 @@ from netsquid.components.models.delaymodels import FibreDelayModel
 from dqc_simulator.hardware.connections import ( 
     BlackBoxEntanglingQsourceConnection)
 from dqc_simulator.hardware.quantum_processors import create_processor
-from dqc_simulator.util.helper import create_wrapper_with_some_args_fixed
+from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
+                                       filter_kwargs4internal_functions)
 
 
 
@@ -334,8 +335,9 @@ def create_dqc_network(
                 node_comm_qubit_positions=None, #(0, 1) defined in function body
                 custom_qprocessor_func=None,
                 name="linear network",
-                **kwargs4qproc):
-    """Creates a network suitable for distributed quantum computing
+                **kwargs):
+    """
+    Creates a network suitable for distributed quantum computing
     
     Creates a network with QPUs node_0 to node_nn
     connected by entangling connections and/or classical connections.
@@ -389,14 +391,9 @@ def create_dqc_network(
         a default noiseless processor will be used
     name : str, optional
         Name of the network
-    **kwargs4qproc : 
-        The name-value arguments for the custom_qprocessor_func specified.
-        By default (ie, when custom_qprocessor_func has the default value of
-        create_processor), these are:    
-                depolar_rate : float, optional
-                    Depolarization rate of qubits in memory.
-                dephase_rate : float, optional
-                    Dephasing rate of physical measurement instruction.
+    **kwargs : 
+        The name-value arguments for the custom_qprocessor_func and 
+        create_entangling_link functions specified.
 
     Returns
     -------
@@ -413,8 +410,22 @@ def create_dqc_network(
         node_comm_qubits_free = [0, 1]
     if custom_qprocessor_func is None:
         custom_qprocessor_func = create_processor
+    if create_entangling_link is None:
+        create_entangling_link = create_black_box_central_source_entangling_link
+        #instantiating keyword arguments for default create_entangling_link 
+        #function, this is necessary because I have explicitly included those 
+        #keyword arguments in the function definition above. This is done to 
+        #make the documentation clearer (ie, explicitly make the user aware of 
+        #the default options)
+        kwargs['state4distribution'] = state4distribution
+        kwargs['node_distance'] = node_distance
+        kwargs['ent_dist_rate'] = ent_dist_rate
         
-        
+    kwargs4qproc, kwargs4create_entangling_link = ( 
+        filter_kwargs4internal_functions([custom_qprocessor_func,
+                                          create_entangling_link], 
+                                         kwargs).values())
+    
     if num_qpus < 2:
         raise ValueError("num_qpus must be at least 2")
     if type(num_qpus) is not int:
@@ -453,9 +464,6 @@ def create_dqc_network(
             node_1 = network.get_node(f"node_{ii}")
             node_2 = network.get_node(f"node_{ii+1}")
             link_2_qpus(network, node_1, node_2, 
-                         state4distribution=state4distribution,
-                         node_distance=node_distance, 
-                         ent_dist_rate=ent_dist_rate,
                          want_classical_2way_link=want_classical_2way_link, 
                          want_entangling_link=want_entangling_link)
     
@@ -463,7 +471,10 @@ def create_dqc_network(
 
     if node_list is None:
         node_list = _create_qpus(num_qpus2create=num_qpus)
-        
+    #NetSquid natively raises error if you try adding nodes with the same
+    #name to a network, so it is safe to assume each node has a unique name in  
+    #what follows despite the possibility of mixing and matching auto-generated 
+    #and user-defined names
     network.add_nodes(node_list)
     if quantum_topology is None and classical_topology is None:
         #create network with linear topology 
@@ -478,9 +489,8 @@ def create_dqc_network(
             node_2 = network.get_node(f"node_{num_qpus-1}") #num_qpus-1 is 
                                                             #max index
             link_2_qpus(network, node_1, node_2, 
-                         state4distribution=state4distribution,
-                         want_classical_2way_link=want_classical_2way_link, 
-                         want_entangling_link=want_entangling_link)
+                        want_classical_2way_link=want_classical_2way_link, 
+                        want_entangling_link=want_entangling_link)
     else:
         if quantum_topology is not None:
             if (quantum_topology[-1])[1] > (len(network.nodes)-1): 
@@ -499,13 +509,11 @@ def create_dqc_network(
                 node_a = network.get_node(f"node_{indices[0]}")
                 node_b = network.get_node(f"node_{indices[1]}")
                 link_2_qpus(network, node_a, node_b,
-                             state4distribution=state4distribution, 
-                             node_distance=node_distance,  
-                             want_classical_2way_link=False,
-                             want_entangling_link=True)
+                            want_classical_2way_link=False,
+                            want_entangling_link=True)
         if classical_topology is not None: #if classical_topology is not None
             if (classical_topology[-1])[1] > (len(network.nodes)-1): 
-            #if index is to large for number of QPUs in network
+            #if index is too large for number of QPUs in network
                 nodes_needed = ((classical_topology[-1])[1] - 
                                 (len(network.nodes) - 1))
                 extra_nodes = _create_qpus(num_qpus2create=nodes_needed,
@@ -520,10 +528,8 @@ def create_dqc_network(
                 node_a = network.get_node(f"node_{indices[0]}")
                 node_b = network.get_node(f"node_{indices[1]}")
                 link_2_qpus(network, node_a, node_b,
-                             state4distribution=state4distribution, 
-                             node_distance=node_distance,
-                             want_classical_2way_link=True,
-                             want_entangling_link=False)
+                            want_classical_2way_link=True,
+                            want_entangling_link=False)
     return network
 
 
