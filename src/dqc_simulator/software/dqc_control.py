@@ -207,6 +207,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             
     def _request_entanglement(self, other_node_name, comm_qubit_index,
                               ent_request_port):
+        #TO DO: refactor this. If nothing else the port name has changed.
         node_names = [self.node.name, other_node_name]
         node_names.sort()
         ent_recv_port = self.node.ports[
