@@ -208,6 +208,8 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     def _request_entanglement(self, other_node_name, comm_qubit_index,
                               ent_request_port):
         #TO DO: refactor this. If nothing else the port name has changed.
+        #I think the most likely change will be to use this to simply send a
+        #signal to a subclass of EntanglementGenerationProtocol defined below
         node_names = [self.node.name, other_node_name]
         node_names.sort()
         ent_recv_port = self.node.ports[
@@ -866,6 +868,14 @@ class dqcMasterProtocol(Protocol):
                 dummy_entity._schedule_now(evtype_dummy)
             break #exiting outer while loop once for loops are done
 
+
+
+            
+        
+
+
+
+        
 
 
 #Correcting occupies a qubit because that needs to be used as the control for 

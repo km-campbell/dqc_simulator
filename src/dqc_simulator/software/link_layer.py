@@ -24,3 +24,84 @@ References
 
 """
 
+from netsquid.protocols import NodeProtocol
+
+#TO DO: get rid of following import if you swap HandleCommBlockForOneNodeProtocol
+#for a new QpuManagementProtocol (keep if you do not)
+from dqc_simulator.software.dqc_control import HandleCommBlockForOneNodeProtocol
+
+class EntanglementGenerationProtocol(NodeProtocol):
+    """
+    A basic link layer implementation with no signalling needed to the physical 
+    layer.
+    
+    The physical layer protocols that deal with entanglement are implemented
+    as subprotocols of this protocol.
+    
+    Parameters
+    ----------
+    physical_layer_protocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The physical layer protocol to use to handle entanglement generation.
+    node : :class: `netsquid.nodes.node.Node`, subclass thereof or None, optional
+        The QPU node that this protocol will act on. If None, a node should be
+        set later before starting this protocol.
+    name : str or None, optional
+        Name of protocol. If None, the name of the class is used.
+    """
+    def __init__(self, physical_layer_protocol, node=None, name=None):
+        super().__init__(node, name)
+        self.add_subprotocol(physical_layer_protocol,
+                             name='physical_layer_protocol')
+        self.ent_request_label = "ENT_REQUEST"
+        self.ent_ready_label = "ENT_READY"
+        self.ent_failed_label = "ENT_FAILED"
+        
+    def run(self):
+        #TO DO: determine if this run method should be changed to not be a run
+        #method because this should be an abstract base class. This is just to
+        #help me think things through more abstractly. This class may also be 
+        #used as a subprotocol.
+        while True:
+            #TO DO: decide what protocol will be sending this signal. 
+            #HandleCommBlockForOneNodeProtocol may be replaced by 
+            #QpuManagementProtocol
+            yield self.await_signal(HandleCommBlockForOneNodeProtocol, 
+                                    signal_label=self.ent_request_label)
+            #the following could be replaced with any desired specs (including 
+            #a tuple of them). TO DO: think about whether you want to have more
+            #specs (eg, entanglement fidelity like in Wehner stack papers).
+            #For now, I'll keep it simple
+            num_entanglements2generate = self.get_signal_result(
+                                            self.ent_request_label, 
+                                            receiver=self)
+            #updating relevant attributes
+            self.subprotocols[
+                'physical_layer_protocol'].num_entanglements2generate = ( 
+                    num_entanglements2generate)
+            #TO DO: think about if next line is the way you want to do things.
+            self.subprotocols['physical_layer_protocol'].start()
+            #TO THINK ABOUT: as written, I am assuming the physical layer 
+            #protocol has an attribute called num_entanglements2generate 
+            #(although it won't actually break anythin if it doesn't).
+            #Perhaps, I should make an abstract base class for the physical 
+            #layer with these attributes to make things clearer.
+            
+            #TO THINK ABOUT: should the following be done by the physical layer?
+            #It seems pointless to have a middle man for this part.
+            #Perhaps you could make another protocol to do this and use this
+            #as a subprotocol of the physical_layer_protocol
+# =============================================================================
+#             #TO DO: wait on ENT_READY or ENT_FAILED signals from the physical 
+#             #layer
+#             wait_on_ent_ready_signal = ( 
+#                 self.await_signal(self.subprotocols['physical_layer_protocol'],
+#                                   signal_label=self.ent_ready_label))
+#             wait_on_ent_failed_signal = (
+#                 self.await_signal(self.subprotocols['physical_layer_protocol'],
+#                                   signal_label=self.ent_failed_label))
+#             evexpr = yield wait_on_ent_ready_signal | wait_on_ent_failed_signal
+#             if evexpr.first_term.value: #if ent_ready signal received:
+#                 #do one thing
+#             elif evexpr.second_term.value: #if ent_failed signal received:
+#                 #do something else
+# =============================================================================

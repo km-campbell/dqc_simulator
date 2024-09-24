@@ -18,6 +18,8 @@ dqc\_simulator.software
    software/dqc_simulator.software.compilers
    software/dqc_simulator.software.dqc_circuit
    software/dqc_simulator.software.dqc_control
+   software/dqc_simulator.software.link_layer
    software/dqc_simulator.software.partitioner
+   software/dqc_simulator.software.physical_layer
    software/dqc_simulator.software.qasm2ast
    software/dqc_simulator.software.transpiler
