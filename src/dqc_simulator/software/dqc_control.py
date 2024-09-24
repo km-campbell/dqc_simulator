@@ -151,9 +151,11 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             where othernode_name is the name attribute of a
             netsquid.nodes.Node object, and gate_type is an
             instruction from netsquid.components.instructions
-    *args, **kwargs:
-        All positional and keyword arguments inherited from 
-        :class: `~netsquid.protocols.nodeprotocols.NodeProtocol`
+    node : :class: `netsquid.nodes.node.Node`, subclass thereof or None, optional
+        The QPU node that this protocol will act on. If None, a node should be
+        set later before starting this protocol.
+    name : str or None, optional
+        Name of protocol. If None, the name of the class is used.
     """
     #The core idea of what follows is to add instructions to a QuantumProgram
     #until remote gates occur, at which point the program will be run to that 
@@ -163,8 +165,8 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     #but will have different names when this protocol is acted on the 
     #appropriate nodes
 
-    def __init__(self, gate_tuples, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, gate_tuples, node=None, name=None):
+        super().__init__(node, name)
         self.gate_tuples = gate_tuples
         #The following subgenerators are similar to subprotocols implemented
         #in functional form rather than as classes. Unlike subprotocols (as far
