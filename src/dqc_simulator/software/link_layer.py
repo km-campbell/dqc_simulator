@@ -41,20 +41,28 @@ class EntanglementGenerationProtocol(NodeProtocol):
     Parameters
     ----------
     physical_layer_protocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
-        The physical layer protocol to use to handle entanglement generation.
+        Instance of the physical layer protocol to use to handle entanglement 
+        generation.
     node : :class: `netsquid.nodes.node.Node`, subclass thereof or None, optional
         The QPU node that this protocol will act on. If None, a node should be
         set later before starting this protocol.
     name : str or None, optional
         Name of protocol. If None, the name of the class is used.
+        
+    .. todo::
+        
+        Decide whether to replace HandleCommBlockForOneNodeProtocol with 
+        a new protocol called QpuManagementProtocol.
     """
     def __init__(self, physical_layer_protocol, node=None, name=None):
         super().__init__(node, name)
         self.add_subprotocol(physical_layer_protocol,
                              name='physical_layer_protocol')
         self.ent_request_label = "ENT_REQUEST"
-        self.ent_ready_label = "ENT_READY"
-        self.ent_failed_label = "ENT_FAILED"
+# =============================================================================
+#         self.ent_ready_label = "ENT_READY"
+#         self.ent_failed_label = "ENT_FAILED"
+# =============================================================================
         
     def run(self):
         #TO DO: determine if this run method should be changed to not be a run
@@ -71,25 +79,34 @@ class EntanglementGenerationProtocol(NodeProtocol):
             #a tuple of them). TO DO: think about whether you want to have more
             #specs (eg, entanglement fidelity like in Wehner stack papers).
             #For now, I'll keep it simple
-            num_entanglements2generate = self.get_signal_result(
+            signal_results = self.get_signal_result(
                                             self.ent_request_label, 
                                             receiver=self)
+            other_node_name = signal_results[0] 
+            comm_qubit_index = signal_results[1]
+            num_entanglements2generate = signal_results[2]
+            entanglement_type2generate = signal_results[3]
             #updating relevant attributes
+            self.subprotocols[
+                'physical_layer_protocol'].other_node_name = (
+                    other_node_name)
+            self.subprotocols[
+                'physical_layer_protocol'].comm_qubit_index = (
+                    comm_qubit_index)
             self.subprotocols[
                 'physical_layer_protocol'].num_entanglements2generate = ( 
                     num_entanglements2generate)
-            #TO DO: think about if next line is the way you want to do things.
+            self.subprotocols[
+                'physical_layer_protocol'].entanglement_type2generate = (
+                    entanglement_type2generate)
             self.subprotocols['physical_layer_protocol'].start()
-            #TO THINK ABOUT: as written, I am assuming the physical layer 
-            #protocol has an attribute called num_entanglements2generate 
-            #(although it won't actually break anythin if it doesn't).
-            #Perhaps, I should make an abstract base class for the physical 
-            #layer with these attributes to make things clearer.
+            
             
             #TO THINK ABOUT: should the following be done by the physical layer?
             #It seems pointless to have a middle man for this part.
             #Perhaps you could make another protocol to do this and use this
-            #as a subprotocol of the physical_layer_protocol
+            #as a subprotocol of the physical_layer_protocol, If so, then 
+            #you may need to wait on the physical_layer_protocol finishing.
 # =============================================================================
 #             #TO DO: wait on ENT_READY or ENT_FAILED signals from the physical 
 #             #layer
