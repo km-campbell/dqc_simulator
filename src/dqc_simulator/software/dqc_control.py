@@ -14,6 +14,7 @@ from netsquid.protocols.protocol import Signals, Protocol
 from netsquid.protocols.nodeprotocols import NodeProtocol
 
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
+from dqc_simulator.software.link_layer import EntanglementGenerationProtocol
 from dqc_simulator.hardware.dqc_creation import QpuNode
 
 #The following will act on the qsource node, Charlie, when one of the nodes 
@@ -45,6 +46,10 @@ class AbstractFromPhotonsEntangleProtocol(NodeProtocol):
     message consisting of a tuple with 2 indices. The first index is the index
     of node_a's comm qubit and the second that of node_b. The protocol can only
     connect linked nodes and will not work over a virtual quantum connection.
+    
+    .. todo::
+        
+        Deprecate this once refactoring is finished.
     """
         
     def run(self):
@@ -175,6 +180,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         #evolve the simulation in time.
         self.protocol_subgenerators = {"cat" : self._cat_subgenerator,
                                        "tp" : self._tp_subgenerator}
+        self.ent_request_label = "ENT_REQUEST"
+        self.ent_ready_label = "ENT_READY"
+        self.ent_failed_label = "ENT_FAILED"
 
     def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
                              gate_op):
@@ -201,6 +209,11 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             The indices of the qubits to act the instruction on.
         gate_op : instance of netsquid.qubits.operators.Operator
             The operator used to apply the quantum gate.
+            
+        .. todo::
+            
+            Handle situations where entanglement is successful or not 
+            successful in _request_entanglement method (see comment there)
         """
         if gate_op is None:
             qprogram.apply(gate_instr, qubit_indices)
@@ -208,26 +221,55 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
             
     def _request_entanglement(self, other_node_name, comm_qubit_index,
-                              ent_request_port):
-        #TO DO: refactor this. If nothing else the port name has changed.
-        #I think the most likely change will be to use this to simply send a
-        #signal to a subclass of EntanglementGenerationProtocol defined below
-        node_names = [self.node.name, other_node_name]
-        node_names.sort()
-        ent_recv_port = self.node.ports[
-            f"quantum_input_from_charlie"
-            f"{comm_qubit_index}_"
-            f"{node_names[0]}<->{node_names[1]}"]
-        #send entanglement request specifying
-        #the comm-qubit to be used:
-        ent_request_port.tx_output(comm_qubit_index)
-        #wait for entangled qubit to arrive in
-        #requested comm-qubit slot:
-        yield self.await_port_input(ent_recv_port)
+                              num_entanglements2generate,
+                              entanglement_type2generate):
+        #TO DO: change comm_qubit_index to comm_qubit_indices here and in calls
+        #and ensure that wherever it is called a list or tuple is being 
+        #inputted
+        
+        #send entanglement request to link layer specifying the other node
+        #involved in the connection and the comm-qubit to be used:
+        self.send_signal(self.ent_request_label, 
+                         result=(other_node_name, comm_qubit_index,
+                                 num_entanglements2generate,
+                                 entanglement_type2generate))        
+        #wait for entangled qubit to arrive in requested comm-qubit slot:
+        wait4succsessful_ent = self.await_signal(
+                                   EntanglementGenerationProtocol,
+                                   signal_label=self.ent_ready_label)
+        wait4failed_ent = self.await_signal(
+                              EntanglementGenerationProtocol,
+                              signal_label= self.ent_failed_label)
+        evexpr = yield wait4succsessful_ent | wait4failed_ent
+        #TO DO: implement block commented out below. It may be enough to only
+        #handle the case where entanglement failed as previously you just 
+        #waited for entanglement to be ready
+# =============================================================================
+#         if evexpr.first_term.value: #if entanglement success signal recieved:
+#             #do something
+#         elif evexpr.second_term.value: #if entanglement failed signal received:
+#             #do something else
+# =============================================================================
+            
+        #TO DO: delete commented out block below once it has been reimplemented 
+        #as its own protocol in the physical layer if refactoring is successful
+# =============================================================================
+#         node_names = [self.node.name, other_node_name]
+#         node_names.sort()
+#         ent_recv_port = self.node.ports[
+#             f"quantum_input_from_charlie"
+#             f"{comm_qubit_index}_"
+#             f"{node_names[0]}<->{node_names[1]}"]
+#         #send entanglement request specifying
+#         #the comm-qubit to be used:
+#         ent_request_port.tx_output(comm_qubit_index)
+#         #wait for entangled qubit to arrive in
+#         #requested comm-qubit slot:
+#         yield self.await_port_input(ent_recv_port)
+# =============================================================================
             
     def _cat_entangle(self, program, other_node_name,
-                      data_or_tele_qubit_index, classical_comm_port,
-                      ent_request_port):
+                      data_or_tele_qubit_index, classical_comm_port):
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
         if len(self.node.comm_qubits_free) == 0: 
@@ -246,8 +288,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #of available comm-qubits:
             if not self.node.ebit_ready: #if there is no ebit ready:
                 yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index,
-                                                      ent_request_port)
+                                                      comm_qubit_index)
             program.apply(instr.INSTR_CNOT,
                           [data_or_tele_qubit_index,
                           comm_qubit_index])
@@ -269,8 +310,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                                                #yield statements have been 
                                                #outputed 
         
-    def _cat_correct(self, program, other_node_name, classical_comm_port, 
-                     ent_request_port):
+    def _cat_correct(self, program, other_node_name, classical_comm_port):
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
         if len(self.node.comm_qubits_free) == 0: 
@@ -290,8 +330,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #of available comm-qubits:
             if not self.node.ebit_ready: #if there is no ebit ready:
                 yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index,
-                                                      ent_request_port)
+                                                      comm_qubit_index)
             del self.node.comm_qubits_free[0]
             #wait for measurement result
             yield self.await_port_input(classical_comm_port)
@@ -337,7 +376,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         return program
     
     def _bsm(self, program, data_or_tele_qubit_index, other_node_name,
-             ent_request_port, classical_comm_port):
+             classical_comm_port):
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
         if len(self.node.comm_qubits_free) == 0 :
@@ -364,8 +403,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #it appears many times in your different subgenerators
             if not self.node.ebit_ready: 
                 yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index,
-                                                      ent_request_port)
+                                                      comm_qubit_index)
             program.apply(instr.INSTR_CNOT, [data_or_tele_qubit_index, 
                           comm_qubit_index])
             program.apply(instr.INSTR_H, [data_or_tele_qubit_index])
@@ -416,7 +454,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                 self.node.comm_qubits_free.sort()
         return program
     
-    def _tp_correct(self, program, ent_request_port, other_node_name,
+    def _tp_correct(self, program, other_node_name,
                     classical_comm_port, reserve_comm_qubit, swap_commNdata,
                     data_qubit_index=None):
         """
@@ -425,8 +463,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         Parameters
         ----------
         program : TYPE
-            DESCRIPTION.
-        ent_request_port : TYPE
             DESCRIPTION.
         other_node_name : TYPE
             DESCRIPTION.
@@ -475,8 +511,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #available comm-qubits:
             if not self.node.ebit_ready:#if there is no ebit ready:
                 yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index,
-                                                      ent_request_port)
+                                                      comm_qubit_index)
             yield self.await_port_input(classical_comm_port)
             meas_results, = classical_comm_port.rx_input().items
             if swap_commNdata:
@@ -505,7 +540,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     
     def _cat_subgenerator(self, role, program, other_node_name,
                           data_or_tele_qubit_index,
-                          classical_comm_port, ent_request_port,
+                          classical_comm_port,
                           comm_qubit_index):
 # =============================================================================
 #         #commented out block is alternative implementation. It is more easily
@@ -535,8 +570,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                                     program, 
                                     other_node_name,
                                     data_or_tele_qubit_index,
-                                    classical_comm_port,
-                                    ent_request_port)
+                                    classical_comm_port)
             #output will be EventExpression until end of 
             #generator is reached when it will instead 
             #be tuple of useful variables to pass on to 
@@ -548,8 +582,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             evexpr_or_tuple = yield from self._cat_correct(
                                     program, 
                                     other_node_name,
-                                    classical_comm_port,
-                                    ent_request_port)
+                                    classical_comm_port)
             #output will be EventExpression until end of 
             #generator is reached when it will instead 
             #be tuple of useful variables to pass on to 
@@ -582,7 +615,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             
     def _tp_subgenerator(self, role, program, other_node_name,
                          data_or_tele_qubit_index,
-                         classical_comm_port, ent_request_port,
+                         classical_comm_port,
                          comm_qubit_index):
         
         if role == "bsm":
@@ -591,7 +624,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                     program, 
                     data_or_tele_qubit_index,
                     other_node_name,
-                    ent_request_port,
                     classical_comm_port))
             program = evexpr_or_program
 
@@ -601,7 +633,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
-                    ent_request_port, 
                     other_node_name,
                     classical_comm_port,
                     reserve_comm_qubit,
@@ -615,7 +646,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
-                    ent_request_port, 
                     other_node_name,
                     classical_comm_port,
                     reserve_comm_qubit,
@@ -629,7 +659,6 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
-                    ent_request_port, 
                     other_node_name,
                     classical_comm_port,
                     reserve_comm_qubit,
@@ -691,17 +720,13 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                         classical_comm_port = self.node.ports[
                             f"classical_connection_{self.node.name}->"
                             f"{other_node_name}"]
-                        ent_request_port = self.node.ports[
-                            f"request_entanglement_{node_names[0]}<->"
-                            f"{node_names[1]}"]
                         evexpr_or_variables = ( 
                             yield from self.protocol_subgenerators[scheme](
                                                     role,
                                                     program,
                                                     other_node_name,
                                                     data_or_tele_qubit_index,
-                                                    classical_comm_port, 
-                                                    ent_request_port,
+                                                    classical_comm_port,
                                                     comm_qubit_index))
                         #past this point evexpr_or_variables will be the
                         #variables
