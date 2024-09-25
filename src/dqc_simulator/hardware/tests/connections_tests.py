@@ -78,6 +78,9 @@ class TestBlackBoxEntanglingQsourceConnection(unittest.TestCase):
 #multiple entangled pairs at once. The results show that while you can 
 #distribute multiple pairs at the same time, the pairs go to the same nodes
 #(ie, the entangled qubits are on the same node, which is useless to me)
+#TO DO: see if, by using the qubit_mapping option of QSource when defining 
+#BlackBoxEntanglingQsourceConnection, you can distribute multiple pairs at the
+#same time and get the following to work
 # =============================================================================
 # from netsquid.qubits import set_qstate_formalism, QFormalism
 # class TestExtensions2BlackBoxEntanglingQsourceConnection(unittest.TestCase):

@@ -49,7 +49,10 @@ class BlackBoxEntanglingQsourceConnection(Connection):
     specified analytically and the state definition can be used to specify the
     noise on the entangled photons if desired. In this way, the need for 
     multiple simulation runs (which would be required by a probabilistic noise
-    model) is circumvented.
+    model) is circumvented. Therefore distribution with this connection is 
+    deterministic and any probablistic effects are incorporated into the 
+    chosen entanglement distribution rate (ie, the average entanglement 
+    distribution rate should be used).
     
     The black box :class: `~netsquid.components.qsource.QSource` is triggered
     via the sending of a classical trigger message from either QPU. It is 
@@ -66,6 +69,9 @@ class BlackBoxEntanglingQsourceConnection(Connection):
     delay : float
         The time for entanglement distribution to occur
         [ns].
+    state4distribution : array
+        The density matrix of the state that the entangled qubits should 
+        possess.
     port_number : str, optional
         Number to go in port names so as to distinguish different entangling 
         connections created from this class.
