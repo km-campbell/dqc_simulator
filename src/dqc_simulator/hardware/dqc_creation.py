@@ -41,6 +41,10 @@ class EntanglingConnection(Connection):
         to the source node
     name : str, optional
         Name of this connection. Default is entangling connection.
+        
+    .. todo::
+        
+        Move to connections module or deprecate after refactor
     """
 
     def __init__(self, delay,
@@ -129,9 +133,9 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
                            label="entangling")
     #generating names obeying netsquid naming conventions for port on QPUs that 
     #connect a Node to a connection
-    node_a_port_name = node_a.connection_port_name(node_b.ID, 
+    node_a_port_name = node_a.connection_port_name(node_b.name, 
                                                    label="entangling")
-    node_b_port_name = node_b.connection_port_name(node_a.ID,
+    node_b_port_name = node_b.connection_port_name(node_a.name,
                                                    label="entangling")
     #connecting input from connection to qmemory:
     node_a.ports[node_a_port_name].forward_input(node_a.qmemory.ports['qin'])
