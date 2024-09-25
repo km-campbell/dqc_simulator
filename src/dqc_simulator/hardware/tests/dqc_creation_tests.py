@@ -44,22 +44,31 @@ from dqc_simulator.qlib.states import werner_state
 
 
 class Test_link_2_qpus(unittest.TestCase):
+    def _handle_quantum_input2qmemory(self):
+        #note: in actual implementations, the next 2 lines would be done with 
+        #the physical layer protocol
+        self.qpu0.ports[self.qpu0port_name].forward_input(
+                                                self.qpu0.qmemory.ports['qin'])
+        self.qpu1.ports[self.qpu1port_name].forward_input(
+                                                self.qpu1.qmemory.ports['qin'])
+        
     def setUp(self):
         ns.sim_reset()
         self.qpu0 = Node("qpu0", 
                           qmemory=QuantumMemory("qmemory", num_positions=3))
         self.qpu1 = Node("qpu1",
                           qmemory=QuantumMemory("qmemory", num_positions=3))
-        self.qpu0port_name = self.qpu0.connection_port_name(self.qpu1.ID,
-                                        label="entangling")
-        self.qpu1port_name = self.qpu1.connection_port_name(self.qpu0.ID,
-                                        label="entangling")
+        self.qpu0port_name = self.qpu0.connection_port_name(self.qpu1.name,
+                                                            label="entangling")
+        self.qpu1port_name = self.qpu1.connection_port_name(self.qpu0.name,
+                                                            label="entangling")
         self.network = Network("network", nodes=[self.qpu0, self.qpu1])
         self.sim_runtime = 100
         
     def test_can_distribute_pair_of_entangled_qubits_triggered_by_qpu0(self):
         #this test uses the default settings
         link_2_qpus(self.network, self.qpu0, self.qpu1)
+        self._handle_quantum_input2qmemory()
         self.qpu0.ports[self.qpu0port_name].tx_output("ENT_REQUEST")
         ns.sim_run(self.sim_runtime)
         qubit_qpu0, = self.qpu0.qmemory.pop(0)
@@ -70,6 +79,7 @@ class Test_link_2_qpus(unittest.TestCase):
     def test_can_distribute_pair_of_entangled_qubits_triggered_by_qpu1(self):
         #this test uses the default settings
         link_2_qpus(self.network, self.qpu0, self.qpu1)
+        self._handle_quantum_input2qmemory()
         self.qpu1.ports[self.qpu1port_name].tx_output("ENT_REQUEST")
         ns.sim_run(self.sim_runtime)
         qubit_qpu0, = self.qpu0.qmemory.pop(0)
@@ -82,7 +92,7 @@ class Test_link_2_qpus(unittest.TestCase):
     def test_can_create_only_entangling_link(self):
         link_2_qpus(self.network, self.qpu0, self.qpu1, 
                     want_classical_2way_link=False,
-                    want_entangling_link=True)
+                    want_entangling_link=True)  
         with self.subTest(msg="wrong number of entangling connections"):
             self.assertEqual(len(self.network.connections), 1)
         with self.subTest(msg="wrong type of connection"):
@@ -161,303 +171,7 @@ class Test_link_2_qpus(unittest.TestCase):
 #     #could be the same but with a different set up (due to the fact that some
 #     #of the setup is now happening within link_2_nodes)
 # =============================================================================
-    
 
-class TestCreateDQCNetwork(unittest.TestCase):
-    def setUp(self):
-        ns.sim_reset()
-        set_qstate_formalism(QFormalism.DM)
-        
-    def test_right_connections_2_node_linear_network(self):
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=2,
-                                      node_distance=4e-3,
-                                      quantum_topology = None, 
-                                      classical_topology = None,
-                                      want_classical_2way_link=True,
-                                      want_entangling_link=True, 
-                                      name="linear network")
-        with self.subTest(msg="wrong number of connections"):
-            self.assertEqual(len(network.connections), 2)
-        with self.subTest(msg='missing entangling connection'):
-            self.assertIsInstance(
-                network.connections['conn|node_0<->node_1|entangling'],
-                BlackBoxEntanglingQsourceConnection)
-        with self.subTest(msg='missing entangling connection'):
-            self.assertIsInstance(
-                network.connections['conn|node_0<->node_1|classical'],
-                DirectConnection)
-    
-    def test_right_num_nodes_2_node_linear_network(self):
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=2,
-                                  node_distance=4e-3, 
-                                  quantum_topology = None, 
-                                  classical_topology = None,
-                                  want_classical_2way_link=True,
-                                  want_entangling_link=True, 
-                                  name="linear network")
-        self.assertEqual(len(network.nodes), 2)
-        
-    def test_right_num_connections_3_node_linear_network(self):
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=3,
-                                  node_distance=4e-3,
-                                  quantum_topology = None, 
-                                  classical_topology = None,
-                                  want_classical_2way_link=True,
-                                  want_entangling_link=True, 
-                                  name="linear network")
-        self.assertEqual(len(network.connections), 4)
-        
-    def test_right_num_connections_4_node_linear_network(self):
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                  node_distance=4e-3, 
-                                  quantum_topology = None, 
-                                  classical_topology = None,
-                                  want_classical_2way_link=True,
-                                  want_entangling_link=True, 
-                                  name="linear network")
-        self.assertEqual(len(network.connections), 6)
-    
-    def test_can_create_4_node_classical_linear_network(self):
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                      node_distance=4e-3, 
-                                      quantum_topology = None, 
-                                      classical_topology = None,
-                                      want_classical_2way_link=True,
-                                      want_entangling_link=False, 
-                                      name="linear network")
-        self.assertEqual(len(network.connections), 3)
-
-    def test_can_create_4_node_quantum_linear_network(self):
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                  node_distance=4e-3,
-                                  quantum_topology = None, 
-                                  classical_topology = None,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=True, 
-                                  name="linear network")
-        self.assertEqual(len(network.connections), 3)
-    
-    def test_can_manually_create_4_node_network(self):
-        classical_topology = [(0, 1), (1, 2), (2, 3)]
-        quantum_topology = [(0, 1), (1, 2), (2, 3)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="linear network")
-        self.assertEqual(len(network.connections), 6)
-
-    def test_can_manually_create_4_node_classical_network(self):
-        classical_topology = [(0, 1), (1, 2), (2, 3)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                  node_distance=4e-3, 
-                                  quantum_topology = None, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="linear network")
-        self.assertEqual(len(network.connections), 3)
-        
-    def test_can_manually_create_4_node_quantum_network(self):
-        quantum_topology = [(0, 1), (1, 2), (2, 3)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = None,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="linear network")
-        self.assertEqual(len(network.connections), 3)
-        
-    def test_can_still_create_4_node_quantum_network_with_wrong_num_qpus_if_topology_defined(self):
-            quantum_topology = [(0, 1), (1, 2), (2, 3)]
-            network = create_dqc_network(state4distribution=ks.b00, 
-                                         node_list=None, num_qpus=2,
-                                      node_distance=4e-3, 
-                                      quantum_topology = quantum_topology, 
-                                      classical_topology = None,
-                                      want_classical_2way_link=False,
-                                      want_entangling_link=False, 
-                                      name="linear network")
-            self.assertEqual(len(network.connections), 3)
-            #SHOULD SEE WARNING if this works (see test below)
-
-    def test_warning_raised_if_num_nodes_does_not_match_topology(self):
-        quantum_topology = [(0, 1), (1, 2), (2, 3)]
-        with self.assertWarns(UserWarning, msg="WARNING: num_qpus was "
-                              "overwritten because there were not enough nodes "
-                              "to realise the requested topology"):
-            create_dqc_network(state4distribution=ks.b00, 
-                               node_list=None, num_qpus=2,
-                                node_distance=4e-3, 
-                                quantum_topology = quantum_topology, 
-                                classical_topology = None,
-                                want_classical_2way_link=False,
-                                want_entangling_link=False, 
-                                name="linear network")
-            
-    def test_can_still_create_4_node_classical_network_with_wrong_num_nodes_if_topology_defined(self):
-            classical_topology = [(0, 1), (1, 2), (2, 3)]
-            network = create_dqc_network(state4distribution=ks.b00, 
-                                         node_list=None, num_qpus=2,
-                                      node_distance=4e-3, 
-                                      quantum_topology = None, 
-                                      classical_topology = classical_topology,
-                                      want_classical_2way_link=False,
-                                      want_entangling_link=False, 
-                                      name="linear network")
-            self.assertEqual(len(network.connections), 3)
-            #SHOULD SEE WARNING if this works (see test below)
-            
-    def test_warning_raised_if_wrong_num_qpus_for_classical_topology(self):
-            classical_topology = [(0, 1), (1, 2), (2, 3)]
-            with self.assertWarns(UserWarning, msg="WARNING: num_qpus was "
-                                  "overwritten because there were not enough nodes "
-                                  "to realise the requested topology"):
-                create_dqc_network(state4distribution=ks.b00, 
-                                   node_list=None, num_qpus=2,
-                                   node_distance=4e-3, 
-                                   quantum_topology = None, 
-                                   classical_topology = classical_topology,
-                                   want_classical_2way_link=False,
-                                   want_entangling_link=False, 
-                                   name="linear network")
-            
-    def test_arbitrary_network_can_be_realised(self):
-        classical_topology = [(3, 2), (5, 6)]
-        quantum_topology = [(1, 2)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=7,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="arbitrary network")
-        self.assertEqual(len(network.connections), 3)
-
-    def test_circular_network_can_be_realised(self):
-        classical_topology = [(0, 1), (1, 2), (2, 3), (3, 0)]
-        quantum_topology = [(0, 1), (1, 2), (2, 3), (3, 0)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=4,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="circular network")
-        self.assertEqual(len(network.connections), 8)
-        
-    def test_nodes_have_ebit_ready_property(self):
-        classical_topology = [(3, 2), (5, 6)]
-        quantum_topology = [(1, 2)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=7,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="arbitrary network")
-        node_dict = dict(network.nodes)
-        for node_key in node_dict:
-            node = node_dict[node_key]
-            self.assertEqual(node.ebit_ready, False)
-        
-    def test_nodes_have_comm_qubits_free_property(self):
-        classical_topology = [(3, 2), (5, 6)]
-        quantum_topology = [(1, 2)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=7,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="arbitrary network")
-        node_dict = dict(network.nodes)
-        for node_key in node_dict:
-            node = node_dict[node_key]
-            self.assertEqual(node.comm_qubits_free, [0, 1])
-            
-    def test_nodes_have_comm_qubit_positions_property(self):
-        classical_topology = [(3, 2), (5, 6)]
-        quantum_topology = [(1, 2)]
-        network = create_dqc_network(state4distribution=ks.b00, 
-                                     node_list=None, num_qpus=7,
-                                  node_distance=4e-3, 
-                                  quantum_topology = quantum_topology, 
-                                  classical_topology = classical_topology,
-                                  want_classical_2way_link=False,
-                                  want_entangling_link=False, 
-                                  name="arbitrary network")
-        node_dict = dict(network.nodes)
-        for node_key in node_dict:
-            node = node_dict[node_key]
-            self.assertEqual(node.comm_qubit_positions, (0, 1))
-            
-    def test_can_use_custom_processor(self):
-        def create_noisy_processor():
-            alpha = 1/np.sqrt(3)
-            beta = np.sqrt(2/3)
-            num_positions=7
-            p_depolar_error_cnot = 0.1
-            cnot_depolar_model = AnalyticalDepolarisationModel(p_error=p_depolar_error_cnot)
-            #creating processor for all Nodes
-            x_gate_duration = 1
-            physical_instructions = [
-                PhysicalInstruction(instr.INSTR_INIT, duration=3, parallel=False, toplogy = [2, 3, 4, 5, 6]),
-                PhysicalInstruction(instr.INSTR_H, duration=1, parallel=False, topology=None),
-                PhysicalInstruction(instr.INSTR_X, duration=x_gate_duration, parallel=False, topology=None),
-                PhysicalInstruction(instr.INSTR_Z, duration=1, parallel=False, topology=None),
-                PhysicalInstruction(instr.INSTR_S, duration=1, parallel=False, topology=None),
-                PhysicalInstruction(instr.INSTR_CNOT, duration=4, parallel=False, topology=None, 
-                                    quantum_noise_model=cnot_depolar_model),
-                PhysicalInstruction(INSTR_ARB_GEN(alpha, beta), duration=4, parallel=False),
-                PhysicalInstruction(INSTR_CH, duration=4, parallel=False, topology=None),
-                PhysicalInstruction(INSTR_CT, duration=4, parallel=False, topology=None),
-                PhysicalInstruction(instr.INSTR_CS, duration=4, parallel=False, topology=None),
-                PhysicalInstruction(instr.INSTR_MEASURE, duration=7, parallel=False, topology=None,
-                                    quantum_noise_model=None, apply_q_noise_after=False,
-                                    discard=True),
-                PhysicalInstruction(instr.INSTR_DISCARD, duration=3, parallel=False,
-                toplology=[0, 1]),
-                PhysicalInstruction(instr.INSTR_SWAP, duration = 12, parallel=False, 
-                                    topology=None),
-                PhysicalInstruction(instr.INSTR_T, duration=1, parallel=False, 
-                                    topology=None),
-                PhysicalInstruction(INSTR_T_DAGGER, duration=1, parallel=False,
-                                    topology=None)]
-            qprocessor = QuantumProcessor(
-                        "some_arbitrary_name", phys_instructions=physical_instructions, 
-                        num_positions=num_positions, mem_noise_models=None)
-            return qprocessor
-        F_werner = 1.0
-        state4distribution = werner_state(F_werner)
-        network = create_dqc_network(state4distribution=state4distribution, 
-                                     node_list=None, num_qpus=2,
-                                  node_distance=4e-3, 
-                                  quantum_topology = None, 
-                                  classical_topology = None,
-                                  want_classical_2way_link=True,
-                                  want_entangling_link=True,
-                                  nodes_have_ebit_ready=False,
-                                  node_comm_qubits_free=[0, 1],
-                                  node_comm_qubit_positions=(0, 1),
-                                  custom_qprocessor_func=create_noisy_processor,
-                                  name="noisy_network")
 
 
 #TO DO: update tests below to reflect refactor

@@ -129,20 +129,16 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
     connection = BlackBoxEntanglingQsourceConnection(
                     delay=ent_dist_time,
                     state4distribution=state4distribution)
-    network.add_connection(node_a, node_b, connection=connection,
-                           label="entangling")
     #generating names obeying netsquid naming conventions for port on QPUs that 
-    #connect a Node to a connection
+    #connect a Node to a connection but using the (unique) node name as the ID
     node_a_port_name = node_a.connection_port_name(node_b.name, 
                                                    label="entangling")
     node_b_port_name = node_b.connection_port_name(node_a.name,
                                                    label="entangling")
-    #connecting input from connection to qmemory:
-    node_a.ports[node_a_port_name].forward_input(node_a.qmemory.ports['qin'])
-    node_b.ports[node_b_port_name].forward_input(node_b.qmemory.ports['qin'])
-    #connecting output from qmemory to connection:
-    node_a.qmemory.ports['qout'].forward_output(node_a.ports[node_a_port_name])
-    node_b.qmemory.ports['qout'].forward_output(node_b.ports[node_b_port_name])
+    network.add_connection(node_a, node_b, connection=connection,
+                           port_name_node1=node_a_port_name,
+                           port_name_node2=node_b_port_name)
+
     #TO DO: DELETE below when the refactored code above is finished 
     #Create an intermediary node to generate entangled pairs and distribute them
     #to certain nodes. This is an abstraction of a repeater chain and control
@@ -291,8 +287,10 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
 
     # Set up classical connection between nodes:
     if want_classical_2way_link:
-        #ports created will follow netsquid naming convention (see docs for
-        #connection_port_name attribute of netsquid Node objects)
+        node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                       label="classical")
+        node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                       label="classical")
         network.add_connection(node_a, node_b,
                                channel_to=ClassicalChannel(
                                    "Channel_A2B", length=node_distance,
@@ -300,7 +298,8 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                                channel_from=ClassicalChannel(
                                    "Channel_B2A", length=node_distance,
                                     models={"delay_model": FibreDelayModel()}), 
-                               label="classical")
+                               port_name_node1=node_a_port_name,
+                               port_name_node2=node_b_port_name)
     if want_entangling_link:
         create_entangling_link(network, node_a, node_b,
                                **kwargs4create_entangling_link)
