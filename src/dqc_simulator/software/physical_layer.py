@@ -26,63 +26,10 @@ References
 """
 from netsquid.protocols import NodeProtocol
 
-# =============================================================================
-# class SignalOutcome2Qpu(NodeProtocol):
-#     """
-#     Signals entanglement generation outcome to 
-#     QpuManagementProtocol/HandleCommBlockForOneNodeProtocol.
-#     
-#     Intended to be used as a subprotocol for other physical layer protocols.
-#     
-#     Parameters
-#     ----------
-#     ent_successful : bool or None
-#         True if entanglement was successfully generated, False otherwise. If 
-#         None, this must be initialised at a later time. For instance, it
-#         could be passed to this protocol by the parent protocol
-#     node : :class: `~netsquid.nodes.node.Node` or None, optional
-#         Node this protocol runs on. If None, a node should be set later before 
-#         starting this protocol.
-#     name : str or None, optional
-#         Name of protocol. If None, the name of the class is used.
-#     
-#     .. todo::
-#         
-#         Choose between which of QpuManagementProtocol and 
-#         HandleCommBlockForOneNodeProtocol to use and update the first line of 
-#         this docstring and all relevant calls to the protocol in this function.
-#         When you have made this choice format the name 
-#         correctly with backticks and the full import name, etc.
-#     """
-#     def __init__(self, ent_successful, node=None, name=None):
-#         super().__init__(node, name)
-#         self.ent_successful = ent_successful
-#         self.ent_ready_label = "ENT_READY"
-#         self.ent_failed_label = "ENT_FAILED"
-#         self.add_signal(self.ent_ready_label)
-#         self.add_signal(self.ent_failed_label)
-#         
-#     def run(self):
-#         if self.ent_successful:
-#             self.send_signal(self.ent_ready_label)
-#         elif not self.ent_successful:
-#             self.send_signal(self.ent_failed_label)
-# =============================================================================
 
-# =============================================================================
-# class HandshakeProtocol(NodeProtocol):
-#     """
-#     Handshake protocol between QPUs, letting both QPUs know that the other
-#     is ready to start entanglement distribution.
-#     
-#     Intended to be used as a subprotocol of other physical layer protocols 
-#     that require synchronisation of different nodes.
-#     
-#     
-#     """
-#     def run(self):
-# =============================================================================
-        
+
+
+
 class Base4PhysicalLayerProtocol(NodeProtocol):
     """
     An abstract base class for physical layer protocols.
@@ -91,16 +38,22 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     ----------
     node : :class: `~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
-        starting this protocol.
+        starting this protocol. [1]_
     name : str or None, optional
         Name of protocol. If None, the name of the class is used.
-    other_node_name : str or None, optional
+    role : str or None, optional
+        Whether the QPU is a 'client' (initiating the handshake) or a 
+        'server' (responding to the handshake). If None, must be overwritten
+        prior to the start of the protocol, eg in the link layer protocol.
+    other_node_name : str or None, optional. [1]_
         The name of the other QPU node involved in the entangled link. If 
-        None, must be specified prior to the start of the protocol, eg in the 
+        None, must be overwritten prior to the start of the protocol, eg in the 
         link_layer_protocol.
-    comm_qubit_index = int or None, optional
+    comm_qubit_indices = list of int or None, optional
         The index of the memory position in which the comm-qubit that should 
         host the entanglement is being held.
+    ready4ent = bool, optional
+        Whether the QPU is ready or not for entanglement
 
     Attributes
     ----------
@@ -125,30 +78,38 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     generate will not be used in many subclasses of this protocol, they are 
     useful for the user to be able to find.
         
-    .. todo::
-        
-        Decide if num_entanglements2generate and entanglement_type2generate 
-        should be attributes because it is not clear if they will be relevant
-        to all of the possible subclasses. However, perhaps setting them as 
-        None or a string saying 'N/A' may be appropriate. Also need to think 
-        about whether comm_qubit_index should be swapped for comm_qubit_indices
-        but need to be careful with this as many of the 
-        HandleCommBlockForOneNodeProtocol subgenerators make and use just one
-        index. However, this could perhaps be put into a list at some point.
+    References
+    ----------
+    The parameters in which Ref. [1]_ was cited were inherited from 
+    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation [1]_
+    
+    .. [1] https://netsquid.org/
     """
-    def __init__(self, node=None, name=None, other_node_name=None,
-                 comm_qubit_index=None):
+    def __init__(self, node=None, name=None, role=None, other_node_name=None,
+                 comm_qubit_indices=None, ready4ent=True):
         super().__init__(node, name)
         self.other_node_name = other_node_name
-        self.comm_qubit_index = comm_qubit_index
+        self.comm_qubit_indices = comm_qubit_indices
+        self.ready4ent = ready4ent
         #The following attributes will need to be overwritten in some
         #subclasses
         self.num_entanglements2generate = 1
         self.entanglement_type2generate = None
+        #the following two handshake labels are not strictly necessary because
+        #any input message to the port would do the same thing. However, they 
+        #make what is going on clearer and facilitate debugging.
+        self.handshake_ready_label = "READY4ENT"
+        self.handshake_not_ready_label = "NOT_READY4ENT"
         self.ent_ready_label = "ENT_READY"
         self.ent_failed_label = "ENT_FAILED"
         self.add_signal(self.ent_ready_label)
         self.add_signal(self.ent_failed_label)
+        self.classical_connection_port_name = self.node.connection_port_name(
+                                                        self.other_node_name,
+                                                        label="classical")
+        self.classical_conn_port = self.node.ports[
+                                       self.classical_connection_port_name]
         
     def signal_outcome(self, ent_successful):
         """
@@ -173,9 +134,42 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
             self.send_signal(self.ent_ready_label)
         elif not self.ent_successful:
             self.send_signal(self.ent_failed_label)
+            
+    def handshake(self):
+        """
+        Implements a handshake protocol to facilitate synchronisation between
+        QPUs prior to generating entanglement
+
+        Returns
+        -------
+        None.
+
+        """
+        if self.role == 'client':
+            self.classical_conn_port.tx_output(self.handshake_ready_label)
+        elif self.role == 'server':
+            yield self.await_port_input(self.classical_conn_port)
+            #TO DO: get signal results here to bring in time?
+            if self.ready4ent:
+                self.classical_conn_port.tx_output(self.handshake_ready_label)
+            elif not self.ready4ent:
+                self.classical_con_port.tx_output(self.handshake_not_ready_label)
+        #TO DO: add timed release functionality for synchronisation (which
+        #is to be used if timed_release parameter is set to True). The time
+        #should relate to the expected latency of the classical message. This 
+        #could be achieved by having the client node include the time it sends
+        #the meeting and have the server infer the 
+        #channel latency from the time the message
+        #is received.
         
-    #TO DO: add transduction methods where appropriate. Emission can be done
+        #TO DO: facilitate having multiple entanglements on the same time slice,
+        #which may require having some sort of job ID.
+        
+        
+    #TO DO:
+    #1) Add transduction methods where appropriate. Emission can be done
     #with the emit instruction. 
+
         
 
 
@@ -194,16 +188,24 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     ----------
     node : :class: `~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
-        starting this protocol.
+        starting this protocol. [1]_
     name : str or None, optional
-        Name of protocol. If None, the name of the class is used.
-    other_node_name : str or None, optional
+        Name of protocol. If None, the name of the class is used. [1]_
+    role : str
+        Whether the QPU is a 'client' (initiating the handshake) or a 
+        'server' (responding to the handshake.)
         The name of the other QPU node involved in the entangled link. If 
-        None, must be specified prior to the start of the protocol, eg in the 
-        link_layer_protocol.
-    comm_qubit_index = int or None, optional
+        None, must be overwritten prior to the start of the protocol, eg in the 
+        link layer_protocol.
+    other_node_name : str or None, optional
+        The name of the other QPU node involved in the entanglment distribution.
+        If None, must be overwritten prior to the the start of the protocol,
+        eg in the link layer protocol
+    comm_qubit_indices = list of int or None, optional
         The index of the memory position in which the comm-qubit that should 
         host the entanglement is being held.
+    ready4ent = bool, optional
+        Whether the QPU is ready or not for entanglement.
 
     Attributes
     ----------
@@ -227,15 +229,24 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     to the QPUs. In this way, we can model error and loss but needn't simulate
     the details of entanglement between static communication qubits and photons.
     
+    References
+    ----------
+    The parameters in which Ref. [1]_ was cited were inherited from 
+    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation [1]_
+    
+    .. [1] https://netsquid.org/
+    
     .. todo::
         
-        Think about whether to change comm_qubit_index for comm_qubit_indices.
+        Think about whether to change comm_qubit_indices for comm_qubit_indices.
         (This should match what is sent by HandleCommBlockForOneNodeProtocol)
     """
     
-    def __init__(self, node=None, name=None, other_node_name=None,
-                 comm_qubit_index=None):
-        super().__init__(node, name, other_node_name, comm_qubit_index)
+    def __init__(self, node=None, name=None, role=None, other_node_name=None,
+                 comm_qubit_indices=None, ready4ent=True):
+        super().__init__(node, name, role, other_node_name, comm_qubit_indices,
+                         ready4ent)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
         self.entangling_connection_port_name = self.node.connection_port_name(
@@ -244,7 +255,8 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         self.ent_conn_port = self.node.ports[
                                 self.entangling_connection_port_name]
         #setting handler function to be called when input message is 
-        #received by the relevant port
+        #received by the relevant port - essentially configuring the simulated
+        #hardware
         self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
         
     def handle_quantum_input(self, msg):
@@ -265,28 +277,28 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         #TO THINK about whether to move this to an abstract base class
         #for protocols expecting a quantum input or the more general 
         #physical layer base class (probably the former)
-        msg.meta['qm_positions'] = [self.comm_qubit_index]
+        msg.meta['qm_positions'] = self.comm_qubit_indices
         self.ent_conn_port.forward_input(self.node.qmemory.ports['qin'])
         self.ent_conn_port.tx_input(msg)
-        #TO DO: add forwarding input here instead of when setting up connection 
-        #in create_black_box_central_source_entangling_link (will need to update
-        #tests of link_2_qpus)
         
     def run(self):
-        
-        #TO DO: add some sort of handshake here to ensure that only one of the 
-        #nodes sends a request to avoid duplication of effort.
-            
-        #sending entanglement request
-        self.ent_conn_port.tx_output(self.ent_request_msg)
-        #note that waiting on an input, etc is implicitly handled by 
-        #the binding of the input handler earlier. 
-            
+        while True:
+            yield from self.handshake()
+            if self.role == 'server' and self.ready4ent:
+                #sending entanglement request to quantum source
+                self.ent_conn_port.tx_output(self.ent_request_msg)
+                #TO DO: think about whether to signal that entanglement is 
+                #ready. HandleCommBlockForOneNodeProtocol already waits 
+                #for the entanglement to arrive. Maybe only need to signal 
+                #failure.
+            #note that waiting on an input, etc is implicitly handled by 
+            #the binding of the input handler in the __init__ method. 
+            break
         
         
         #TO DO: wait for entanglement to be distributed and then signal 
-        #HandleCommBlockForOneNodeProtocol using 
-        #SignalOutcome2Qpu
+        #HandleCommBlockForOneNodeProtocol or change the QPUs ebit_ready 
+        #attribute
         
         
         #TO DO: ensure both client and server roles are catered for. Above
@@ -301,11 +313,11 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
 #         node_names.sort()
 #         ent_recv_port = self.node.ports[
 #             f"quantum_input_from_charlie"
-#             f"{comm_qubit_index}_"
+#             f"{comm_qubit_indices}_"
 #             f"{node_names[0]}<->{node_names[1]}"]
 #         #send entanglement request specifying
 #         #the comm-qubit to be used:
-#         ent_request_port.tx_output(comm_qubit_index)
+#         ent_request_port.tx_output(comm_qubit_indices)
 #         #wait for entangled qubit to arrive in
 #         #requested comm-qubit slot:
 #         yield self.await_port_input(ent_recv_port)
