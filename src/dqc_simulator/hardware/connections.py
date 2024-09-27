@@ -8,12 +8,12 @@
 # =============================================================================
 """
 An extensible library of `netsquid.nodes.connections.Connection <connections>`
- useful for a DQC.
+ useful for a DQC and wrappers for creating instances of them.
 """
 
-from netsquid.components import (ClassicalChannel, QuantumChannel, QSource,
-                                 SourceStatus)
-from netsquid.nodes.connections import Connection
+from netsquid.components import (ClassicalChannel, FibreDelayModel,
+                                 QuantumChannel, QSource, SourceStatus)
+from netsquid.nodes.connections import Connection, DirectConnection
 from netsquid.qubits import StateSampler
 
 
@@ -38,6 +38,32 @@ from netsquid.qubits import StateSampler
 #   Think about how to model delay. You may wish to allow user to specify
 #   noise parameters to allow them to use the connection as abstract or
 #   real as they wish
+
+
+def create_classical_fibre_connection(name, length):
+    """
+    A wrapper for creating instances of classical fibre connections.
+
+    Parameters
+    ----------
+    length : float
+        the length of the connection.
+
+    Returns
+    -------
+    classical_connection : :class: `~netsquid.nodes.connections.DirectConnection`
+        A direct connection with a latency commensurate with that of a 
+        telecomms fibre.
+    """
+    classical_connection = DirectConnection(
+                                name,
+                               channel_AtoB=ClassicalChannel(
+                                   "Channel_A2B", length=length,
+                                    models={"delay_model": FibreDelayModel()}),
+                               channel_BtoA=ClassicalChannel(
+                                   "Channel_B2A", length=length,
+                                    models={"delay_model": FibreDelayModel()}))
+    return classical_connection
 
 
 class BlackBoxEntanglingQsourceConnection(Connection):
