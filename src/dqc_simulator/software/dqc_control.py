@@ -220,9 +220,36 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         else:
             qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
             
-    def _request_entanglement(self, other_node_name, comm_qubit_index,
-                              num_entanglements2generate,
-                              entanglement_type2generate):
+    def _request_entanglement(self, role, other_node_name, comm_qubit_indices,
+                              num_entanglements2generate=1,
+                              entanglement_type2generate='bell_pair'):
+        """
+        Requests entanglement.
+        
+        Passes entanglement request to link layer.
+
+        Parameters
+        ----------
+        role : str
+            Whether the QPU is a 'client' (initiating the handshake) or a 
+            'server' (responding to the handshake.)
+        other_node_name : str
+            The name of the other QPU node between which entanglement should 
+            be distributed.
+        comm_qubit_indices : list of int
+            The indices of the comm-qubits that should be used.
+        num_entanglements2generate : int, optional
+            The number of entanglements that should be distributed. Eg, for 
+            bipartite entanglement this would be the number of entangled pairs.
+            The default is 1.
+        entanglement_type2generate : str, optional
+            The type of entanglement to distribute. The default is 'bell_pair'.
+
+        Yields
+        ------
+        None.
+
+        """
         #TO DO: change comm_qubit_index to comm_qubit_indices here and in calls
         #and ensure that wherever it is called a list or tuple is being 
         #inputted
@@ -230,7 +257,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         #send entanglement request to link layer specifying the other node
         #involved in the connection and the comm-qubit to be used:
         self.send_signal(self.ent_request_label, 
-                         result=(other_node_name, comm_qubit_index,
+                         result=(role, other_node_name, comm_qubit_indices,
                                  num_entanglements2generate,
                                  entanglement_type2generate))        
         #wait for entangled qubit to arrive in requested comm-qubit slot:
@@ -287,8 +314,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #removing comm qubit being used from list
             #of available comm-qubits:
             if not self.node.ebit_ready: #if there is no ebit ready:
-                yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index)
+                yield from self._request_entanglement('client', 
+                                                      other_node_name, 
+                                                      [comm_qubit_index])
             program.apply(instr.INSTR_CNOT,
                           [data_or_tele_qubit_index,
                           comm_qubit_index])
@@ -329,8 +357,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #removing comm qubit being used from list
             #of available comm-qubits:
             if not self.node.ebit_ready: #if there is no ebit ready:
-                yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index)
+                yield from self._request_entanglement('server', 
+                                                      other_node_name, 
+                                                      [comm_qubit_index])
             del self.node.comm_qubits_free[0]
             #wait for measurement result
             yield self.await_port_input(classical_comm_port)
@@ -402,8 +431,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #TO DO: implement the following if block as a subgenerator because 
             #it appears many times in your different subgenerators
             if not self.node.ebit_ready: 
-                yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index)
+                yield from self._request_entanglement('client', 
+                                                      other_node_name, 
+                                                      [comm_qubit_index])
             program.apply(instr.INSTR_CNOT, [data_or_tele_qubit_index, 
                           comm_qubit_index])
             program.apply(instr.INSTR_H, [data_or_tele_qubit_index])
@@ -510,8 +540,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             #removing comm qubit being used from list of 
             #available comm-qubits:
             if not self.node.ebit_ready:#if there is no ebit ready:
-                yield from self._request_entanglement(other_node_name,
-                                                      comm_qubit_index)
+                yield from self._request_entanglement('server', 
+                                                      other_node_name, 
+                                                      [comm_qubit_index])
             yield self.await_port_input(classical_comm_port)
             meas_results, = classical_comm_port.rx_input().items
             if swap_commNdata:
