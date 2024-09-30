@@ -14,7 +14,6 @@ from netsquid.protocols.protocol import Signals, Protocol
 from netsquid.protocols.nodeprotocols import NodeProtocol
 
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
-from dqc_simulator.software.link_layer import EntanglementGenerationProtocol
 from dqc_simulator.hardware.dqc_creation import QpuNode
 
 #The following will act on the qsource node, Charlie, when one of the nodes 
@@ -123,21 +122,139 @@ class AbstractFromPhotonsEntangleProtocol(NodeProtocol):
             #Bob sends int or vice versa
             
             
-
-class HandleCommBlockForOneNodeProtocol(NodeProtocol):
-    """Does everything that happens in a given time slice on one QPU 
+class EntanglementGenerationProtocol(NodeProtocol):
+    """
+    A basic link layer implementation with no signalling needed to the physical 
+    layer.
     
-    This is designed 
-    such that it can carry out all parts of a circuit on one QPU which will be 
-    compiled using the greedy algorithm but is also 
-    capable of doing a single communication block if used as a subprotocol
-    and fed only the gate tuples for that block.
+    The physical layer protocols that deal with entanglement are implemented
+    as subprotocols of this protocol.
     
     Parameters
     ----------
-    gate_tuples : list of tuples 
-        The gates to be conducted. Remote gates may have a list of 
-        tuples as the first entry of this list if in the recv role to
+    physical_layer_protocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        Instance of the physical layer protocol to use to handle entanglement 
+        generation.
+    node : :class: `netsquid.nodes.node.Node`, subclass thereof or None, optional
+        The QPU node that this protocol will act on. If None, a node should be
+        set later before starting this protocol. [1]_
+    name : str or None, optional
+        Name of protocol. If None, the name of the class is used. [1]_
+        
+    References
+    ----------
+    References
+    ----------
+    The parameters in which Ref. [1]_ was cited were inherited from 
+    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation with 
+    very minor modification [1]_.
+    
+    .. [1] https://netsquid.org/
+        
+    .. todo::
+        
+        Decide whether to replace HandleCommBlockForOneNodeProtocol with 
+        a new protocol called QpuManagementProtocol.
+    """
+    def __init__(self, physical_layer_protocol, node=None, name=None):
+        super().__init__(node, name)
+        self.add_subprotocol(physical_layer_protocol,
+                             name='physical_layer_protocol')
+        self.ent_request_label = "ENT_REQUEST"
+# =============================================================================
+#         self.ent_ready_label = "ENT_READY"
+#         self.ent_failed_label = "ENT_FAILED"
+# =============================================================================
+
+    
+        
+    def run(self):
+        #TO DO: determine if this run method should be changed to not be a run
+        #method because this should be an abstract base class. This is just to
+        #help me think things through more abstractly. This class may also be 
+        #used as a subprotocol.
+        while True:
+            #TO DO: decide what protocol will be sending this signal. 
+            #HandleCommBlockForOneNodeProtocol may be replaced by 
+            #QpuManagementProtocol. ALSO need to replace the class name with
+            #an instance of the class in the following line. Need to think 
+            #about how to achieve this.
+            yield self.await_signal(HandleCommBlockForOneNodeProtocol, 
+                                    signal_label=self.ent_request_label)
+            #the following could be replaced with any desired specs (including 
+            #a tuple of them). TO DO: think about whether you want to have more
+            #specs (eg, entanglement fidelity like in Wehner stack papers).
+            #For now, I'll keep it simple
+            signal_results = self.get_signal_result(
+                                            self.ent_request_label, 
+                                            receiver=self)
+            role = signal_results[0]
+            other_node_name = signal_results[1] 
+            comm_qubit_indices = signal_results[2]
+            num_entanglements2generate = signal_results[3]
+            entanglement_type2generate = signal_results[4]
+            #updating relevant attributes
+            self.subprotocols['physical_layer_protocol'].role = (
+                role)
+            self.subprotocols[
+                'physical_layer_protocol'].other_node_name = (
+                    other_node_name)
+            self.subprotocols[
+                'physical_layer_protocol'].comm_qubit_indices = (
+                    comm_qubit_indices)
+            self.subprotocols[
+                'physical_layer_protocol'].num_entanglements2generate = ( 
+                    num_entanglements2generate)
+            self.subprotocols[
+                'physical_layer_protocol'].entanglement_type2generate = (
+                    entanglement_type2generate)
+            self.subprotocols['physical_layer_protocol'].start()
+            #TO DO: fix this. Right now, the code will only take in one 
+            #physical protocol the whole time rather than starting a new one
+            #every time entanglement is requested. Probably need to wait on
+            #the protocol finishing too.
+            
+            
+            #TO THINK ABOUT: should the following be done by the physical layer?
+            #It seems pointless to have a middle man for this part.
+            #Perhaps you could make another protocol to do this and use this
+            #as a subprotocol of the physical_layer_protocol, If so, then 
+            #you may need to wait on the physical_layer_protocol finishing.
+# =============================================================================
+#             #TO DO: wait on ENT_READY or ENT_FAILED signals from the physical 
+#             #layer
+#             wait_on_ent_ready_signal = ( 
+#                 self.await_signal(self.subprotocols['physical_layer_protocol'],
+#                                   signal_label=self.ent_ready_label))
+#             wait_on_ent_failed_signal = (
+#                 self.await_signal(self.subprotocols['physical_layer_protocol'],
+#                                   signal_label=self.ent_failed_label))
+#             evexpr = yield wait_on_ent_ready_signal | wait_on_ent_failed_signal
+#             if evexpr.first_term.value: #if ent_ready signal received:
+#                 #do one thing
+#             elif evexpr.second_term.value: #if ent_failed signal received:
+#                 #do something else
+# =============================================================================
+
+class QpuOSProtocol(NodeProtocol):
+    """
+    Runs all operations for a given QPU.
+    
+    This protocol serves as the operating system for our QPU. It will be used
+    as a subprotocol of another protocol (the `superprotocol`).
+    
+    Parameters
+    ----------
+    superprotocol : :class: `~netsquid.protocols.protocol.Protocol`
+        The protocol that this will be a subprotocol of.
+    gate_tuples : list of lists of tuples 
+        The gates and primitives (blocks of gates and operations that are part 
+        of remote gates or other DQC-specific operations) to be conducted. Each 
+        sublist corresponds to the gates to be
+        conducted on a time slice. The tuples represent the gates or primitives.
+        Remote gates may have a list of 
+        tuples as the first entry of a gate tuple if in the recv role to
         allow several local
         gates to be applied as part of the remote gate.
         Each gate_tuple in gate_tuples4this_node_and_time must have
@@ -170,8 +287,9 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
     #but will have different names when this protocol is acted on the 
     #appropriate nodes
 
-    def __init__(self, gate_tuples, node=None, name=None):
+    def __init__(self, superprotocol, gate_tuples, node=None, name=None):
         super().__init__(node, name)
+        self.superprotocol = superprotocol
         self.gate_tuples = gate_tuples
         #The following subgenerators are similar to subprotocols implemented
         #in functional form rather than as classes. Unlike subprotocols (as far
@@ -183,6 +301,7 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
         self.ent_request_label = "ENT_REQUEST"
         self.ent_ready_label = "ENT_READY"
         self.ent_failed_label = "ENT_FAILED"
+        self.start_time_slice_label = "START_TIME_SLICE"
 
     def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
                              gate_op):
@@ -260,6 +379,8 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                          result=(role, other_node_name, comm_qubit_indices,
                                  num_entanglements2generate,
                                  entanglement_type2generate))        
+        #TO DO: correct the following. Instances of the class must be provided
+        #to await_signal not the class itself. 
         #wait for entangled qubit to arrive in requested comm-qubit slot:
         wait4succsessful_ent = self.await_signal(
                                    EntanglementGenerationProtocol,
@@ -704,19 +825,13 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
                 " role")
         return (comm_qubit_index, program)
 
-    def run(self):
+    def _run_time_slice(self, gate_tuples4time_slice):
         #intialising variables that should be overwritten later but are needed
         #as function arguments:
         program=QuantumProgram()
         comm_qubit_index = float("nan")
         while True:
-         #TO DO: could potentially put another for loop here which cycles over
-         #each row of gate_tuples outputted for this node by the scheduler
-         #with some yield statement after each row of gate_tuples have been
-         #evaluated to make it wait for next time slice. This would save
-         #having to make many protocols
-         
-            for gate_tuple in self.gate_tuples:
+            for gate_tuple in gate_tuples4time_slice:
                 gate_instr = gate_tuple[0] 
                 #handling gate types with associated parameters:
                 try: #if gate_instr is iterable:
@@ -783,6 +898,97 @@ class HandleCommBlockForOneNodeProtocol(NodeProtocol):
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
 
+    def run(self):
+        #this protocol will be made a subprotocol of another and so will 
+        #automatically stop when the parent protocol does. This avoids the 
+        #infinite loop that would otherwise occur from the following.
+        time_slice=0
+        while True:
+            yield self.await_signal(self.superprotocol, 
+                                    signal_label=self.start_time_slice_label)
+            gate_tuples4time_slice = self.gate_tuples[time_slice]
+            yield from self._run_time_slice(gate_tuples4time_slice)
+            time_slice = time_slice + 1
+# =============================================================================
+#         #intialising variables that should be overwritten later but are needed
+#         #as function arguments:
+#         program=QuantumProgram()
+#         comm_qubit_index = float("nan")
+#         while True:
+#          #TO DO: could potentially put another for loop here which cycles over
+#          #each row of gate_tuples outputted for this node by the scheduler
+#          #with some yield statement after each row of gate_tuples have been
+#          #evaluated to make it wait for next time slice. This would save
+#          #having to make many protocols
+#          
+#             for gate_tuple in self.gate_tuples:
+#                 gate_instr = gate_tuple[0] 
+#                 #handling gate types with associated parameters:
+#                 try: #if gate_instr is iterable:
+#                     gate_op = gate_instr[1]
+#                     gate_instr = gate_instr[0]
+#                 except TypeError: #elif gate_instr is not iterable
+#                     gate_op = None
+#                     
+#                 if len(gate_tuple) == 2: #if single-qubit gate
+#                     qubit_index = gate_tuple[1]
+#                     self._flexi_program_apply(program, gate_instr, qubit_index,
+#                                               gate_op)
+#                 elif type(gate_tuple[-1]) == str: #if primitive for remote gate
+#                     #The remote gates in this block will use different
+#                     #comm-qubits because logical gates using the same 
+#                     #comm-qubit will occur in different time slices or will
+#                     #have been converted to local gates once teleportation
+#                     #or cat-entanglement has already been done
+#                     while True:
+#                         if len(gate_tuple) == 4:
+#                             data_or_tele_qubit_index = gate_tuple[0]
+#                             other_node_name = gate_tuple[1]
+#                             scheme = gate_tuple[2]
+#                             role = gate_tuple[3]
+#                         elif len(gate_tuple) == 3:
+#                             data_or_tele_qubit_index = None
+#                             other_node_name = gate_tuple[0]
+#                             scheme = gate_tuple[1]
+#                             role = gate_tuple[2]
+#                         node_names = [self.node.name, other_node_name]
+#                         node_names.sort()
+#                         classical_comm_port = self.node.ports[
+#                             f"classical_connection_{self.node.name}->"
+#                             f"{other_node_name}"]
+#                         evexpr_or_variables = ( 
+#                             yield from self.protocol_subgenerators[scheme](
+#                                                     role,
+#                                                     program,
+#                                                     other_node_name,
+#                                                     data_or_tele_qubit_index,
+#                                                     classical_comm_port,
+#                                                     comm_qubit_index))
+#                         #past this point evexpr_or_variables will be the
+#                         #variables
+#                         comm_qubit_index = evexpr_or_variables[0]
+#                         program = evexpr_or_variables[1]
+#                         break #breaking inner while loop to allow next 
+#                               #gate_tuple to be evaluated.
+#                 elif type(gate_tuple[-1]) == int: #if local 2-qubit gate
+#                     qubit_index0 = gate_tuple[1]
+#                     qubit_index1 = gate_tuple[2]
+#                     if qubit_index0 == -1:
+#                         qubit_index0 = comm_qubit_index #defined in remote gate
+#                                                         #section above
+#                     self._flexi_program_apply(program, gate_instr,
+#                                               [qubit_index0, qubit_index1],
+#                                               gate_op)
+#             #executing any instructions that have not yet been executed. It is 
+#             #important that the quantum program is always reset after each node
+#             #to avoid waiting infinitely long if there is nothing left to
+#             #execute
+#             yield self.node.qmemory.execute_program(program) 
+#             self.send_signal(Signals.SUCCESS)
+#             break #breaking outermost while loop
+#             #TO DO: add entanglement swapping
+# =============================================================================
+
 class dqcMasterProtocol(Protocol):
     """ Protocol which executes a distributed quantum circuit. 
     
@@ -823,9 +1029,8 @@ class dqcMasterProtocol(Protocol):
     allowed_qpu_types : tuple or subclass of :class: `~netsquid.nodes.node.Node`
         The class(es) that should be interpretted as QPU nodes. These should be
         distinct from those used for other purposes.
-    *args, **kwargs
-        Allows positional and keyword arguments inherited from 
-        :class: `~netsquid.protocols.protocol.Protocol` to be specified.
+    name : str or None, optional. Name of protocol. If None, the name of the 
+        class is used [1]_.
             
     Notes
     -----
@@ -849,15 +1054,23 @@ class dqcMasterProtocol(Protocol):
     gate at once even if there are enough resources to do so (I am essentially
     assuming that each QPU can be involved in only one remote gate per time 
     slice).
+    
+    References
+    ----------
+    The parameters in which Ref. [1]_ was cited were inherited from 
+    :class: `~netsquid.protocols.protocol.Protocol` and the description
+    used for those parameters was taken from the NetSquid documentation [1]_
+    
+    .. [1] https://netsquid.org/
     """
     def __init__(self, partitioned_gates, network,
-                 *args, #remove as Protocol has no positional args?
                  background_protocol_lookup=None,
                  compiler_func=None,
                  allowed_qpu_types=None,
-                 **kwargs):
-
-        super().__init__(*args, **kwargs)
+                 name=None):
+        super().__init__(name)
+        self.start_time_slice_label = "START_TIME_SLICE"
+        self.add_signal(self.start_time_slice_label)
         self.partitioned_gates = partitioned_gates
         self.network = network
         #instantiating default arguments
@@ -876,23 +1089,51 @@ class dqcMasterProtocol(Protocol):
             self.allowed_qpu_types = QpuNode
         else:
             self.allowed_qpu_types = allowed_qpu_types
-        
-    def run(self):
-        qpu_op_dict = self.compiler_func(self.partitioned_gates)
-        qpu_dict = {}
+            
+        self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
+        self.qpu_dict = {}
         for node_name, node in self.network.nodes.items():
 # =============================================================================
 #             print(node)
 # =============================================================================
             if isinstance(node, self.allowed_qpu_types): #isinstance also 
                                                          #looks for subclasses
-                qpu_dict[node_name] = node
-            else:
-                node_type = type(node)
-                background_protocol = self.background_protocol_lookup[node_type](
-                                         node=node,
-                                         name=f"{node_name}_protocol")
-                background_protocol.start()
+                self.qpu_dict[node_name] = node
+                qpu_protocol = QpuOSProtocol(
+                                    superprotocol=self, 
+                                    gate_tuples=self.qpu_op_dict[node_name],
+                                    node=node)
+                self.add_subprotocol(qpu_protocol, 
+                                     name=f'{node_name}_OS')
+# =============================================================================
+#             else:
+#                 node_type = type(node)
+#                 background_protocol = self.background_protocol_lookup[node_type](
+#                                          node=node,
+#                                          name=f"{node_name}_protocol")
+#                 background_protocol.start()
+# =============================================================================
+        
+    def run(self):
+        for qpu_name in self.qpu_op_dict:
+            self.subprotocols[f'{qpu_name}_OS'].start()
+# =============================================================================
+#         qpu_op_dict = self.compiler_func(self.partitioned_gates)
+#         qpu_dict = {}
+#         for node_name, node in self.network.nodes.items():
+# # =============================================================================
+# #             print(node)
+# # =============================================================================
+#             if isinstance(node, self.allowed_qpu_types): #isinstance also 
+#                                                          #looks for subclasses
+#                 qpu_dict[node_name] = node
+#             else:
+#                 node_type = type(node)
+#                 background_protocol = self.background_protocol_lookup[node_type](
+#                                          node=node,
+#                                          name=f"{node_name}_protocol")
+#                 background_protocol.start()
+# =============================================================================
 
         #initialising dummy event expression 
         dummy_entity = pydynaa.Entity()
@@ -903,23 +1144,33 @@ class dqcMasterProtocol(Protocol):
         dummy_entity._schedule_now(evtype_dummy)
         
         #finding max length of dictionary entry
-        longest_list_in_qpu_op_dict = max(qpu_op_dict.values(), key=len)
+        longest_list_in_qpu_op_dict = max(self.qpu_op_dict.values(), key=len)
         max_num_time_slices = len(longest_list_in_qpu_op_dict)
         while True:
             for time_slice in range(max_num_time_slices):
-                for qpu_name in qpu_op_dict:
-                    #if node does anything on this time slice
-                    if time_slice < len(qpu_op_dict[qpu_name]):
-                        #strictly less than because python indexes from 0
-                        gate_tuples4node_and_time = (
-                            qpu_op_dict[qpu_name][time_slice])
-                        protocol4node_and_time = (
-                            HandleCommBlockForOneNodeProtocol(
-                                gate_tuples4node_and_time,
-                                node=qpu_dict[qpu_name]))
+                for qpu_name in self.qpu_op_dict:
+                    #if QPU still has instructions to carry out:
+                    if time_slice < len(self.qpu_op_dict[qpu_name]):
+                    #strictly less than because python indexes from 0
+# =============================================================================
+#                         gate_tuples4node_and_time = (
+#                             qpu_op_dict[qpu_name][time_slice])
+#                         protocol4node_and_time = (
+#                             QpuOSProtocol(
+#                                 gate_tuples4node_and_time,
+#                                 node=qpu_dict[qpu_name]))
+#                         expr = expr & self.await_signal(protocol4node_and_time, 
+#                                                         Signals.SUCCESS)
+# =============================================================================
+                        #signalling subprotocols to start the next time slice
+                        self.send_signal(self.start_time_slice_label)
+                        #waiting on subprotocols to complete time slice
                         expr = expr & self.await_signal(
-                            protocol4node_and_time, Signals.SUCCESS)
-                        protocol4node_and_time.start()
+                                        self.subprotocols[f'{qpu_name}_OS'], 
+                                        Signals.SUCCESS)
+# =============================================================================
+#                         protocol4node_and_time.start()
+# =============================================================================
                 yield expr
                 #re-initialising
                 expr = evexpr_dummy 

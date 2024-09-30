@@ -26,23 +26,58 @@ from dqc_simulator.hardware.quantum_processors import (
 from dqc_simulator.qlib.states import werner_state
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.dqc_control import (
-                          HandleCommBlockForOneNodeProtocol, 
+                          QpuOSProtocol, 
                           AbstractFromPhotonsEntangleProtocol,
                           dqcMasterProtocol)
 
-
-
-
-#integrated network tests
-#for debugging
-from netsquid.util import simlog
-import logging
-loggers = simlog.get_loggers()
 # =============================================================================
-# loggers['netsquid'].setLevel(logging.DEBUG)
+# #for debugging
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# # =============================================================================
+# # loggers['netsquid'].setLevel(logging.DEBUG)
+# # =============================================================================
+# loggers['netsquid'].setLevel(logging.WARNING)
 # =============================================================================
-loggers['netsquid'].setLevel(logging.WARNING)
 
+
+class TestDqcMasterProtocol(unittest.TestCase):
+    def setUp(self):
+        ns.sim_reset()
+        self.network = create_dqc_network(
+                               state4distribution=ks.b00,
+                               node_list=None, num_qpus=2,
+                               node_distance=4e-3, quantum_topology=None, 
+                               classical_topology=None,
+                               want_classical_2way_link=True,
+                               want_entangling_link=True,
+                               nodes_have_ebit_ready=False,
+                               node_comm_qubits_free=[0, 1],
+                               node_comm_qubit_positions=[0,1],
+                               name="linear network")
+        self.node_0 = self.network.get_node('node_0')
+        self.node_1 = self.network.get_node('node_1')
+        
+    def test_can_implement_gates_locally_on_2_qpus(self):
+        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+                       (instr.INSTR_INIT, 2, "node_1"),
+                       (instr.INSTR_X, 2, "node_0"),
+                       (instr.INSTR_X, 2, "node_1")]
+        protocol = dqcMasterProtocol(
+                         gate_tuples, self.network)
+        protocol.start()
+        ns.sim_run(200)
+        qubit_node_0, = self.node_0.qmemory.pop(2)
+        qubit_node_1, = self.node_1.qmemory.pop(2)
+        with self.subTest(msg='node_0 in incorrect state'):
+            fidelity = qapi.fidelity(qubit_node_0, ks.s1)
+            self.assertAlmostEqual(fidelity, 1.0, 5)
+        with self.subTest(msg='node_1 in incorrect state'):
+            fidelity = qapi.fidelity(qubit_node_1, ks.s1)
+            self.assertAlmostEqual(fidelity, 1.0, 5)
+        
+        
 
 # =============================================================================
 # class Test_entangling(unittest.TestCase):
