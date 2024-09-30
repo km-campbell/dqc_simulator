@@ -14,6 +14,7 @@ import unittest
 import netsquid as ns
 from netsquid.components import QuantumMemory
 from netsquid.nodes import Node
+from netsquid.protocols import NodeProtocol
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
 
@@ -48,6 +49,20 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
     Integration tests of AbstractCentralSourceEntangleProtocol with
     BlackBoxEntanglingQsourceConnection.
     """
+    
+    class _DummySuperprotocol(NodeProtocol):
+        """
+        Filling in for 
+        :class: `dqc_simulator.software.dqc_control.QpuOSProtocol`.
+        """
+        def __init__(self, node=None, name=None):
+            super().__init__(node, name)
+            self.ent_request_label = "ENT_REQUEST"
+            self.add_signal(self.ent_request_label)
+            
+        def run(self):
+            self.send_signal(self.ent_request_label)
+    
     def setUp(self):
         ns.sim_reset()
         self.node0 = Node("node0", 
@@ -79,13 +94,17 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
         self.node0.connect_to(self.node1, self.classical_connection,
                               local_port_name=self.node0cport_name,
                               remote_port_name=self.node1cport_name)
+        self.node0_superprotocol = self._DummySuperprotocol(node=self.node0)
+        self.node1_superprotocol = self._DummySuperprotocol(node=self.node1)
         self.node0_protocol = AbstractCentralSourceEntangleProtocol(
+                                    self.node0_superprotocol,
                                     node=self.node0,
                                     role=None,
                                     other_node_name="node1",
                                     comm_qubit_indices=[1],
                                     ready4ent=None)
         self.node1_protocol = AbstractCentralSourceEntangleProtocol(
+                                    self.node1_superprotocol,
                                     node=self.node1,
                                     other_node_name="node0",
                                     comm_qubit_indices=[1],
@@ -99,7 +118,7 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
 #                      comm_qubit_indices=None, ready4ent=True
 # =============================================================================
         
-    #TO DO: update the next two tests when handshake added
+    #TO DO: get following tests working now that you have refactored more.
     def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
         self.node0_protocol.role='client'
         self.node0_protocol.ready4ent=True

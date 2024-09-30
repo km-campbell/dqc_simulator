@@ -36,6 +36,9 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     
     Parameters
     ----------
+    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The superprotocol for this protocol. This protocol will be 
+        executed as a subprotocol of the superprotocol.
     node : :class: `~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
@@ -86,9 +89,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     
     .. [1] https://netsquid.org/
     """
-    def __init__(self, node=None, name=None, role=None, other_node_name=None,
-                 comm_qubit_indices=None, ready4ent=True):
+    def __init__(self, superprotocol,node=None, name=None, role=None,
+                 other_node_name=None, comm_qubit_indices=None,
+                 ready4ent=True):
         super().__init__(node, name)
+        self.superprotocol = superprotocol
         self.other_node_name = other_node_name
         self.comm_qubit_indices = comm_qubit_indices
         self.ready4ent = ready4ent
@@ -103,13 +108,52 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.handshake_not_ready_label = "NOT_READY4ENT"
         self.ent_ready_label = "ENT_READY"
         self.ent_failed_label = "ENT_FAILED"
+        self.ent_request_label = "ENT_REQUEST"
         self.add_signal(self.ent_ready_label)
         self.add_signal(self.ent_failed_label)
+        self.add_signal(self.ent_request_label)
         self.classical_connection_port_name = self.node.connection_port_name(
                                                         self.other_node_name,
                                                         label="classical")
         self.classical_conn_port = self.node.ports[
                                        self.classical_connection_port_name]
+        
+    def handle_ent_request(self):
+        """
+        Handles entanglement requests from higher-level protocols.
+        
+        This is a subgenerator, allowing the run method to call it and wait on
+        :class: `~pydynaa.core.EventExpression`s that this subgenerator waits 
+        on. It waits on a signal from higher-level protocols and changes this 
+        protocol's instance attributes to reflect information in that signal.
+        
+        Yields
+        ------
+        :class: `~pydynaa.core.EventExpression`
+            Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
+            causing it to wait on signals.
+
+        """
+        yield self.await_signal(self.superprotocol, 
+                                signal_label=self.ent_request_label)
+        #the following could be replaced with any desired specs (including 
+        #a tuple of them). TO DO: think about whether you want to have more
+        #specs (eg, entanglement fidelity like in Wehner stack papers).
+        #For now, I'll keep it simple
+        signal_results = self.get_signal_result(
+                                        self.ent_request_label, 
+                                        receiver=self)
+        role = signal_results[0]
+        other_node_name = signal_results[1] 
+        comm_qubit_indices = signal_results[2]
+        num_entanglements2generate = signal_results[3]
+        entanglement_type2generate = signal_results[4]
+        #updating relevant attributes
+        self.role = role
+        self.other_node_name = other_node_name
+        self.comm_qubit_indices = comm_qubit_indices
+        self.num_entanglements2generate = num_entanglements2generate
+        self.entanglement_type2generate = entanglement_type2generate
         
     def signal_outcome(self, ent_successful):
         """
@@ -186,6 +230,9 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     
     Parameters
     ----------
+    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The superprotocol for this protocol. This protocol will be 
+        executed as a subprotocol of the superprotocol.
     node : :class: `~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
@@ -236,15 +283,11 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     used for those parameters was taken from the NetSquid documentation [1]_
     
     .. [1] https://netsquid.org/
-    
-    .. todo::
-        
-        Think about whether to change comm_qubit_indices for comm_qubit_indices.
-        (This should match what is sent by HandleCommBlockForOneNodeProtocol)
     """
     
-    def __init__(self, node=None, name=None, role=None, other_node_name=None,
-                 comm_qubit_indices=None, ready4ent=True):
+    def __init__(self, superprotocol, node=None, name=None, role=None,
+                 other_node_name=None, comm_qubit_indices=None, 
+                 ready4ent=True):
         super().__init__(node, name, role, other_node_name, comm_qubit_indices,
                          ready4ent)
         self.entanglement_type2generate = 'bell_pair'
@@ -283,22 +326,21 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         
     def run(self):
         while True:
+            yield from self.handle_ent_request()
             yield from self.handshake()
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
                 self.ent_conn_port.tx_output(self.ent_request_msg)
                 #TO DO: think about whether to signal that entanglement is 
-                #ready. HandleCommBlockForOneNodeProtocol already waits 
+                #ready. QpuOSProtocol already waits 
                 #for the entanglement to arrive. Maybe only need to signal 
                 #failure.
             #note that waiting on an input, etc is implicitly handled by 
             #the binding of the input handler in the __init__ method. 
             break
         
-        
         #TO DO: wait for entanglement to be distributed and then signal 
-        #HandleCommBlockForOneNodeProtocol or change the QPUs ebit_ready 
-        #attribute
+        #superprotocol or change the QPU's ebit_ready attribute.
         
         
         #TO DO: ensure both client and server roles are catered for. Above
