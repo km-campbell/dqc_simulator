@@ -35,9 +35,7 @@ from dqc_simulator.software.dqc_control import (
 # from netsquid.util import simlog
 # import logging
 # loggers = simlog.get_loggers()
-# # =============================================================================
-# # loggers['netsquid'].setLevel(logging.DEBUG)
-# # =============================================================================
+# loggers['netsquid'].setLevel(logging.DEBUG)
 # loggers['netsquid'].setLevel(logging.WARNING)
 # =============================================================================
 
@@ -76,6 +74,11 @@ class TestDqcMasterProtocol(unittest.TestCase):
         with self.subTest(msg='node_1 in incorrect state'):
             fidelity = qapi.fidelity(qubit_node_1, ks.s1)
             self.assertAlmostEqual(fidelity, 1.0, 5)
+            
+# =============================================================================
+#     def test_can_implement_remote_CNOT_gate(self):
+#         
+# =============================================================================
         
         
 
