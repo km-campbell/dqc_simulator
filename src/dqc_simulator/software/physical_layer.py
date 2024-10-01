@@ -89,10 +89,10 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     
     .. [1] https://netsquid.org/
     """
-    def __init__(self, superprotocol,node=None, name=None, role=None,
+    def __init__(self, superprotocol, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None,
                  ready4ent=True):
-        super().__init__(node, name)
+        super().__init__(node=node, name=name)
         self.superprotocol = superprotocol
         self.other_node_name = other_node_name
         self.comm_qubit_indices = comm_qubit_indices
@@ -251,8 +251,10 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     comm_qubit_indices = list of int or None, optional
         The index of the memory position in which the comm-qubit that should 
         host the entanglement is being held.
-    ready4ent = bool, optional
-        Whether the QPU is ready or not for entanglement.
+    ready4ent = bool por None , optional
+        Whether the QPU is ready or not for entanglement. If None, must be 
+        overwritten prior to the the start of the protocol, eg in the 
+        link layer protocol.
 
     Attributes
     ----------
@@ -288,8 +290,10 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     def __init__(self, superprotocol, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None, 
                  ready4ent=True):
-        super().__init__(node, name, role, other_node_name, comm_qubit_indices,
-                         ready4ent)
+        super().__init__(superprotocol, node=node, name=name, role=role, 
+                         other_node_name=other_node_name,
+                         comm_qubit_indices=comm_qubit_indices,
+                         ready4ent=ready4ent)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
         self.entangling_connection_port_name = self.node.connection_port_name(
