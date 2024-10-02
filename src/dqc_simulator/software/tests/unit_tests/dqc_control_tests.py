@@ -29,6 +29,8 @@ from dqc_simulator.software.dqc_control import (
                           QpuOSProtocol, 
                           AbstractFromPhotonsEntangleProtocol,
                           dqcMasterProtocol)
+from dqc_simulator.software.physical_layer import ( 
+    AbstractCentralSourceEntangleProtocol)
 
 # =============================================================================
 # #for debugging
@@ -62,8 +64,9 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_INIT, 2, "node_1"),
                        (instr.INSTR_X, 2, "node_0"),
                        (instr.INSTR_X, 2, "node_1")]
+        physical_layer_protocol = AbstractCentralSourceEntangleProtocol()
         protocol = dqcMasterProtocol(
-                         gate_tuples, self.network)
+                         gate_tuples, self.network, physical_layer_protocol)
         protocol.start()
         ns.sim_run(200)
         qubit_node_0, = self.node_0.qmemory.pop(2)

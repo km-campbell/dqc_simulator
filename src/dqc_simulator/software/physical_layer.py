@@ -22,8 +22,21 @@ References
 
 .. [2] M. Pompili, et al., Experimental demonstration of entanglement delivery 
        using a quantum network stack, npj Quantum Information, 8 (2022)
+       
+       
+.. todo::
+    
+    Decide if this module should be called link_and_physical_layer to 
+    reflect the fact that the functionality of the physical layer is 
+    encapsulated in a method of the base class for the physical layer. Also, 
+    need to condiser using ABC things because you want to make sure that 
+    subclasses have certain behaviour.
 
 """
+#TO DO: think about if this module should be called link_and_physical_layer to 
+#reflect the fact that the functionality of the physical layer is encapsulated
+#in the base class for the physical layer.
+
 from netsquid.protocols import NodeProtocol
 
 
@@ -36,9 +49,6 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     
     Parameters
     ----------
-    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
-        The superprotocol for this protocol. This protocol will be 
-        executed as a subprotocol of the superprotocol.
     node : :class: `~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
@@ -60,6 +70,10 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
 
     Attributes
     ----------
+    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The superprotocol for this protocol. This protocol will be 
+        executed as a subprotocol of the superprotocol. The value of this 
+        attribute should be overwritten by the superprotocol.
     num_entanglements2generate : int 
         The number of instances of the requested entanglement to be specified.
         For many subclasses this will be fixed but in others it will be 
@@ -89,11 +103,12 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     
     .. [1] https://netsquid.org/
     """
-    def __init__(self, superprotocol, node=None, name=None, role=None,
+    def __init__(self, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None,
                  ready4ent=True):
         super().__init__(node=node, name=name)
-        self.superprotocol = superprotocol
+        self.superprotocol = None #should be overwritten by higher-layer
+                                  #protocols
         self.other_node_name = other_node_name
         self.comm_qubit_indices = comm_qubit_indices
         self.ready4ent = ready4ent
@@ -112,11 +127,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.add_signal(self.ent_ready_label)
         self.add_signal(self.ent_failed_label)
         self.add_signal(self.ent_request_label)
-        self.classical_connection_port_name = self.node.connection_port_name(
-                                                        self.other_node_name,
-                                                        label="classical")
-        self.classical_conn_port = self.node.ports[
-                                       self.classical_connection_port_name]
+        #The value of the next two attributes will be overwritten in the 
+        #run method, which is the first point at which the node attribute must
+        #have a value other than None
+        self.classical_connection_port_name = None
+        self.classical_conn_port = None
         
     def handle_ent_request(self):
         """
@@ -132,7 +147,6 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         :class: `~pydynaa.core.EventExpression`
             Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
-
         """
         yield self.await_signal(self.superprotocol, 
                                 signal_label=self.ent_request_label)
@@ -154,6 +168,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.comm_qubit_indices = comm_qubit_indices
         self.num_entanglements2generate = num_entanglements2generate
         self.entanglement_type2generate = entanglement_type2generate
+        self.classical_connection_port_name = self.node.connection_port_name(
+                                                        self.other_node_name,
+                                                        label="classical")
+        self.classical_conn_port = self.node.ports[
+                                       self.classical_connection_port_name]
         
     def signal_outcome(self, ent_successful):
         """
@@ -205,9 +224,10 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #the meeting and have the server infer the 
         #channel latency from the time the message
         #is received.
-        
         #TO DO: facilitate having multiple entanglements on the same time slice,
         #which may require having some sort of job ID.
+    def run(self):
+        yield from self.handle_ent_request()
         
         
     #TO DO:
@@ -216,7 +236,9 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
 
         
 
-
+#Following decorator explicitly labels the next class as a subprotocol of 
+#Base4PhysicalLayerProtocol
+@Base4PhysicalLayerProtocol.register
 class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     """ Abstract protocol for generating entanglement.
     
@@ -230,9 +252,6 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     
     Parameters
     ----------
-    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
-        The superprotocol for this protocol. This protocol will be 
-        executed as a subprotocol of the superprotocol.
     node : :class: `~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
@@ -258,6 +277,10 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
 
     Attributes
     ----------
+    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The superprotocol for this protocol. This protocol will be 
+        executed as a subprotocol of the superprotocol. The value of this 
+        attribute should be overwritten by the superprotocol.
     num_entanglements2generate : int 
         The number of instances of the requested entanglement to be specified.
     entanglement_type2generate : str
@@ -287,24 +310,21 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     .. [1] https://netsquid.org/
     """
     
-    def __init__(self, superprotocol, node=None, name=None, role=None,
+    def __init__(self, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None, 
                  ready4ent=True):
-        super().__init__(superprotocol, node=node, name=name, role=role, 
+        super().__init__(node=node, name=name, role=role, 
                          other_node_name=other_node_name,
                          comm_qubit_indices=comm_qubit_indices,
                          ready4ent=ready4ent)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
-        self.entangling_connection_port_name = self.node.connection_port_name(
-                                                        self.other_node_name,
-                                                        label="entangling")
-        self.ent_conn_port = self.node.ports[
-                                self.entangling_connection_port_name]
-        #setting handler function to be called when input message is 
-        #received by the relevant port - essentially configuring the simulated
-        #hardware
-        self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
+        #The next two instance attributes will be overwritten in the run 
+        #method because this is the first time that self.node must have a value
+        #other than None and it is convenient to use self.node to instantiate
+        #the next two attributes.
+        self.entangling_connection_port_name = None
+        self.ent_conn_port = None
         
     def handle_quantum_input(self, msg):
         """
@@ -330,7 +350,21 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         
     def run(self):
         while True:
-            yield from self.handle_ent_request()
+            #deferring handling of signalling to the base class as this will be
+            #identical for all subclasses. This will override the role, 
+            #other_node_name, comm_qubit_indices, num_entanglements2generate, 
+            #and entanglement_type2generate attributes with useful values (in 
+            #place of the default None).
+            yield from super().run()
+            self.entangling_connection_port_name = self.node.connection_port_name(
+                                                            self.other_node_name,
+                                                            label="entangling")
+            self.ent_conn_port = self.node.ports[
+                                    self.entangling_connection_port_name]
+            #setting handler function to be called when input message is 
+            #received by the relevant port - essentially configuring the simulated
+            #hardware
+            self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
             yield from self.handshake()
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source

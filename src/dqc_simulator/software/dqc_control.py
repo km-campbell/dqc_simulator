@@ -14,6 +14,9 @@ from netsquid.protocols.protocol import Signals, Protocol
 from netsquid.protocols.nodeprotocols import NodeProtocol
 
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
+from dqc_simulator.software.physical_layer import (
+                                    Base4PhysicalLayerProtocol, 
+                                    AbstractCentralSourceEntangleProtocol)
 from dqc_simulator.hardware.dqc_creation import QpuNode
 
 #The following will act on the qsource node, Charlie, when one of the nodes 
@@ -172,7 +175,8 @@ class QpuOSProtocol(NodeProtocol):
     #but will have different names when this protocol is acted on the 
     #appropriate nodes
 
-    def __init__(self, superprotocol, gate_tuples, node=None, name=None):
+    def __init__(self, superprotocol, gate_tuples, 
+                 node=None, name=None):
         super().__init__(node, name)
         self.superprotocol = superprotocol
         self.gate_tuples = gate_tuples
@@ -187,7 +191,23 @@ class QpuOSProtocol(NodeProtocol):
         self.ent_ready_label = "ENT_READY"
         self.ent_failed_label = "ENT_FAILED"
         self.start_time_slice_label = "START_TIME_SLICE"
-        #TO DO: add link layer as a subprotocol.
+        self.add_signal(self.ent_request_label)
+        self.add_signal(self.ent_ready_label)
+        self.add_signal(self.ent_failed_label)
+        self.add_signal(self.start_time_slice_label)
+        
+    def add_phys_layer(self, physical_layer_protocol):
+        """
+        Convenience method for adding physical layer.
+        
+        Parameters
+        ----------
+        physical_layer_protocol : :class: `~dqc_simulator.software.physical_layer.Base4PhysicalLayerProtocol`
+            A physical layer protocol.
+        """
+        physical_layer_protocol.superprotocol = self
+        self.add_subprotocol(physical_layer_protocol, 
+                             name='physical_layer_protocol')
 
     def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
                              gate_op):
@@ -787,6 +807,15 @@ class QpuOSProtocol(NodeProtocol):
             #TO DO: add entanglement swapping
 
     def run(self):
+        if 'physical_layer_protocol' not in self.subprotocols or not \
+            isinstance(self.subprotocols['physical_layer_protocol'], 
+                       Base4PhysicalLayerProtocol):
+            raise ValueError(f'{self.name} requires a physical layer protocol, '
+                             'which is a subclass of Base4PhysicalLayerProtocol,'
+                             'to be added. This can be done with the '
+                             'add_phys_layer method')
+        
+        self.subprotocols['physical_layer_protocol'].start()
         #this protocol will be made a subprotocol of another and so will 
         #automatically stop when the parent protocol does. This avoids the 
         #infinite loop that would otherwise occur from the following.
@@ -903,6 +932,10 @@ class dqcMasterProtocol(Protocol):
                                 teleportation
     network : :class: `~netsquid.nodes.network.Network`
         Wraps all simulated hardware.
+    physical_layer_protocol: :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` or None, optional
+        The physical layer protocol. If None, 
+        :class: `~dqc_simulator.software.physical_layer.AbstractCentralSourceEntangleProtocol`()
+        is used.
     background_protocol_lookup : dict
         Lookup table with keys being subclasses of netsquid.nodes.node.Node
         and protocols being non-QPU subclasses of 
@@ -952,6 +985,7 @@ class dqcMasterProtocol(Protocol):
     .. [1] https://netsquid.org/
     """
     def __init__(self, partitioned_gates, network,
+                 physical_layer_protocol=None,
                  background_protocol_lookup=None,
                  compiler_func=None,
                  allowed_qpu_types=None,
@@ -962,6 +996,11 @@ class dqcMasterProtocol(Protocol):
         self.partitioned_gates = partitioned_gates
         self.network = network
         #instantiating default arguments
+        if physical_layer_protocol is None:
+            self.physical_layer_protocol = ( 
+                AbstractCentralSourceEntangleProtocol())
+        else:
+            self.physical_layer_protocol = physical_layer_protocol
         if compiler_func is None:
             self.compiler_func = sort_greedily_by_node_and_time
         else:
@@ -981,9 +1020,6 @@ class dqcMasterProtocol(Protocol):
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
         self.qpu_dict = {}
         for node_name, node in self.network.nodes.items():
-# =============================================================================
-#             print(node)
-# =============================================================================
             if isinstance(node, self.allowed_qpu_types): #isinstance also 
                                                          #looks for subclasses
                 self.qpu_dict[node_name] = node
@@ -991,6 +1027,14 @@ class dqcMasterProtocol(Protocol):
                                     superprotocol=self, 
                                     gate_tuples=self.qpu_op_dict[node_name],
                                     node=node)
+                #TO DO: think about if I want to have the user specify the 
+                #class rather than an instance of it to avoid them specifiying
+                #a node which will be overwritten here. If I did that I may have
+                #to raise an error if positional arguments are specified for a
+                #subclass (using the base class for the physical layer to 
+                #achieve this)
+                physical_layer_protocol.node = node
+                qpu_protocol.add_phys_layer(physical_layer_protocol)
                 self.add_subprotocol(qpu_protocol, 
                                      name=f'{node_name}_OS')
 # =============================================================================
