@@ -25,22 +25,16 @@ from dqc_simulator.software.physical_layer import (
     AbstractCentralSourceEntangleProtocol)
 
 #for debugging
-# =============================================================================
-# from netsquid.util import simlog
-# import logging
-# loggers = simlog.get_loggers()
-# loggers['netsquid'].setLevel(logging.DEBUG)
-# =============================================================================
+from netsquid.util import simlog
+import logging
+loggers = simlog.get_loggers()
+loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
 # 
 # #resetting to default after debugging
 # loggers = simlog.get_loggers()
 # loggers['netsquid'].setLevel(logging.WARNING)
 # =============================================================================
-
-
-#TO DO: think about moving these integration tests somewhere else in the file
-#structure.
 
 
 
@@ -55,14 +49,30 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
         Filling in for 
         :class: `dqc_simulator.software.dqc_control.QpuOSProtocol`.
         """
-        def __init__(self, node=None, name=None):
+        def __init__(self, node=None, name=None, role=None,
+                     other_node_name=None, comm_qubit_indices=None,
+                     ready4ent=None, num_entanglements2generate=1,
+                     entanglement_type2generate='bell_pair'):
             super().__init__(node, name)
             self.ent_request_label = "ENT_REQUEST"
             self.add_signal(self.ent_request_label)
-            
+            self.role = role
+            self.other_node_name = other_node_name
+            self.comm_qubit_indices = comm_qubit_indices
+            self.ready4ent = ready4ent
+            self.num_entanglements2generate = num_entanglements2generate
+            self.entanglement_type2generate = entanglement_type2generate
+
         def run(self):
-            self.send_signal(self.ent_request_label)
-    
+            while True:
+                yield self.await_timer(duration=5)
+                self.send_signal(self.ent_request_label,
+                             result=(self.role,
+                                     self.other_node_name,
+                                     self.comm_qubit_indices,
+                                     self.num_entanglements2generate,
+                                     self.entanglement_type2generate))
+                break
     def setUp(self):
         ns.sim_reset()
         self.node0 = Node("node0", 
@@ -94,23 +104,28 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
         self.node0.connect_to(self.node1, self.classical_connection,
                               local_port_name=self.node0cport_name,
                               remote_port_name=self.node1cport_name)
-        self.node0_superprotocol = self._DummySuperprotocol(node=self.node0)
-        self.node1_superprotocol = self._DummySuperprotocol(node=self.node1)
+        self.node0_superprotocol = self._DummySuperprotocol(
+                                        name='node0superprotocol',
+                                        node=self.node0,
+                                        role=None,
+                                        other_node_name="node1",
+                                        comm_qubit_indices=[1],
+                                        ready4ent=None)
+        self.node1_superprotocol = self._DummySuperprotocol(
+                                        name='node1superprotocol',
+                                        node=self.node1,
+                                        role=None,
+                                        other_node_name="node0",
+                                        comm_qubit_indices=[1],
+                                        ready4ent=None)
         self.node0_protocol = AbstractCentralSourceEntangleProtocol(
-                                    self.node0_superprotocol,
-                                    node=self.node0,
-                                    role=None,
-                                    other_node_name="node1",
-                                    comm_qubit_indices=[1],
-                                    ready4ent=None)
+                                    node=self.node0)
         self.node1_protocol = AbstractCentralSourceEntangleProtocol(
-                                    self.node1_superprotocol,
-                                    node=self.node1,
-                                    other_node_name="node0",
-                                    comm_qubit_indices=[1],
-                                    ready4ent=None)
-        #note in actual implementations, the comm_qubit_index would be set by
-        #the link layer and the protocols would be started by the link layer
+                                    node=self.node1)
+        #note in actual implementations, the following two lines would be done
+        #inside higher-level protocols
+        self.node0_protocol.superprotocol = self.node0_superprotocol
+        self.node1_protocol.superprotocol = self.node1_superprotocol
         self.sim_runtime = 100
         
 # =============================================================================
@@ -120,40 +135,316 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
         
     #TO DO: get following tests working now that you have refactored more.
     def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
-        self.node0_protocol.role='client'
-        self.node0_protocol.ready4ent=True
-        self.node1_protocol.role='server'
-        self.node1_protocol.ready4ent=True
+        self.node0_superprotocol.role='client'
+        self.node0_superprotocol.ready4ent=True
+        self.node1_superprotocol.role='server'
+        self.node1_superprotocol.ready4ent=True
         self.node0_protocol.start()
         self.node1_protocol.start()
+        self.node0_superprotocol.start()
+        self.node1_superprotocol.start()
         ns.sim_run(self.sim_runtime)
         qubit_node0, = self.node0.qmemory.pop(1)
         qubit_node1, = self.node1.qmemory.pop(1)
         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
         
-    def test_can_distribute_pair_of_entangled_qubits_with_node1_as_client_as_client(self):
-        self.node1_protocol.role = 'client'
-        self.node1_protocol.ready4ent = True
-        self.node0_protocol.role = 'server'
-        self.node0_protocol.ready4ent = True
+    def test_can_distribute_pair_of_entangled_qubits_with_node1_as_client(self):
+        self.node1_superprotocol.role = 'client'
+        self.node1_superprotocol.ready4ent = True
+        self.node0_superprotocol.role = 'server'
+        self.node0_superprotocol.ready4ent = True
         self.node0_protocol.start()
         self.node1_protocol.start()
+        self.node0_superprotocol.start()
+        self.node1_superprotocol.start()
         ns.sim_run(self.sim_runtime)
         qubit_node0, = self.node0.qmemory.pop(1)
         qubit_node1, = self.node1.qmemory.pop(1)
         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
-        
 
 
 
+# =============================================================================
+# #MWE reproducing the problem
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# import netsquid as ns
+# from netsquid.nodes import Node
+# from netsquid.protocols import NodeProtocol
+# class NP1(NodeProtocol):
+#     def __init__(self, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.dummy_label = 'dummy'
+#         self.add_signal(self.dummy_label)
+#     def run(self):
+#         #yield self.await_timer(duration=2)
+#         self.send_signal(self.dummy_label, result=1)
+#         
+# class NP2(NodeProtocol):
+#     def __init__(self, protocol, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.protocol = protocol
+#         self.dummy_label = 'dummy'
+#         self.add_signal(self.dummy_label)
+#     def run(self):
+#         while True:
+#             #=====================================================================
+#             #for debugging
+#             waiting_signal_label = 'waiting on signal'
+#             self.add_signal(waiting_signal_label)
+#             self.send_signal(waiting_signal_label)
+#             #=====================================================================
+#             yield self.await_signal(self.protocol, signal_label=self.dummy_label)
+#             signal_result = self.get_signal_result(self.dummy_label, receiver=self)
+#             print(f'signal result is {signal_result}')
+#             break
+#             
+# ns.sim_reset()
+# node = Node('node0')
+# np1 = NP1(node=node)
+# np2 = NP2(np1, node=node)
+# np2.start()
+# np1.start()
+# ns.sim_run(200)
+# =============================================================================
 
 
+#TO DO: TRY with get_signal_by_event
+# =============================================================================
+# #similar MWE to above
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# import netsquid as ns
+# from netsquid.nodes import Node
+# from netsquid.protocols import NodeProtocol
+# class NP1(NodeProtocol):
+#     def __init__(self, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.dummy_label = 'dummy'
+#         self.add_signal(self.dummy_label)
+#     def run(self):
+#         #yield self.await_timer(duration=2)
+#         self.send_signal(self.dummy_label, result=1)
+#         
+# class NP2(NodeProtocol):
+#     def __init__(self, protocol, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.add_subprotocol(protocol, name='np1')
+#         #self.add_signal(self.subprotocols['np1'].dummy_label)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         while True:
+#             #=====================================================================
+#             #for debugging
+#             waiting_signal_label = 'waiting on signal'
+#             self.add_signal(waiting_signal_label)
+#             self.send_signal(waiting_signal_label)
+#             #=====================================================================
+#             yield self.await_signal(self.subprotocols['np1'], self.subprotocols['np1'].dummy_label)
+#             print('finished waiting')
+#             signal_label, value = self.get_signal_result(self.subprotocols['np1'].dummy_label, receiver=self)
+#             print(f'signal result is {signal_result}')
+#             break
+#             
+# ns.sim_reset()
+# node = Node('node0')
+# np1 = NP1(node=node)
+# np2 = NP2(np1, node=node)
+# #print(np1.signals)
+# #print(np2.signals)
+# #print(np1.signals['dummy'] is np2.signals['dummy'])
+# np2.start()
+# np1.start()
+# ns.sim_run(200)
+# =============================================================================
 
 
+# =============================================================================
+# #TO DO: TRY with get_signal_by_event
+# #similar MWE to above
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# import netsquid as ns
+# from netsquid.nodes import Node
+# from netsquid.protocols import NodeProtocol, Signals
+# class NP1(NodeProtocol):
+#     def __init__(self, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         #yield self.await_timer(duration=2)
+#         while True:
+#             yield self.await_timer(duration=5)
+#             self.send_signal(Signals.SUCCESS, 1)
+#             yield self.await_timer(duration=5)
+# 
+# class NP2(NodeProtocol):
+#     def __init__(self, protocol, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.add_subprotocol(protocol, name='np1')
+#         #self.add_signal(self.subprotocols['np1'].dummy_label)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         while True:
+#             #=====================================================================
+#             #for debugging
+#             waiting_signal_label = 'waiting on signal'
+#             self.add_signal(waiting_signal_label)
+#             self.send_signal(waiting_signal_label)
+#             #=====================================================================
+#             yield self.await_signal(self.subprotocols['np1'], Signals.SUCCESS)
+#             print('finished waiting')
+#             signal_results = self.get_signal_result(Signals.SUCCESS, receiver=self)
+#             print(f'signal result is {signal_results}')
+#             self.send_signal(Signals.SUCCESS, result=signal_results)
+#             print(f'signal result is {signal_results}')
+#             break
+# 
+# ns.sim_reset()
+# node = Node('node0')
+# np1 = NP1(node=node)
+# np2 = NP2(np1, node=node)
+# #print(np1.signals)
+# #print(np2.signals)
+# #print(np1.signals['dummy'] is np2.signals['dummy'])
+# np1.start()
+# np2.start()
+# ns.sim_run(200)
+# 
+# =============================================================================
 
 
+# =============================================================================
+# #TO DO: TRY with get_signal_by_event
+# #similar MWE to above
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# import netsquid as ns
+# from netsquid.nodes import Node
+# from netsquid.protocols import NodeProtocol, Signals
+# class NP1(NodeProtocol):
+#     def __init__(self, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         #yield self.await_timer(duration=2)
+#         while True:
+#             yield self.await_timer(duration=5)
+#             self.send_signal(Signals.SUCCESS, 1)
+#             signal_results = self.get_signal_result(Signals.SUCCESS, receiver=self)
+#             print(f'np1 signal result is {signal_results}')
+#             yield self.await_timer(duration=5)
+# 
+# class NP2(NodeProtocol):
+#     def __init__(self, protocol, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.add_subprotocol(protocol, name='np1')
+#         #self.add_signal(self.subprotocols['np1'].dummy_label)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         while True:
+#             #=====================================================================
+#             #for debugging
+#             waiting_signal_label = 'waiting on signal'
+#             self.add_signal(waiting_signal_label)
+#             self.send_signal(waiting_signal_label)
+#             #=====================================================================
+#             yield self.await_signal(self.subprotocols['np1'], Signals.SUCCESS)
+#             print('finished waiting')
+#             signal_results = self.get_signal_result(Signals.SUCCESS, receiver=self)
+#             print(f'signal result is {signal_results}')
+#             self.send_signal(Signals.SUCCESS, result=signal_results)
+#             print(f'signal result is {signal_results}')
+#             break
+# 
+# ns.sim_reset()
+# node = Node('node0')
+# np1 = NP1(node=node)
+# np2 = NP2(np1, node=node)
+# #print(np1.signals)
+# #print(np2.signals)
+# #print(np1.signals['dummy'] is np2.signals['dummy'])
+# np1.start()
+# np2.start()
+# ns.sim_run(200)
+# =============================================================================
+
+
+#MWE with bug circumvented by retrieving signal result directly from subprotocol
+# =============================================================================
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# import netsquid as ns
+# from netsquid.nodes import Node
+# from netsquid.protocols import NodeProtocol, Signals
+# class NP1(NodeProtocol):
+#     def __init__(self, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         #yield self.await_timer(duration=2)
+#         while True:
+#             yield self.await_timer(duration=5)
+#             self.send_signal(Signals.SUCCESS, 1)
+#             #yield self.await_timer(duration=5)
+#             #signal_results = self.get_signal_result(Signals.SUCCESS)
+#             #print(f'np1 signal result is {signal_results}')
+#             #yield self.await_timer(duration=5)
+# 
+# class NP2(NodeProtocol):
+#     def __init__(self, protocol, node=None, name=None):
+#         super().__init__(node=node, name=name)
+#         self.add_subprotocol(protocol, name='np1')
+#         #self.add_signal(self.subprotocols['np1'].dummy_label)
+#         #self.dummy_label = 'dummy'
+#         #self.add_signal(self.dummy_label)
+#     def run(self):
+#         while True:
+#             #=====================================================================
+#             #for debugging
+#             waiting_signal_label = 'waiting on signal'
+#             self.add_signal(waiting_signal_label)
+#             self.send_signal(waiting_signal_label)
+#             #=====================================================================
+#             yield self.await_signal(self.subprotocols['np1'], Signals.SUCCESS)
+#             print('finished waiting')
+#             #yield self.await_timer(duration=5)
+#             signal_results = self.subprotocols['np1'].get_signal_result(Signals.SUCCESS)
+#             print(f'signal result is {signal_results}')
+#             self.send_signal(Signals.SUCCESS, result=signal_results)
+#             print(f'signal result is {signal_results}')
+#             #yield self.await_timer(duration=10)
+#             break
+# 
+# ns.sim_reset()
+# node = Node('node0')
+# np1 = NP1(node=node)
+# np2 = NP2(np1, node=node)
+# #print(np1.signals)
+# #print(np2.signals)
+# #print(np1.signals['dummy'] is np2.signals['dummy'])
+# np1.start()
+# np2.start()
+# ns.sim_run(200)
+# =============================================================================
 
 
 if __name__ == '__main__':

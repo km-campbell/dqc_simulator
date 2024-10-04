@@ -102,6 +102,15 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     used for those parameters was taken from the NetSquid documentation [1]_
     
     .. [1] https://netsquid.org/
+    
+    .. todo::
+        
+        Think about whether to set role, other_node_name, comm_qubit_indices,
+        and read4ent as attributes or properties only, not parameters, as they 
+        should be set by protocols at higher layers. The advantage of this is
+        to avoid confusion when a user sets values for these parameters
+        and they are then overwritten. However, the parameter formulation does
+        make instantiating the physical layer within higher layers easier.
     """
     def __init__(self, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None,
@@ -132,6 +141,9 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #have a value other than None
         self.classical_connection_port_name = None
         self.classical_conn_port = None
+        #TO DO: think about if you should declare these in QpuOSProtocol, which
+        #you will need to do anyway, and then send them here with the other 
+        #attributes
         
     def handle_ent_request(self):
         """
@@ -154,26 +166,20 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #a tuple of them). TO DO: think about whether you want to have more
         #specs (eg, entanglement fidelity like in Wehner stack papers).
         #For now, I'll keep it simple
-        signal_results = self.get_signal_result(
-                                        self.ent_request_label, 
-                                        receiver=self)
-        role = signal_results[0]
-        other_node_name = signal_results[1] 
-        comm_qubit_indices = signal_results[2]
-        num_entanglements2generate = signal_results[3]
-        entanglement_type2generate = signal_results[4]
+        signal_results = self.superprotocol.get_signal_result(
+                                                self.ent_request_label)
         #updating relevant attributes
-        self.role = role
-        self.other_node_name = other_node_name
-        self.comm_qubit_indices = comm_qubit_indices
-        self.num_entanglements2generate = num_entanglements2generate
-        self.entanglement_type2generate = entanglement_type2generate
+        self.role = signal_results[0]
+        self.other_node_name = signal_results[1] 
+        self.comm_qubit_indices = signal_results[2]
+        self.num_entanglements2generate = signal_results[3]
+        self.entanglement_type2generate = signal_results[4]
         self.classical_connection_port_name = self.node.connection_port_name(
                                                         self.other_node_name,
                                                         label="classical")
         self.classical_conn_port = self.node.ports[
                                        self.classical_connection_port_name]
-        
+    
     def signal_outcome(self, ent_successful):
         """
         Signals entanglement generation outcome to 
@@ -328,7 +334,8 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         
     def handle_quantum_input(self, msg):
         """
-        Routes qubits on a QPU node to the correct memory position.
+        Routes qubits on a QPU node to the correct memory position upon 
+        receiving input to the port this method is bound to.
         
         Modifies a quantum message inputted to a port, with metadata that puts 
         qubits in the correct memory positions and forwards the altered message
@@ -347,6 +354,16 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         msg.meta['qm_positions'] = self.comm_qubit_indices
         self.ent_conn_port.forward_input(self.node.qmemory.ports['qin'])
         self.ent_conn_port.tx_input(msg)
+        #signalling QpuOSProtocol that entanglement is ready.
+        self.send_signal(self.ent_ready_label)
+        #TO DO: 
+        #1) check if what you have done will wait until the entanglement 
+        #actually reaches the memory positions. It will wait until there is 
+        #input to qin because it is bound to that port but there is nothing to
+        #make it wait until it reaches the actual memory position. 
+        #2) disconnect the forwarding once it has reached the desired place
+        #3) think about whether this would be better done in the run method for
+        #clarity
         
     def run(self):
         while True:
@@ -369,13 +386,10 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
                 self.ent_conn_port.tx_output(self.ent_request_msg)
-                #TO DO: think about whether to signal that entanglement is 
-                #ready. QpuOSProtocol already waits 
-                #for the entanglement to arrive. Maybe only need to signal 
-                #failure.
-            #note that waiting on an input, etc is implicitly handled by 
-            #the binding of the input handler in the __init__ method. 
-            break
+            #note that forwarding qubits to the right place and signalling is 
+            #handled by the input handler bound to the entangling connection 
+            #port in the __init__ method.
+            
         
         #TO DO: wait for entanglement to be distributed and then signal 
         #superprotocol or change the QPU's ebit_ready attribute.
