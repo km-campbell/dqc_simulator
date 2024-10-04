@@ -98,9 +98,6 @@ class BlackBoxEntanglingQsourceConnection(Connection):
     state4distribution : array
         The density matrix of the state that the entangled qubits should 
         possess.
-    port_number : str, optional
-        Number to go in port names so as to distinguish different entangling 
-        connections created from this class.
     name : str, optional
         Name of this connection. Default is
         "BlackBoxEntanglingQsourceConnection".
@@ -108,7 +105,6 @@ class BlackBoxEntanglingQsourceConnection(Connection):
 
     def __init__(self, delay,
                  state4distribution,
-                 port_number=1, 
                  name="BlackBoxEntanglingQsourceConnection"):
         super().__init__(name=name)
         qchannel_qsource2A = QuantumChannel("qchannel_qsource2A",
