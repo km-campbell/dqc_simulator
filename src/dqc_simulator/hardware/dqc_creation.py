@@ -137,7 +137,8 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
                                                    label="entangling")
     network.add_connection(node_a, node_b, connection=connection,
                            port_name_node1=node_a_port_name,
-                           port_name_node2=node_b_port_name)
+                           port_name_node2=node_b_port_name,
+                           label='entangling')
 
     #TO DO: DELETE below when the refactored code above is finished 
     #Create an intermediary node to generate entangled pairs and distribute them
@@ -284,7 +285,6 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
         raise ValueError("""At least one of want_classical_2way_link and
                          want_entangling_link must be True otherwise
                          the function call would be redundant""")
-
     # Set up classical connection between nodes:
     if want_classical_2way_link:
         node_a_port_name = node_a.connection_port_name(node_b.name, 
@@ -299,7 +299,8 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                                    "Channel_B2A", length=node_distance,
                                     models={"delay_model": FibreDelayModel()}), 
                                port_name_node1=node_a_port_name,
-                               port_name_node2=node_b_port_name)
+                               port_name_node2=node_b_port_name,
+                               label='classical')
     if want_entangling_link:
         create_entangling_link(network, node_a, node_b,
                                **kwargs4create_entangling_link)
@@ -467,8 +468,8 @@ def create_dqc_network(
             node_1 = network.get_node(f"node_{ii}")
             node_2 = network.get_node(f"node_{ii+1}")
             link_2_qpus(network, node_1, node_2, 
-                         want_classical_2way_link=want_classical_2way_link, 
-                         want_entangling_link=want_entangling_link)
+                        want_classical_2way_link=want_classical_2way_link, 
+                        want_entangling_link=want_entangling_link)
     
     network = Network(name)
 

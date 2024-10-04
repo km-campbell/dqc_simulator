@@ -108,7 +108,70 @@ class Test_link_2_qpus(unittest.TestCase):
         with self.subTest(msg="wrong type of connection"):
             self.assertIsInstance(list(self.network.connections.values())[0],
                                   DirectConnection)
+            
+    def test_can_create_classical_AND_entangling_link(self):
+        link_2_qpus(self.network, self.qpu0, self.qpu1, 
+                    want_classical_2way_link=True,
+                    want_entangling_link=True)
+        self.assertEqual(len(self.network.connections), 2)
+        
 
+
+class Test_create_dqc_network(unittest.TestCase):
+    def _handle_quantum_input2qmemory(self):
+        #note: in actual implementations, the next 2 lines would be done with 
+        #the physical layer protocol
+        self.qpu0.ports[self.qpu0port_name].forward_input(
+                                                self.qpu0.qmemory.ports['qin'])
+        self.qpu1.ports[self.qpu1port_name].forward_input(
+                                                self.qpu1.qmemory.ports['qin'])
+        
+    def setUp(self):
+        ns.sim_reset()
+        set_qstate_formalism(QFormalism.DM)
+        
+    def test_can_create_only_classical_link(self):
+        network = create_dqc_network(state4distribution=ks.b00, 
+                                     node_list=None, num_qpus=2,
+                                    node_distance=2e-3,
+                                    quantum_topology = None, 
+                                    classical_topology = None,
+                                    want_classical_2way_link=True,
+                                    want_entangling_link=False, 
+                                    name="linear network") 
+        with self.subTest(msg="wrong number of entangling connections"):
+            self.assertEqual(len(network.connections), 1)
+        with self.subTest(msg="wrong type of connection"):
+            self.assertIsInstance(list(network.connections.values())[0],
+                                  DirectConnection)
+            
+    def test_can_create_only_entangling_link(self):
+        network = create_dqc_network(state4distribution=ks.b00, 
+                                     node_list=None, num_qpus=2,
+                                    node_distance=2e-3,
+                                    quantum_topology = None, 
+                                    classical_topology = None,
+                                    want_classical_2way_link=False,
+                                    want_entangling_link=True, 
+                                    name="linear network") 
+        with self.subTest(msg="wrong number of entangling connections"):
+            self.assertEqual(len(network.connections), 1)
+        with self.subTest(msg="wrong type of connection"):
+            self.assertIsInstance(list(network.connections.values())[0],
+                                  BlackBoxEntanglingQsourceConnection)
+            
+    def test_can_create_entangling_AND_classical_link(self):
+        network = create_dqc_network(state4distribution=ks.b00, 
+                                     node_list=None, num_qpus=2,
+                                    node_distance=2e-3,
+                                    quantum_topology = None, 
+                                    classical_topology = None,
+                                    want_classical_2way_link=True,
+                                    want_entangling_link=True, 
+                                    name="linear network") 
+        with self.subTest(msg="wrong number of entangling connections"):
+            self.assertEqual(len(network.connections), 2)
+        #TO DO: fix code to get this test working.
 
 # =============================================================================
 # #I think rx_output is deleted if not immediately used. You can test this with
