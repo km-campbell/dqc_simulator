@@ -25,11 +25,11 @@ from dqc_simulator.software.physical_layer import (
     AbstractCentralSourceEntangleProtocol)
 
 #for debugging
-from netsquid.util import simlog
-import logging
-loggers = simlog.get_loggers()
-loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
 # 
 # #resetting to default after debugging
 # loggers = simlog.get_loggers()
