@@ -275,9 +275,6 @@ class QpuOSProtocol(NodeProtocol):
         None.
 
         """
-        #TO DO: change comm_qubit_index to comm_qubit_indices here and in calls
-        #and ensure that wherever it is called a list or tuple is being 
-        #inputted
         
         #send entanglement request to link layer specifying the other node
         #involved in the connection and the comm-qubit to be used:
@@ -285,18 +282,16 @@ class QpuOSProtocol(NodeProtocol):
                          result=(role, other_node_name, comm_qubit_indices,
                                  num_entanglements2generate,
                                  entanglement_type2generate))        
-        #TO DO: correct the following. Instances of the class must be provided
-        #to await_signal not the class itself. Moreover, 
-        #EntanglementGenerationProtocol has been deprecated and instead an 
-        #instance of the physical layer protocol will be needed.
         #wait for entangled qubit to arrive in requested comm-qubit slot:
         wait4succsessful_ent = self.await_signal(
-                                   EntanglementGenerationProtocol,
+                                   self.subprotocols['physical_layer_protocol'],
                                    signal_label=self.ent_ready_label)
         wait4failed_ent = self.await_signal(
-                              EntanglementGenerationProtocol,
-                              signal_label= self.ent_failed_label)
+                              self.subprotocols['physical_layer_protocol'],
+                              signal_label=self.ent_failed_label)
+        print(f'still waiting for entanglement on {self.node.name}')
         evexpr = yield wait4succsessful_ent | wait4failed_ent
+        print('waiting for entanglement')
         #TO DO: implement block commented out below. It may be enough to only
         #handle the case where entanglement failed as previously you just 
         #waited for entanglement to be ready
@@ -771,16 +766,19 @@ class QpuOSProtocol(NodeProtocol):
                             role = gate_tuple[2]
                         node_names = [self.node.name, other_node_name]
                         node_names.sort()
-                        classical_comm_port = self.node.ports[
-                            f"classical_connection_{self.node.name}->"
-                            f"{other_node_name}"]
+                        classical_connection_port_name = ( 
+                            self.node.connection_port_name(
+                                                            other_node_name,
+                                                            label="classical"))
+                        classical_conn_port = self.node.ports[
+                                                 classical_connection_port_name]
                         evexpr_or_variables = ( 
                             yield from self.protocol_subgenerators[scheme](
                                                     role,
                                                     program,
                                                     other_node_name,
                                                     data_or_tele_qubit_index,
-                                                    classical_comm_port,
+                                                    classical_conn_port,
                                                     comm_qubit_index))
                         #past this point evexpr_or_variables will be the
                         #variables
@@ -816,6 +814,7 @@ class QpuOSProtocol(NodeProtocol):
                              'add_phys_layer method')
         
         self.subprotocols['physical_layer_protocol'].start()
+        print(f'{self.name} should have started physical layer protocol')
         #this protocol will be made a subprotocol of another and so will 
         #automatically stop when the parent protocol does. This avoids the 
         #infinite loop that would otherwise occur from the following.
@@ -932,9 +931,10 @@ class dqcMasterProtocol(Protocol):
                                 teleportation
     network : :class: `~netsquid.nodes.network.Network`
         Wraps all simulated hardware.
-    physical_layer_protocol: :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` or None, optional
-        The physical layer protocol. If None, 
-        :class: `~dqc_simulator.software.physical_layer.AbstractCentralSourceEntangleProtocol`()
+    physical_layer_protocol_class: class or None
+        The class of the physical layer protocol. The choice must be callable
+        with no explicit arguments. If None, 
+        :class: `~dqc_simulator.software.physical_layer.AbstractCentralSourceEntangleProtocol`
         is used.
     background_protocol_lookup : dict
         Lookup table with keys being subclasses of netsquid.nodes.node.Node
@@ -953,6 +953,11 @@ class dqcMasterProtocol(Protocol):
     name : str or None, optional. Name of protocol. If None, the name of the 
         class is used [1]_.
             
+    Attributes
+    ----------
+    physical_layer_protocol : :class: `~dqc_simulator.software.physical_layer.Base4PhysicalLayer
+        The physical layer protocol used.
+        
     Notes
     -----
     This protocol violates locality by splitting everything into time slices. 
@@ -983,9 +988,14 @@ class dqcMasterProtocol(Protocol):
     used for those parameters was taken from the NetSquid documentation [1]_
     
     .. [1] https://netsquid.org/
+    
+    .. todo::
+        
+        Decide whether to use *args4physical_layer, **kwargs for physical layer
+        to allow the physical layer protocol to be called with arguments
     """
     def __init__(self, partitioned_gates, network,
-                 physical_layer_protocol=None,
+                 physical_layer_protocol_class=None,
                  background_protocol_lookup=None,
                  compiler_func=None,
                  allowed_qpu_types=None,
@@ -996,11 +1006,12 @@ class dqcMasterProtocol(Protocol):
         self.partitioned_gates = partitioned_gates
         self.network = network
         #instantiating default arguments
-        if physical_layer_protocol is None:
-            self.physical_layer_protocol = ( 
-                AbstractCentralSourceEntangleProtocol())
+        if physical_layer_protocol_class is None:
+            physical_layer_protocol_class = ( 
+                AbstractCentralSourceEntangleProtocol)
         else:
-            self.physical_layer_protocol = physical_layer_protocol
+            #TO DO: raise error if calling this without arguments raises error
+            physical_layer_protocol_class = physical_layer_protocol_class
         if compiler_func is None:
             self.compiler_func = sort_greedily_by_node_and_time
         else:
@@ -1018,6 +1029,7 @@ class dqcMasterProtocol(Protocol):
             self.allowed_qpu_types = allowed_qpu_types
             
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
+        print(f'operations for each node are: {self.qpu_op_dict}')
         self.qpu_dict = {}
         for node_name, node in self.network.nodes.items():
             if isinstance(node, self.allowed_qpu_types): #isinstance also 
@@ -1026,15 +1038,17 @@ class dqcMasterProtocol(Protocol):
                 qpu_protocol = QpuOSProtocol(
                                     superprotocol=self, 
                                     gate_tuples=self.qpu_op_dict[node_name],
-                                    node=node)
+                                    node=node,
+                                    name=f'QpuOSProtocol_{node.name}')
                 #TO DO: think about if I want to have the user specify the 
                 #class rather than an instance of it to avoid them specifiying
                 #a node which will be overwritten here. If I did that I may have
                 #to raise an error if positional arguments are specified for a
                 #subclass (using the base class for the physical layer to 
                 #achieve this)
-                physical_layer_protocol.node = node
-                qpu_protocol.add_phys_layer(physical_layer_protocol)
+                self.physical_layer_protocol = ( 
+                    physical_layer_protocol_class(node=node))
+                qpu_protocol.add_phys_layer(self.physical_layer_protocol)
                 self.add_subprotocol(qpu_protocol, 
                                      name=f'{node_name}_OS')
 # =============================================================================

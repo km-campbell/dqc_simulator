@@ -32,12 +32,12 @@ from dqc_simulator.software.dqc_control import (
 from dqc_simulator.software.physical_layer import ( 
     AbstractCentralSourceEntangleProtocol)
 
+#for debugging
+from netsquid.util import simlog
+import logging
+loggers = simlog.get_loggers()
+loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
-# #for debugging
-# from netsquid.util import simlog
-# import logging
-# loggers = simlog.get_loggers()
-# loggers['netsquid'].setLevel(logging.DEBUG)
 # loggers['netsquid'].setLevel(logging.WARNING)
 # =============================================================================
 
@@ -45,6 +45,7 @@ from dqc_simulator.software.physical_layer import (
 class TestDqcMasterProtocol(unittest.TestCase):
     def setUp(self):
         ns.sim_reset()
+        set_qstate_formalism(QFormalism.DM)
         self.network = create_dqc_network(
                                state4distribution=ks.b00,
                                node_list=None, num_qpus=2,
@@ -52,38 +53,51 @@ class TestDqcMasterProtocol(unittest.TestCase):
                                classical_topology=None,
                                want_classical_2way_link=True,
                                want_entangling_link=True,
-                               nodes_have_ebit_ready=False,
                                node_comm_qubits_free=[0, 1],
                                node_comm_qubit_positions=[0,1],
                                name="linear network")
         self.node_0 = self.network.get_node('node_0')
         self.node_1 = self.network.get_node('node_1')
-        
-    def test_can_implement_gates_locally_on_2_qpus(self):
+        print(f'connections are {self.network.connections}')
+        print(f'{self.node_0.name} has ports {self.node_0.ports}')
+        print(f'{self.node_1.name} has ports {self.node_1.ports}')
+# =============================================================================
+#     def test_can_implement_gates_locally_on_2_qpus(self):
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_X, 2, "node_0"),
+#                        (instr.INSTR_X, 2, "node_1")]
+#         physical_layer_protocol_class = AbstractCentralSourceEntangleProtocol
+#         protocol = dqcMasterProtocol(
+#                          gate_tuples, self.network, physical_layer_protocol_class)
+#         protocol.start()
+#         ns.sim_run(200)
+#         qubit_node_0, = self.node_0.qmemory.pop(2)
+#         qubit_node_1, = self.node_1.qmemory.pop(2)
+#         with self.subTest(msg='node_0 in incorrect state'):
+#             fidelity = qapi.fidelity(qubit_node_0, ks.s1)
+#             self.assertAlmostEqual(fidelity, 1.0, 5)
+#         with self.subTest(msg='node_1 in incorrect state'):
+#             fidelity = qapi.fidelity(qubit_node_1, ks.s1)
+#             self.assertAlmostEqual(fidelity, 1.0, 5)
+# =============================================================================
+
+    def test_can_implement_remote_CNOT_gate_with_cat(self):
         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
                        (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_X, 2, "node_0"),
-                       (instr.INSTR_X, 2, "node_1")]
-        physical_layer_protocol = AbstractCentralSourceEntangleProtocol()
+                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
+        physical_layer_protocol = AbstractCentralSourceEntangleProtocol
         protocol = dqcMasterProtocol(
                          gate_tuples, self.network, physical_layer_protocol)
         protocol.start()
         ns.sim_run(200)
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
-        with self.subTest(msg='node_0 in incorrect state'):
-            fidelity = qapi.fidelity(qubit_node_0, ks.s1)
-            self.assertAlmostEqual(fidelity, 1.0, 5)
-        with self.subTest(msg='node_1 in incorrect state'):
-            fidelity = qapi.fidelity(qubit_node_1, ks.s1)
-            self.assertAlmostEqual(fidelity, 1.0, 5)
-            
-# =============================================================================
-#     def test_can_implement_remote_CNOT_gate(self):
-#         
-# =============================================================================
-        
-        
+        print(f'node0 qubit has state {qubit_node_0.qstate.qrepr}')
+        print(f'node1 qubit has state {qubit_node_1.qstate.qrepr}')
+        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
+        self.assertAlmostEqual(fidelity, 1.0, 5)
+
 
 # =============================================================================
 # class Test_entangling(unittest.TestCase):
