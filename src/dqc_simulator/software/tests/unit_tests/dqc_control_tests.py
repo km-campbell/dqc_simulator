@@ -25,10 +25,7 @@ from dqc_simulator.hardware.quantum_processors import (
                                                 INSTR_ARB_GEN)
 from dqc_simulator.qlib.states import werner_state
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
-from dqc_simulator.software.dqc_control import (
-                          QpuOSProtocol, 
-                          AbstractFromPhotonsEntangleProtocol,
-                          dqcMasterProtocol)
+from dqc_simulator.software.dqc_control import dqcMasterProtocol
 from dqc_simulator.software.physical_layer import ( 
     AbstractCentralSourceEntangleProtocol)
 
@@ -65,9 +62,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_INIT, 2, "node_1"),
                        (instr.INSTR_X, 2, "node_0"),
                        (instr.INSTR_X, 2, "node_1")]
-        physical_layer_protocol_class = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(
-                         gate_tuples, self.network, physical_layer_protocol_class)
+        protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
         qubit_node_0, = self.node_0.qmemory.pop(2)
@@ -85,8 +80,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_H, 2, "node_0"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
         physical_layer_protocol = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(
-                         gate_tuples, self.network, physical_layer_protocol)
+        protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
         qubit_node_0, = self.node_0.qmemory.pop(2)
@@ -99,9 +93,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_INIT, 2, "node_1"),
                        (instr.INSTR_H, 2, "node_0"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        physical_layer_protocol = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(
-                         gate_tuples, self.network, physical_layer_protocol)
+        protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
         comm_qubit_node_1, = self.node_1.qmemory.pop(0)
@@ -117,9 +109,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
-        physical_layer_protocol = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(
-                         gate_tuples, self.network, physical_layer_protocol)
+        protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
         qubit_node_0, = self.node_0.qmemory.pop(2)
@@ -134,9 +124,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        physical_layer_protocol = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(
-                         gate_tuples, self.network, physical_layer_protocol)
+        protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
         comm_qubit_node_1, = self.node_1.qmemory.pop(0)
