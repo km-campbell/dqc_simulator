@@ -289,9 +289,7 @@ class QpuOSProtocol(NodeProtocol):
         wait4failed_ent = self.await_signal(
                               self.subprotocols['physical_layer_protocol'],
                               signal_label=self.ent_failed_label)
-        print(f'still waiting for entanglement on {self.node.name}')
         evexpr = yield wait4succsessful_ent | wait4failed_ent
-        print('waiting for entanglement')
         #TO DO: implement block commented out below. It may be enough to only
         #handle the case where entanglement failed as previously you just 
         #waited for entanglement to be ready
@@ -814,7 +812,6 @@ class QpuOSProtocol(NodeProtocol):
                              'add_phys_layer method')
         
         self.subprotocols['physical_layer_protocol'].start()
-        print(f'{self.name} should have started physical layer protocol')
         #this protocol will be made a subprotocol of another and so will 
         #automatically stop when the parent protocol does. This avoids the 
         #infinite loop that would otherwise occur from the following.
@@ -1029,7 +1026,6 @@ class dqcMasterProtocol(Protocol):
             self.allowed_qpu_types = allowed_qpu_types
             
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
-        print(f'operations for each node are: {self.qpu_op_dict}')
         self.qpu_dict = {}
         for node_name, node in self.network.nodes.items():
             if isinstance(node, self.allowed_qpu_types): #isinstance also 

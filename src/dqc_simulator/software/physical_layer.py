@@ -160,12 +160,8 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
             Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
         """
-        print(f'physical layer for {self.node.name} is waiting on ent request'
-              f' from {self.superprotocol.name}')
         yield self.await_signal(self.superprotocol, 
                                 signal_label=self.ent_request_label)
-        print(f'ent request signal from {self.superprotocol} has arrived on '
-              f'{self.node.name}')
         #the following could be replaced with any desired specs (including 
         #a tuple of them). TO DO: think about whether you want to have more
         #specs (eg, entanglement fidelity like in Wehner stack papers).
@@ -218,14 +214,10 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         None.
 
         """
-        print(f'the role of {self.node.name} is {self.role}')
         if self.role == 'client':
             self.classical_conn_port.tx_output(self.handshake_ready_label)
         elif self.role == 'server':
-            print('entered server role if loop for physical layer '
-                  f'protocol on {self.node.name}')
             yield self.await_port_input(self.classical_conn_port)
-            print('server received handshake ready signal')
             #TO DO: get signal results here to bring in time?
             if self.ready4ent:
                 self.classical_conn_port.tx_output(self.handshake_ready_label)
@@ -356,8 +348,6 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         msg : :class: `~netsquid.components.component.Message`
             A message whose items should be qubits.
         """
-        print('entered handle_quantum_input method in physical layer of '
-              f'{self.node.name}')
         #TO THINK about whether to move this to an abstract base class
         #for protocols expecting a quantum input or the more general 
         #physical layer base class (probably the former)
@@ -376,18 +366,13 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         #clarity
         
     def run(self):
-        print(f'physical layer protocol has started on {self.node.name}')
         while True:
             #deferring handling of signalling to the base class as this will be
             #identical for all subclasses. This will override the role, 
             #other_node_name, comm_qubit_indices, num_entanglements2generate, 
             #and entanglement_type2generate attributes with useful values (in 
             #place of the default None).
-            print(f'physical layer for {self.node.name} has not yet run '
-                  f'method for base class')
             yield from super().run()
-            print('entered physical layer run method past base class '
-                  f'on {self.node.name}')
             self.entangling_connection_port_name = self.node.connection_port_name(
                                                             self.other_node_name,
                                                             label="entangling")
@@ -398,7 +383,6 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #hardware
             self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
             yield from self.handshake()
-            print(f'past handshake on {self.node.name}')
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
                 self.ent_conn_port.tx_output(self.ent_request_msg)
