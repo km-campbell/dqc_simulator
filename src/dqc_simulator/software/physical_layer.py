@@ -382,6 +382,9 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #received by the relevant port - essentially configuring the simulated
             #hardware
             self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
+            #Part of the handshake protocol that follows is superfluous for 
+            #for this context but may be useful for other entanglement 
+            #distribution schemes.
             yield from self.handshake()
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
