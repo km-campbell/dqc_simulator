@@ -332,7 +332,8 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         self.entangling_connection_port_name = None
         self.ent_conn_port = None
         
-    def handle_quantum_input(self, msg):
+
+    def handle_quantum_input(self):
         """
         Routes qubits on a QPU node to the correct memory position upon 
         receiving input to the port this method is bound to.
@@ -342,29 +343,25 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         to the qin port of a 
         :class: `~netsquid.components.qmemory.QuantumMemory` or 
         :class: `~netsquid.components.qprocessor.QuantumProcessor`
-
-        Parameters
-        ----------
-        msg : :class: `~netsquid.components.component.Message`
-            A message whose items should be qubits.
         """
         #TO THINK about whether to move this to an abstract base class
         #for protocols expecting a quantum input or the more general 
         #physical layer base class (probably the former)
+        yield self.await_port_input(self.ent_conn_port)
+        msg = self.ent_conn_port.rx_input() #Message containing qubits
+        #adding information on the quantum memory positions to add qubits to
         msg.meta['qm_positions'] = self.comm_qubit_indices
         self.ent_conn_port.forward_input(self.node.qmemory.ports['qin'])
         self.ent_conn_port.tx_input(msg)
         #signalling QpuOSProtocol that entanglement is ready.
         self.send_signal(self.ent_ready_label)
-        #TO DO: 
-        #1) check if what you have done will wait until the entanglement 
-        #actually reaches the memory positions. It will wait until there is 
-        #input to qin because it is bound to that port but there is nothing to
-        #make it wait until it reaches the actual memory position. 
-        #2) disconnect the forwarding once it has reached the desired place
-        #3) think about whether this would be better done in the run method for
-        #clarity
-        
+        #disconnecting the port to ensure that the message is amended with 
+        #metadata before forwarding it on, the next time entanglement is 
+        #distributed 
+        yield self.await_port_input(self.node.qmemory.ports['qin'])
+        self.ent_conn_port.disconnect()
+
+
     def run(self):
         while True:
             #deferring handling of signalling to the base class as this will be
@@ -381,7 +378,9 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #setting handler function to be called when input message is 
             #received by the relevant port - essentially configuring the simulated
             #hardware
-            self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
+# =============================================================================
+#             self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
+# =============================================================================
             #Part of the handshake protocol that follows is superfluous for 
             #for this context but may be useful for other entanglement 
             #distribution schemes.
@@ -392,6 +391,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #note that forwarding qubits to the right place and signalling is 
             #handled by the input handler bound to the entangling connection 
             #port in the __init__ method.
+            yield from self.handle_quantum_input()
             
             
         
