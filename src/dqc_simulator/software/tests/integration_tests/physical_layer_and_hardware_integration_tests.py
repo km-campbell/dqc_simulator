@@ -73,6 +73,7 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
                                      self.num_entanglements2generate,
                                      self.entanglement_type2generate))
                 break
+            
     def setUp(self):
         ns.sim_reset()
         self.node0 = Node("node0", 

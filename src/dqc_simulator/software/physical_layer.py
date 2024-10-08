@@ -160,16 +160,12 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
             Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
         """
-        print("entered physical layer base protocol's handle_ent_request method"
-              f" on {self.node.name}")
         yield self.await_signal(self.superprotocol, 
                                 signal_label=self.ent_request_label)
         #the following could be replaced with any desired specs (including 
         #a tuple of them). TO DO: think about whether you want to have more
         #specs (eg, entanglement fidelity like in Wehner stack papers).
         #For now, I'll keep it simple
-        print("passed await_signal method within handle_ent_request on "
-              f"{self.node.name}")
         signal_results = self.superprotocol.get_signal_result(
                                                 self.ent_request_label)
         #updating relevant attributes
@@ -242,7 +238,6 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #which may require having some sort of job ID.
         
     def run(self):
-        print(f'entered base physical layer run method for {self.node.name}')
         yield from self.handle_ent_request()
         
         
@@ -374,10 +369,8 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         #for protocols expecting a quantum input or the more general 
         #physical layer base class (probably the former)
         yield self.await_port_input(self.ent_conn_port)
-        print(f"qubits have arrived at {self.ent_conn_port}")
         msg = self.ent_conn_port.rx_input() #Message containing qubits
         #adding information on the quantum memory positions to add qubits to
-        print(f'the qubits at {self.ent_conn_port} are {msg}')
         msg.meta['qm_positions'] = self.comm_qubit_indices
         self.ent_conn_port.forward_input(self.node.qmemory.ports['qin'])
         self.ent_conn_port.tx_input(msg)
@@ -420,9 +413,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #note that forwarding qubits to the right place and signalling is 
             #handled by the input handler bound to the entangling connection 
             #port in the __init__ method.
-            print(f'waiting on qubits on {self.node.name}')
             yield from self.handle_quantum_input()
-            print(f'finished waiting on qubits on {self.node.name}')
             
             
         

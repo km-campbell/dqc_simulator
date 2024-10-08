@@ -30,12 +30,14 @@ from dqc_simulator.software.physical_layer import (
     AbstractCentralSourceEntangleProtocol)
 
 #for debugging
-from netsquid.util import simlog
-import logging
-loggers = simlog.get_loggers()
-loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
-# loggers['netsquid'].setLevel(logging.WARNING)
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# # =============================================================================
+# # loggers['netsquid'].setLevel(logging.WARNING)
+# # =============================================================================
 # =============================================================================
 
 
@@ -125,7 +127,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
-        ns.sim_run(200)
+        ns.sim_run(400)
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
