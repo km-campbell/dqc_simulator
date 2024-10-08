@@ -321,7 +321,6 @@ class Test_find_consecutive_remote_gates(unittest.TestCase):
                                  ((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 35)]
         burst_comm_blocks = find_consecutive_remote_gates(partitioned_gates,
                                                           filtered_remote_gates)
-        print(burst_comm_blocks)
         #from figure 8a of AutoComm paper:
         expected_output = [[((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 1)],
                            [((instr.INSTR_CNOT, 2, 'node_0', 2, 'node_1'), 5)],

@@ -99,11 +99,42 @@ class QpuOps():
               < len(self.ops[node1_name])): 
             self.pad_num_time_slices_until_matching(node0_name, node1_name)
             
-    def remove_empty_trailing_time_slices(self):
+    def check_if_all_nodes_have_empty_trailing_time_slice(self):
+        """
+        
+
+        Returns
+        -------
+        all_nodes_have_empty_trailing_time_slice : bool
+            True if all nodes have an empty trailing time slice and false 
+            otherwise.
+        """
+        all_nodes_have_empty_trailing_time_slice = True
         for node_key in self.ops:
-            if not self.ops[node_key][-1]:
-            #if last time slice is empty:
+            if self.ops[node_key][-1]:
+            #if the last time slice is non-empty:
+                all_nodes_have_empty_trailing_time_slice = False
+        return all_nodes_have_empty_trailing_time_slice
+                
+    def remove_empty_trailing_time_slices(self):
+        """
+        Remove empty trailing time slices if they appear for all QPUs.
+        
+        The constant number of time slices for all nodes is retained.
+        """
+        need2remove_trailing_time_slices = ( 
+            self.check_if_all_nodes_have_empty_trailing_time_slice())
+        if need2remove_trailing_time_slices:
+            #removing last time slice from each node
+            for node_key in self.ops:
                 del self.ops[node_key][-1]
+        
+# =============================================================================
+#         for node_key in self.ops:
+#             if not self.ops[node_key][-1]:
+#             #if last time slice is empty:
+#                 del self.ops[node_key][-1]
+# =============================================================================
             
     def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
                        node0_name, node1_name):
