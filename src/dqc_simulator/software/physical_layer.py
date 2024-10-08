@@ -160,12 +160,16 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
             Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
         """
+        print("entered physical layer base protocol's handle_ent_request method"
+              f" on {self.node.name}")
         yield self.await_signal(self.superprotocol, 
                                 signal_label=self.ent_request_label)
         #the following could be replaced with any desired specs (including 
         #a tuple of them). TO DO: think about whether you want to have more
         #specs (eg, entanglement fidelity like in Wehner stack papers).
         #For now, I'll keep it simple
+        print("passed await_signal method within handle_ent_request on "
+              f"{self.node.name}")
         signal_results = self.superprotocol.get_signal_result(
                                                 self.ent_request_label)
         #updating relevant attributes
@@ -216,6 +220,10 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         """
         if self.role == 'client':
             self.classical_conn_port.tx_output(self.handshake_ready_label)
+# =============================================================================
+#             #await response from server
+#             yield self.await_port_input(self.classical_conn_port)
+# =============================================================================
         elif self.role == 'server':
             yield self.await_port_input(self.classical_conn_port)
             #TO DO: get signal results here to bring in time?
@@ -232,7 +240,9 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #is received.
         #TO DO: facilitate having multiple entanglements on the same time slice,
         #which may require having some sort of job ID.
+        
     def run(self):
+        print(f'entered base physical layer run method for {self.node.name}')
         yield from self.handle_ent_request()
         
         
@@ -332,6 +342,22 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         self.entangling_connection_port_name = None
         self.ent_conn_port = None
         
+    def one_way_handshake(self):
+        """
+        Implements a one-way version of the handshake protocol.
+        
+        This subgenerator assumes that entanglement is possible and time 
+        synchronisation is not necessary, which is useful for the 
+        detereministic entanglement distribution scheme here.
+        """
+        if self.role == 'client':
+            self.classical_conn_port.tx_output(self.handshake_ready_label)
+# =============================================================================
+#             #await response from server
+#             yield self.await_port_input(self.classical_conn_port)
+# =============================================================================
+        elif self.role == 'server':
+            yield self.await_port_input(self.classical_conn_port)
 
     def handle_quantum_input(self):
         """
@@ -348,19 +374,22 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         #for protocols expecting a quantum input or the more general 
         #physical layer base class (probably the former)
         yield self.await_port_input(self.ent_conn_port)
+        print(f"qubits have arrived at {self.ent_conn_port}")
         msg = self.ent_conn_port.rx_input() #Message containing qubits
         #adding information on the quantum memory positions to add qubits to
+        print(f'the qubits at {self.ent_conn_port} are {msg}')
         msg.meta['qm_positions'] = self.comm_qubit_indices
         self.ent_conn_port.forward_input(self.node.qmemory.ports['qin'])
         self.ent_conn_port.tx_input(msg)
         #signalling QpuOSProtocol that entanglement is ready.
         self.send_signal(self.ent_ready_label)
-        #disconnecting the port to ensure that the message is amended with 
-        #metadata before forwarding it on, the next time entanglement is 
-        #distributed 
-        yield self.await_port_input(self.node.qmemory.ports['qin'])
-        self.ent_conn_port.disconnect()
-
+        #undoing the forward input setup above so that, the next time
+        #entanglement is distributed, the message is again amended with 
+        #metadata before forwarding it on
+# =============================================================================
+#         yield self.await_port_input(self.node.qmemory.ports['qin'])
+# =============================================================================
+        self.ent_conn_port.forward_input(None)
 
     def run(self):
         while True:
@@ -384,14 +413,16 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #Part of the handshake protocol that follows is superfluous for 
             #for this context but may be useful for other entanglement 
             #distribution schemes.
-            yield from self.handshake()
+            yield from self.one_way_handshake()
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
                 self.ent_conn_port.tx_output(self.ent_request_msg)
             #note that forwarding qubits to the right place and signalling is 
             #handled by the input handler bound to the entangling connection 
             #port in the __init__ method.
+            print(f'waiting on qubits on {self.node.name}')
             yield from self.handle_quantum_input()
+            print(f'finished waiting on qubits on {self.node.name}')
             
             
         

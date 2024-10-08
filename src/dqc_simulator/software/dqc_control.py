@@ -282,6 +282,7 @@ class QpuOSProtocol(NodeProtocol):
                          result=(role, other_node_name, comm_qubit_indices,
                                  num_entanglements2generate,
                                  entanglement_type2generate))        
+        print(f'sent entanglement request signal on {self.node.name}')
         #wait for entangled qubit to arrive in requested comm-qubit slot:
         wait4succsessful_ent = self.await_signal(
                                    self.subprotocols['physical_layer_protocol'],
@@ -290,6 +291,7 @@ class QpuOSProtocol(NodeProtocol):
                               self.subprotocols['physical_layer_protocol'],
                               signal_label=self.ent_failed_label)
         evexpr = yield wait4succsessful_ent | wait4failed_ent
+        print(f'past waiting for entanglement success signal on {self.node.name}')
         #TO DO: implement block commented out below. It may be enough to only
         #handle the case where entanglement failed as previously you just 
         #waited for entanglement to be ready
@@ -731,8 +733,13 @@ class QpuOSProtocol(NodeProtocol):
         #as function arguments:
         program=QuantumProgram()
         comm_qubit_index = float("nan")
+        #TO DO: think about whether this while loop is needed because there is 
+        #a while loop in the enclosing scope. One reason to keep it would be
+        #to avoid overwriting the program and comm_qubit_index
         while True:
+            print(f'entered outer time slice loop for {self.node.name}')
             for gate_tuple in gate_tuples4time_slice:
+                print(f'{self.node.name} is doing {gate_tuple}')
                 gate_instr = gate_tuple[0] 
                 #handling gate types with associated parameters:
                 try: #if gate_instr is iterable:
@@ -778,6 +785,8 @@ class QpuOSProtocol(NodeProtocol):
                                                     data_or_tele_qubit_index,
                                                     classical_conn_port,
                                                     comm_qubit_index))
+                        print('past yield from self.protocol_subgenerators on '
+                              f'{self.node.name} for {gate_tuple}')
                         #past this point evexpr_or_variables will be the
                         #variables
                         comm_qubit_index = evexpr_or_variables[0]
@@ -1026,6 +1035,7 @@ class dqcMasterProtocol(Protocol):
             self.allowed_qpu_types = allowed_qpu_types
             
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
+        print(self.qpu_op_dict)
         self.qpu_dict = {}
         for node_name, node in self.network.nodes.items():
             if isinstance(node, self.allowed_qpu_types): #isinstance also 

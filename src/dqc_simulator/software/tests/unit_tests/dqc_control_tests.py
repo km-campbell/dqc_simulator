@@ -30,16 +30,14 @@ from dqc_simulator.software.physical_layer import (
     AbstractCentralSourceEntangleProtocol)
 
 #for debugging
+from netsquid.util import simlog
+import logging
+loggers = simlog.get_loggers()
+loggers['netsquid'].setLevel(logging.DEBUG)
 # =============================================================================
-# from netsquid.util import simlog
-# import logging
-# loggers = simlog.get_loggers()
-# loggers['netsquid'].setLevel(logging.DEBUG)
-# # =============================================================================
-# # loggers['netsquid'].setLevel(logging.WARNING)
-# # =============================================================================
-# 
+# loggers['netsquid'].setLevel(logging.WARNING)
 # =============================================================================
+
 
 class TestDqcMasterProtocol(unittest.TestCase):
     def setUp(self):
@@ -57,6 +55,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                                name="linear network")
         self.node_0 = self.network.get_node('node_0')
         self.node_1 = self.network.get_node('node_1')
+        
     def test_can_implement_gates_locally_on_2_qpus(self):
         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
                        (instr.INSTR_INIT, 2, "node_1"),
@@ -96,9 +95,9 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
-        comm_qubit_node_1, = self.node_1.qmemory.pop(0)
-        data_qubit_node_1, = self.node_1.qmemory.pop(2)
-        fidelity = qapi.fidelity([comm_qubit_node_1, data_qubit_node_1],
+        qubit_node_0, = self.node_0.qmemory.pop(2)
+        qubit_node_1, = self.node_1.qmemory.pop(2)
+        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
                                  ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
         
@@ -127,9 +126,9 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(200)
-        comm_qubit_node_1, = self.node_1.qmemory.pop(0)
-        data_qubit_node_1, = self.node_1.qmemory.pop(2)
-        fidelity = qapi.fidelity([comm_qubit_node_1, data_qubit_node_1],
+        qubit_node_0, = self.node_0.qmemory.pop(2)
+        qubit_node_1, = self.node_1.qmemory.pop(2)
+        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
                                  ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
 
