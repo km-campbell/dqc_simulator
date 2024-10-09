@@ -136,11 +136,13 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.add_signal(self.ent_ready_label)
         self.add_signal(self.ent_failed_label)
         self.add_signal(self.ent_request_label)
-        #The value of the next two attributes will be overwritten in the 
+        #The value of the next four attributes will be overwritten in the 
         #run method, which is the first point at which the node attribute must
         #have a value other than None
         self.classical_connection_port_name = None
         self.classical_conn_port = None
+        self.entangling_connection_port_name = None
+        self.ent_conn_port = None
         #TO DO: think about if you should declare these in QpuOSProtocol, which
         #you will need to do anyway, and then send them here with the other 
         #attributes
@@ -179,6 +181,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
                                                         label="classical")
         self.classical_conn_port = self.node.ports[
                                        self.classical_connection_port_name]
+        self.entangling_connection_port_name = self.node.connection_port_name(
+                                                        self.other_node_name,
+                                                        label="entangling")
+        self.ent_conn_port = self.node.ports[
+                                self.entangling_connection_port_name]
     
     def signal_outcome(self, ent_successful):
         """
@@ -330,12 +337,6 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
                          ready4ent=ready4ent)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
-        #The next two instance attributes will be overwritten in the run 
-        #method because this is the first time that self.node must have a value
-        #other than None and it is convenient to use self.node to instantiate
-        #the next two attributes.
-        self.entangling_connection_port_name = None
-        self.ent_conn_port = None
         
     def one_way_handshake(self):
         """
@@ -392,80 +393,102 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #and entanglement_type2generate attributes with useful values (in 
             #place of the default None).
             yield from super().run()
-            self.entangling_connection_port_name = self.node.connection_port_name(
-                                                            self.other_node_name,
-                                                            label="entangling")
-            self.ent_conn_port = self.node.ports[
-                                    self.entangling_connection_port_name]
-            #setting handler function to be called when input message is 
-            #received by the relevant port - essentially configuring the simulated
-            #hardware
-# =============================================================================
-#             self.ent_conn_port.bind_input_handler(self.handle_quantum_input)
-# =============================================================================
-            #Part of the handshake protocol that follows is superfluous for 
-            #for this context but may be useful for other entanglement 
-            #distribution schemes.
             yield from self.one_way_handshake()
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
                 self.ent_conn_port.tx_output(self.ent_request_msg)
-            #note that forwarding qubits to the right place and signalling is 
-            #handled by the input handler bound to the entangling connection 
-            #port in the __init__ method.
             yield from self.handle_quantum_input()
             
-            
-        
-        #TO DO: wait for entanglement to be distributed and then signal 
-        #superprotocol or change the QPU's ebit_ready attribute.
-        
-        
-        #TO DO: ensure both client and server roles are catered for. Above
-        #is only for client role. The client and server roles could be
-        #different protocols or the role could be an attribute with appropriate
-        #handler functions for each role. In this protocol, with the old design
-        #the client and server are less distinct and essentially you wait until
-        #both parties have sent a request and then proceed. Need to think on
-        #whether this is still the approach that you want to take.
-# =============================================================================
-#         node_names = [self.node.name, other_node_name]
-#         node_names.sort()
-#         ent_recv_port = self.node.ports[
-#             f"quantum_input_from_charlie"
-#             f"{comm_qubit_indices}_"
-#             f"{node_names[0]}<->{node_names[1]}"]
-#         #send entanglement request specifying
-#         #the comm-qubit to be used:
-#         ent_request_port.tx_output(comm_qubit_indices)
-#         #wait for entangled qubit to arrive in
-#         #requested comm-qubit slot:
-#         yield self.await_port_input(ent_recv_port)
-# =============================================================================
-# =============================================================================
-#         self.send_signal(self.ent_ready_label)
-# =============================================================================
 
-# =============================================================================
-# class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
-#     """
-#     Physical layer protocol for generating entanglement between QPUs.
-#     
-#     Intended to be used as a subprotocol of
-#     :class: `dqc_simulator.software.link_layer.EntanglementGenerationProtocol`
-#     and started in the run method there.
-#     
-#     Notes 
-#     -----
-#     Similar idea to the Wehner stack [1]_, [2]_.
-#     """
-#     def __init__(self):
-#         #initiate HandshakeProtocol as subprotocol
-#         
-#     def run(self):
-#         #wait on trigger
-#         #start handshake
-# =============================================================================
+class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
+    """
+    Physical layer protocol for generating entanglement between QPUs.
+    
+    This protocol assumes that each QPU produces a photon entangled with one 
+    of its comm qubits and these photons are measured with a BSM between the 
+    two QPUs to leave the static comm qubits entangled with each other.
+    
+    Parameters
+    ----------
+    node : :class: `~netsquid.nodes.node.Node` or None, optional
+        Node this protocol runs on. If None, a node should be set later before 
+        starting this protocol. [1]_
+    name : str or None, optional
+        Name of protocol. If None, the name of the class is used. [1]_
+    role : str
+        Whether the QPU is a 'client' (initiating the handshake) or a 
+        'server' (responding to the handshake.)
+        The name of the other QPU node involved in the entangled link. If 
+        None, must be overwritten prior to the start of the protocol, eg in the 
+        link layer_protocol.
+    other_node_name : str or None, optional
+        The name of the other QPU node involved in the entanglment distribution.
+        If None, must be overwritten prior to the the start of the protocol,
+        eg in the link layer protocol
+    comm_qubit_indices = list of int or None, optional
+        The index of the memory position in which the comm-qubit that should 
+        host the entanglement is being held.
+    ready4ent = bool por None , optional
+        Whether the QPU is ready or not for entanglement. If None, must be 
+        overwritten prior to the the start of the protocol, eg in the 
+        link layer protocol.
+
+    Attributes
+    ----------
+    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The superprotocol for this protocol. This protocol will be 
+        executed as a subprotocol of the superprotocol. The value of this 
+        attribute should be overwritten by the superprotocol.
+    num_entanglements2generate : int 
+        The number of instances of the requested entanglement to be specified.
+    entanglement_type2generate : str
+        The type of entanglement to be used.
+    ent_ready_label : str
+        The label to use to signal the successful distribution of 
+        entanglement.
+    ent_failed_label : str
+        The label to use to signal that entanglement distribution has
+        failed
+    
+    Notes 
+    -----
+    Similar idea to the Wehner stack [1]_, [2]_.
+    
+    References
+    ----------
+    .. [1] A. Dahlberg, et al., A link layer protocol for quantum networks, in: 
+           Proceedings of the ACM Special Interest Group on Data Communication,
+           ACM (2019)
+
+    .. [2] M. Pompili, et al., Experimental demonstration of entanglement 
+           delivery using a quantum network stack, npj Quantum Information, 8 
+           (2022)
+    """
+    def __init__(self, node=None, name=None, role=None,
+                 other_node_name=None, comm_qubit_indices=None, 
+                 ready4ent=True):
+        super().__init__(node=node, name=name, role=role, 
+                         other_node_name=other_node_name,
+                         comm_qubit_indices=comm_qubit_indices,
+                         ready4ent=ready4ent)
+        self.entanglement_type2generate = 'bell_pair'
+        self.ent_request_msg = "ENT_REQUEST"
+        #The next two instance attributes will be overwritten in the run 
+        #method because this is the first time that self.node must have a value
+        #other than None and it is convenient to use self.node to instantiate
+        #the next two attributes.
+        self.entangling_connection_port_name = None
+        self.ent_conn_port = None
+        
+    def run(self):
+        while True:
+            #deferring handling of signalling to the base class as this will be
+            #identical for all subclasses. This will override the role, 
+            #other_node_name, comm_qubit_indices, num_entanglements2generate, 
+            #and entanglement_type2generate attributes with useful values (in 
+            #place of the default None).
+            yield from super().run()
+            yield from self.handshake()
         
         
         
