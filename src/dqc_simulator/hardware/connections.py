@@ -158,6 +158,63 @@ class BlackBoxEntanglingQsourceConnection(Connection):
                                     cchannelB2qsource_trigger.ports["recv"])
 
 
+def create_black_box_central_source_entangling_link(network, node_a, node_b,
+                                                    state4distribution, 
+                                                    node_distance=2e-3, 
+                                                    ent_dist_rate=0):
+    """ 
+    Sets up an abstract entangling link between QPUs. 
+    
+    Adds BlackBoxEntanglingQsourceConnection between two QPUs.
+    
+    Parameters
+    ----------
+    network : netsquid.nodes.network.Network
+        The entire network.
+    node_a :  object created using netsquid.nodes.Node class
+        A network node
+    node_b : object created using netsquid.nodes.Node class
+        A network node
+    state4distribution : numpy.ndarray 
+        The entangled state distributed between nodes when
+        an EPR pair is requested. Default is |phi^+> Bell state (formalism not
+        fixed to ket)
+    node_distance : float, optional
+        Distance between adjacent nodes in km.
+    ent_dist_rate : float, optional
+        The rate of entanglement distribution [Hz].
+        
+    Notes 
+    -----
+    This abstracts from the details of photon generation by treating flying
+    and communication qubits as the same thing. Restraints on the number of 
+    communication qubits can be enforced at the QPU nodes but entangled 
+    communication qubits are generated at a central quantum source and sent
+    to the QPUs. In this way, we can model error and loss but needn't simulate
+    the details of entanglement between static communication qubits and photons.
+    """
+    if ent_dist_rate > 0 :
+        ent_dist_time = 1e9/ent_dist_rate
+    elif ent_dist_rate == 0.:
+        ent_dist_time = 0
+    else:
+        raise ValueError(f"{ent_dist_rate} is not a valid entanglement "
+                         f"distribution rate. The rate must be >= 0")
+    #commented out block below is for after refactor
+    connection = BlackBoxEntanglingQsourceConnection(
+                    delay=ent_dist_time,
+                    state4distribution=state4distribution)
+    #generating names obeying netsquid naming conventions for port on QPUs that 
+    #connect a Node to a connection but using the (unique) node name as the ID
+    node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                   label="entangling")
+    node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                   label="entangling")
+    network.add_connection(node_a, node_b, connection=connection,
+                           port_name_node1=node_a_port_name,
+                           port_name_node2=node_b_port_name,
+                           label='entangling')
+
 #TO DO:
 #   Figure out whether by using a product state you can have 
 #   multiple entangled pairs distributed. You have already
