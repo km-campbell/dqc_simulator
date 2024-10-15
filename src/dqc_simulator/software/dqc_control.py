@@ -290,32 +290,15 @@ class QpuOSProtocol(NodeProtocol):
                               self.subprotocols['physical_layer_protocol'],
                               signal_label=self.ent_failed_label)
         evexpr = yield wait4succsessful_ent | wait4failed_ent
-        #TO DO: implement block commented out below. It may be enough to only
-        #handle the case where entanglement failed as previously you just 
-        #waited for entanglement to be ready
-# =============================================================================
-#         if evexpr.first_term.value: #if entanglement success signal recieved:
-#             #do something
-#         elif evexpr.second_term.value: #if entanglement failed signal received:
-#             #do something else
-# =============================================================================
-            
-        #TO DO: delete commented out block below once it has been reimplemented 
-        #as its own protocol in the physical layer if refactoring is successful
-# =============================================================================
-#         node_names = [self.node.name, other_node_name]
-#         node_names.sort()
-#         ent_recv_port = self.node.ports[
-#             f"quantum_input_from_charlie"
-#             f"{comm_qubit_index}_"
-#             f"{node_names[0]}<->{node_names[1]}"]
-#         #send entanglement request specifying
-#         #the comm-qubit to be used:
-#         ent_request_port.tx_output(comm_qubit_index)
-#         #wait for entangled qubit to arrive in
-#         #requested comm-qubit slot:
-#         yield self.await_port_input(ent_recv_port)
-# =============================================================================
+        #TO DO: handle the case where entanglement fails properly rather than 
+        #raising an error.
+        if evexpr.second_term.value: #if entanglement failed signal received
+            raise NotImplementedError(
+                     'Entanglement distribution has failed. If a using a '
+                     'non-deterministic physical layer, this is most likely '
+                     'because the max_num_ent_attempts has been '
+                     'exceeded. At the moment, there is no handler in place '
+                     'to deal with this scenario.')
             
     def _cat_entangle(self, program, other_node_name,
                       data_or_tele_qubit_index, classical_comm_port):
@@ -346,8 +329,7 @@ class QpuOSProtocol(NodeProtocol):
                           [comm_qubit_index],
                           output_key="ma")
             #run program to this point
-            yield self.node.qmemory.execute_program(
-                program) 
+            yield self.node.qmemory.execute_program(program) 
             #comm-qubit is immediately freed by
             #measurement so is not deleted from
             #comm_qubits_free here
@@ -950,6 +932,12 @@ class dqcMasterProtocol(Protocol):
     allowed_qpu_types : tuple or subclass of :class: `~netsquid.nodes.node.Node`
         The class(es) that should be interpretted as QPU nodes. These should be
         distinct from those used for other purposes.
+    num_entanglement_attempts : int or None, optional
+        The number of entanglement attempts for the physical layer to use 
+        before returning control to higher layers. This must be specified if 
+        the physical layer entanglement protocol used is not deterministic. The
+        default is None (which assumes the physical layer is deterministic by
+        default).
     name : str or None, optional. Name of protocol. If None, the name of the 
         class is used [1]_.
             
@@ -999,12 +987,16 @@ class dqcMasterProtocol(Protocol):
                  background_protocol_lookup=None,
                  compiler_func=None,
                  allowed_qpu_types=None,
+                 num_entanglement_attempts=None,
                  name=None):
         super().__init__(name)
         self.start_time_slice_label = "START_TIME_SLICE"
         self.add_signal(self.start_time_slice_label)
         self.partitioned_gates = partitioned_gates
         self.network = network
+        #TO DO: think about whether it would be better to instantiate default
+        #arguments using the setter of a property
+        
         #instantiating default arguments
         if physical_layer_protocol_class is None:
             physical_layer_protocol_class = ( 
@@ -1039,14 +1031,12 @@ class dqcMasterProtocol(Protocol):
                                     gate_tuples=self.qpu_op_dict[node_name],
                                     node=node,
                                     name=f'QpuOSProtocol_{node.name}')
-                #TO DO: think about if I want to have the user specify the 
-                #class rather than an instance of it to avoid them specifiying
-                #a node which will be overwritten here. If I did that I may have
-                #to raise an error if positional arguments are specified for a
-                #subclass (using the base class for the physical layer to 
-                #achieve this)
                 self.physical_layer_protocol = ( 
                     physical_layer_protocol_class(node=node))
+                if not self.physical_layer_protocol.deterministic:
+                    self.physical_layer_protocol.num_entanglement_attempts = (
+                        num_entanglement_attempts)
+                        
                 qpu_protocol.add_phys_layer(self.physical_layer_protocol)
                 self.add_subprotocol(qpu_protocol, 
                                      name=f'{node_name}_OS')
