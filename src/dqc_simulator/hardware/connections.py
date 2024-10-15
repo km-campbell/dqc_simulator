@@ -15,6 +15,7 @@ from netsquid.components import (ClassicalChannel, FibreDelayModel,
                                  QuantumChannel, QSource, SourceStatus)
 from netsquid.nodes.connections import Connection, DirectConnection
 from netsquid.qubits import StateSampler
+from netsquid_physlayer.heralded_connection import MiddleHeraldedConnection
 
 
 #DELETE COMMENTS BELOW ONCE FINISHED REFACTORING
@@ -40,30 +41,38 @@ from netsquid.qubits import StateSampler
 #   real as they wish
 
 
-def create_classical_fibre_connection(name, length):
+def create_classical_fibre_link(network, node_a, node_b, length):
     """
-    A wrapper for creating instances of classical fibre connections.
+    Setus up a classical fibre connection between two QPUs.
 
     Parameters
     ----------
+    network : :class: `~netsquid.nodes.network.Network`
+        The entire network.
+    node_a, node_b : :class: `~netsquid.nodes.Node`
+        The QPUs to be linked.
     length : float
         the length of the connection.
-
-    Returns
-    -------
-    classical_connection : :class: `~netsquid.nodes.connections.DirectConnection`
-        A direct connection with a latency commensurate with that of a 
-        telecomms fibre.
     """
-    classical_connection = DirectConnection(
-                                name,
+    connection = DirectConnection(
+                                'DirectConnection',
                                channel_AtoB=ClassicalChannel(
                                    "Channel_A2B", length=length,
                                     models={"delay_model": FibreDelayModel()}),
                                channel_BtoA=ClassicalChannel(
                                    "Channel_B2A", length=length,
                                     models={"delay_model": FibreDelayModel()}))
-    return classical_connection
+    #generating names obeying netsquid naming conventions for port on QPUs that 
+    #connect a Node to a connection but using the (unique) node name as the ID
+    node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                   label="classical")
+    node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                   label="classical")
+    network.add_connection(node_a, node_b, connection=connection,
+                           port_name_node1=node_a_port_name,
+                           port_name_node2=node_b_port_name,
+                           label='classical')
+
 
 
 class BlackBoxEntanglingQsourceConnection(Connection):
@@ -169,20 +178,20 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
     
     Parameters
     ----------
-    network : netsquid.nodes.network.Network
+    network : :class: `~netsquid.nodes.network.Network`
         The entire network.
-    node_a :  object created using netsquid.nodes.Node class
-        A network node
-    node_b : object created using netsquid.nodes.Node class
-        A network node
+    node_a, node_b : :class: `~netsquid.nodes.Node`
+        A network node.
     state4distribution : numpy.ndarray 
         The entangled state distributed between nodes when
         an EPR pair is requested. Default is |phi^+> Bell state (formalism not
         fixed to ket)
     node_distance : float, optional
-        Distance between adjacent nodes in km.
+        Distance between adjacent nodes in km. Default is 2e-3, corresponding 
+        to 2m.
     ent_dist_rate : float, optional
-        The rate of entanglement distribution [Hz].
+        The rate of entanglement distribution [Hz]. Default is 0, in which case
+        the node_ditance is used
         
     Notes 
     -----
@@ -214,14 +223,94 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
                            port_name_node1=node_a_port_name,
                            port_name_node2=node_b_port_name,
                            label='entangling')
+    
+    
+def create_midpoint_heralded_entangling_link(
+        network, node_a, node_b, 
+        length=2e-3, p_loss_init=0,p_loss_length=0, speed_of_light=200000, 
+        dark_count_probability=0, detector_efficiency=1.0, visibility=1.0,
+        num_resolving=False, coin_prob_ph_ph=1.0, coin_prob_ph_dc=1.0, 
+        coin_prob_dc_dc=1.0):
+    """
+    Sets up an entangling connection with a central BSM between two QPUs.
+    
+    Adds a 
+    :class: `netsquid_physlayer.heralded_connection.MiddleHeraldedConnection` 
+    between two nodes.
 
-#TO DO:
-#   Figure out whether by using a product state you can have 
-#   multiple entangled pairs distributed. You have already
-#   established that you can use a product state to emit multiple
-#   qubits from each port and now need to check that the qubits
-#   emitted from the same port are not the ones entangled with 
-#   each other (which would be no good to you). It is probably easiest
-#   to do this once you have made the Connection above (by tweaking it 
-#   slightly).
+    Parameters
+    ----------
+    network : :class: `~netsquid.nodes.network.Network`
+        The entire network.
+    node_a, node_b : :class: `~netsquid.nodes.Node`
+        The QPU nodes to be linked.
+    length: float
+        Total length [km] of heralded connection (i.e. sum of fibers on both sides on midpoint station).
+    p_loss_init: float (optional)
+        Probability that photons are lost when entering connection the connection on either side.
+    speed_of_light: float (optional)
+        Speed of light [km/s] in fiber on either side.
+    p_loss_length: float (optional)
+        Attenuation coefficient [dB/km] of fiber on either side.
+    dark_count_probability: float (optional)
+        Dark-count probability per detection
+    detector_efficiency: float (optional)
+        Probability that the presence of a photon leads to a detection event
+    visibility: float (optional)
+        Hong-Ou-Mandel visibility of photons that are being interfered (measure of photon indistinguishability)
+    num_resolving : bool (optional)
+        determines whether photon-number-resolving detectors are used for the Bell-state measurement
+    coin_prob_ph_ph : float (optional)
+        Coincidence probability for two photons. When using a coincidence time window in the double-click protocol,
+        two clicks are only accepted if they occurred within one coincidence time window away from each other.
+        This parameter is the probability that if both clicks are photon detections,
+        they are within one coincidence window. In general, this depends not only on the size of the coincidence
+        time window, but also on the state of emitted photons and the total detection time window. Defaults to 1.
+    coin_prob_ph_dc : float (optional)
+        Coincidence probability for a photon and a dark count.
+        When using a coincidence time window in the double-click protocol,
+        two clicks are only accepted if they occurred within one coincidence time window away from each other.
+        This parameter is the probability that if one click is a photon detection and the other a dark count,
+        they are within one coincidence window. In general, this depends not only on the size of the coincidence
+        time window, but also on the state of emitted photons and the total detection time window. Defaults to 1.
+    coin_prob_dc_dc : float (optional)
+        Coincidence probability for two dark counts. When using a coincidence time window in the double-click protocol,
+        two clicks are only accepted if they occurred within one coincidence time window away from each other.
+        This parameter is the probability that if both clicks are dark counts,
+        they are within one coincidence window. In general, this depends on the size of the coincidence time window
+        and the total detection time window. Defaults to 1.
+
+    References
+    ----------
+    Most of this docstring is taken (with some slight modification in 
+    places) from the docstring for 
+    `netsquid_physlayer.heralded_connection.MiddleHeraldedConnection`
+    in accordance with the apache 2.0 license available at 
+    http://www.apache.org/licenses/LICENSE-2.0
+    """
+    connection = MiddleHeraldedConnection(
+                    name='MiddleHeraldedConnection', 
+                    length=length, p_loss_init=p_loss_init, 
+                    p_loss_length=p_loss_length, 
+                    speed_of_light=speed_of_light,
+                    dark_count_probability=dark_count_probability, 
+                    detector_efficiency=detector_efficiency,
+                    visibility=visibility,
+                    num_resolving=num_resolving, 
+                    coin_prob_ph_ph=coin_prob_ph_ph, 
+                    coin_prob_ph_dc=coin_prob_ph_dc, 
+                    coin_prob_dc_dc=coin_prob_dc_dc)
+    #generating names obeying netsquid naming conventions for port on QPUs that 
+    #connect a Node to a connection but using the (unique) node name as the ID
+    node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                   label="entangling")
+    node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                   label="entangling")
+    network.add_connection(node_a, node_b, connection=connection,
+                           port_name_node1=node_a_port_name,
+                           port_name_node2=node_b_port_name,
+                           label='entangling')
+    node_a.qmemory.ports['qout'].forward_output(node_a.ports[node_a_port_name])
+    node_b.qmemory.ports['qout'].forward_output(node_b.ports[node_b_port_name])
+    
 

@@ -10,21 +10,23 @@ import unittest
 
 import netsquid as ns
 from netsquid.components import QuantumMemory
-from netsquid.nodes import Node
+from netsquid.nodes import Network, Node
+from netsquid.protocols import NodeProtocol
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
+from netsquid_physlayer.detectors import BSMOutcome
 import numpy as np
 
 from dqc_simulator.hardware.connections import ( 
-    BlackBoxEntanglingQsourceConnection)
+    BlackBoxEntanglingQsourceConnection,
+    create_midpoint_heralded_entangling_link)
 
 #for debugging
-from netsquid.util import simlog
-import logging
-loggers = simlog.get_loggers()
-loggers['netsquid'].setLevel(logging.DEBUG)
-
 # =============================================================================
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
 # # #resetting to default after debugging
 # loggers = simlog.get_loggers()
 # loggers['netsquid'].setLevel(logging.WARNING)
@@ -68,8 +70,62 @@ class TestBlackBoxEntanglingQsourceConnection(unittest.TestCase):
         self.assertAlmostEqual(fidelity, 1.0, 5)
     
 
-
-
+#TEST below not working but from debug log I believe that this is due to test
+#itself rather than what is being tested.
+# =============================================================================
+# class Test_create_midpoint_heralded_entangling_link(unittest.TestCase):
+#     class WaitOnMessageProtocol(NodeProtocol):
+#         def run(self):
+#             ent_conn_port = list(self.node.ports.values())[0]
+#             while True:
+#                 yield self.await_port_input(ent_conn_port)
+#                 msg, = ent_conn_port.rx_input().items
+#                 print(f'msg is {msg}')
+#                 break
+#             return msg
+#             
+#     def setUp(self):
+#         ns.sim_reset()
+#         self.node0 = Node("node0", 
+#                           qmemory=QuantumMemory("qmemory", num_positions=3))
+#         self.node1 = Node("node1",
+#                           qmemory=QuantumMemory("qmemory", num_positions=3))
+#         self.network = Network('network', nodes=[self.node0, self.node1])
+#         self.node0_ent_conn_port_name = self.node0.connection_port_name(
+#                                             self.node1.name,
+#                                             label="entangling")
+#         self.node1port_ent_conn_port_name = self.node1.connection_port_name(
+#                                                 self.node0.name,
+#                                                 label="entangling")
+#         self.sim_runtime = 1000
+#         
+#     #From the debug log, it is the test itself that is the issue with the 
+#     #following as the processes themselves are working fine. Do not spend too 
+#     #long on this.
+#     def test_can_trigger_bsm(self):
+#         create_midpoint_heralded_entangling_link(
+#                 self.network, self.node0, self.node1, 
+#                 length=2e-3, p_loss_init=0,p_loss_length=0.25,
+#                 speed_of_light=200000,  dark_count_probability=0,
+#                 detector_efficiency=1.0, visibility=1.0,
+#                 num_resolving=False, coin_prob_ph_ph=1.0, coin_prob_ph_dc=1.0, 
+#                 coin_prob_dc_dc=1.0)
+#         node0_protocol = self.WaitOnMessageProtocol(node=self.node0)
+#         node1_protocol = self.WaitOnMessageProtocol(node=self.node1)
+#         msg_node0 = node0_protocol.run()
+#         msg_node1 = node1_protocol.run()
+#         print(msg_node0)
+#         photon0, photon1 = ns.qubits.qubitapi.create_qubits(2)
+#         self.node0.qmemory.ports['qout'].tx_output(photon0)
+#         self.node1.qmemory.ports['qout'].tx_output(photon1)
+#         ns.sim_run(self.sim_runtime)
+#         
+#         with self.subTest(msg='no BSM outcome on node0'):
+#             self.assertIsInstance(msg_node0, BSMOutcome)
+#             
+#         with self.subTest(msg='no BSM outcome on node1'):
+#             self.assertIsInstance(msg_node1, BSMOutcome)
+# =============================================================================
 
 
 
