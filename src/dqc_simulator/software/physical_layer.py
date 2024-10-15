@@ -37,8 +37,14 @@ References
 #reflect the fact that the functionality of the physical layer is encapsulated
 #in the base class for the physical layer.
 
+from netsquid.components import instructions as instr
+from netsquid.components import QuantumProgram
 from netsquid.protocols import NodeProtocol
-
+# =============================================================================
+# from netsquid_trappedions import EmitProg #EmitProg not actually specific 
+#                                           #to trapped ions.
+# =============================================================================
+from netsquid.qubits import ketstates as ks
 
 
 
@@ -125,6 +131,7 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #subclasses
         self.num_entanglements2generate = 1
         self.entanglement_type2generate = None
+        self._deterministic = None #made into read-only property below
         #the following two handshake labels are not strictly necessary because
         #any input message to the port would do the same thing. However, they 
         #make what is going on clearer and facilitate debugging.
@@ -146,6 +153,18 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #TO DO: think about if you should declare these in QpuOSProtocol, which
         #you will need to do anyway, and then send them here with the other 
         #attributes
+        
+    @property
+    def deterministic(self):
+        """
+        Bool indicating whether the entanglement is deterministic or not
+        """
+        return self._deterministic
+    
+    @deterministic.setter
+    def deterministic(self, value):
+        raise TypeError('deterministic is a read-only property - its value'
+                        'cannot be set by the user')
         
     def handle_ent_request(self):
         """
@@ -337,6 +356,8 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
                          ready4ent=ready4ent)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
+        #defining value of read-only deterministic property (see base class)
+        self._deterministic = False 
         
     def one_way_handshake(self):
         """
@@ -473,12 +494,93 @@ class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
                          ready4ent=ready4ent)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
+        #defining value of read-only deterministic property (see base class)
+        self._deterministic = True 
         #The next two instance attributes will be overwritten in the run 
         #method because this is the first time that self.node must have a value
         #other than None and it is convenient to use self.node to instantiate
         #the next two attributes.
         self.entangling_connection_port_name = None
         self.ent_conn_port = None
+        
+    def entangle_comm_qubits(self):
+        emit_program = QuantumProgram()
+        #By construction, self.comm_qubit_indices are the relevant comm-qubit 
+        #positional indices to act on rather than the positions of ALL 
+        #comm-qubits
+        emit_program.apply(instr.INSTR_INIT, 
+                           qubit_indices=self.comm_qubit_indices)
+        #TO DO: decide if photon_positions should be an attribute of the 
+        #qmemory or the node and add the attribute to whichever you decide on
+        photon_index = self.node.qmemory.photon_positions[0]
+        if len(self.comm_qubit_indices) == 1:
+            comm_qubit_index = self.comm_qubit_indices[0]
+        else:
+            raise ValueError('There are too many comm-qubit indices. '
+                             'Currently, only one comm-qubit can be used here.'
+                             'It is assumed that there is one photon emission'
+                             ' at a time.')
+        emit_program.apply(instr.INSTR_EMIT, 
+                           qubit_indices=[comm_qubit_index, photon_index])
+# =============================================================================
+#         #initialising a COPY of comm_qubit indices
+#         unused_comm_qubit_indices = list(self.comm_qubit_indices)
+#         #TO DO: decide if the following should be an attribute of the qmemory 
+#         #or the node and add the attributed to whichever you decide on
+#         photon_indices = self.node.qmemory.photon_positions
+#         for ii in range(self.num_entanglements2generate):
+#             comm_qubit_index = unused_comm_qubit_indices[ii]
+#             photon_index = photon_indices[ii]
+#             emit_program.apply(instr.INSTR_EMIT, 
+#                           qubit_indices=[comm_qubit_index, photon_index])
+# =============================================================================
+        yield self.node.qmemory.excute_program(emit_program)
+        yield self.await_port_input(self.ent_conn_port)
+        bsm_outcome, = self.ent_conn_port.rx_input().items
+        program = QuantumProgram()
+        if bsm_outcome.success:
+            #converting to PHI_PLUS state
+            #applying corrective gates to only one of the qubits involved in 
+            #the bell pair (which one does not matter up to a global phase)
+            if self.role == 'server':
+                #x gate needed for both PSI_PLUS and PSI_MINUS
+                program.apply(instr.INSTR_X, 
+                              qubit_indices=comm_qubit_index)
+                if bsm_outcome.bell_index == ks.BellIndex.PSI_MINUS:
+                    program.apply(instr.INSTR_Z, 
+                                  qubit_indices=comm_qubit_index)
+                elif bsm_outcome.bell_index != ks.BellIndex.PSI_PLUS:
+                    raise ValueError(
+                        'the BSMOutcome must have bell_index attr'
+                        'with value netsquid.qubits.ketstates.'
+                        'BellIndex.PSI_PLUS or PSI_MINUS. Instead, '
+                        f'it has value {bsm_outcome.bell_index} here.')
+                yield self.node.qmemory.execute_program(program)
+                self.classical_conn_port.tx_output(self.ent_ready_label)
+                self.send_signal(self.ent_ready_label)
+            elif self.role == 'client':
+                yield self.await_port_input(self.ent_conn_port)
+                self.sent_signal(self.ent_ready_label)
+          #TO DO: UNCOMMENT AND FINISH THE FOLLOWING
+# =============================================================================
+#         else: #if bsm_outcome.success == False:
+# =============================================================================
+            
+                
+            
+            
+# =============================================================================
+#             comm_qubit_index = self.comm_qubit_indices[0]
+#             #TO DO: add emission_position attribute to QPU nodes
+#             photon_index = self.node.emission_position
+#             emit_prog = EmitProg()
+#             self.node.qmemory.execute_program(
+#                                  emit_prog,
+#                                  qubit_mapping=[comm_qubit_index, 
+#                                                 photon_index])
+#             #wait on BSM outcome
+#             yield self.await_port_input(self.ent_conn_port)
+# =============================================================================
         
     def run(self):
         while True:
@@ -488,7 +590,15 @@ class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
             #and entanglement_type2generate attributes with useful values (in 
             #place of the default None).
             yield from super().run()
-            yield from self.handshake()
+            yield from self.handshake() #TO DO: improve handshake 
+            #At the moment, the following will only be able to emit one photon
+            #at a time. INSTR_EMIT can only emit one photon at a time but one 
+            #could use many such instructions in a program to emit more than 
+            #one.
+            
+
+            
+            
         
         
         

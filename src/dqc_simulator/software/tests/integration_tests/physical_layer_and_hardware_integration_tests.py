@@ -17,6 +17,8 @@ from netsquid.nodes import Node
 from netsquid.protocols import NodeProtocol
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
+#netsquid snippets
+from netsquid_physlayer.heralded_connection import MiddleHeraldedConnection
 
 from dqc_simulator.hardware.connections import ( 
     create_classical_fibre_connection,
@@ -38,7 +40,8 @@ from dqc_simulator.software.physical_layer import (
 
 
 
-class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
+class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
+        unittest.TestCase):
     """
     Integration tests of AbstractCentralSourceEntangleProtocol with
     BlackBoxEntanglingQsourceConnection.
@@ -164,7 +167,30 @@ class TestAbstractEntanglingConnectionAndSoftware(unittest.TestCase):
         qubit_node1, = self.node1.qmemory.pop(1)
         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
+        
+    def test_can_access_deterministic_property(self):
+        with self.subTest(msg='deterministic property incorrect for node0'):
+            self.assertEqual(self.node0_protocol.deterministic, False)
+        with self.subTest(msg='deterministic property incorrect for node1'):
+            self.assertEqual(self.node1_protocol.deterministic, False)
+        
+    def test_deterministic_property_is_read_only(self):
+        def _write_deterministic_property(protocol):
+            protocol.deterministic = True
+            
+        with self.subTest(msg='deterministic property writeable for node0'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node0_protocol)
+        with self.subTest(msg='deterministic property writeabel for node1'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node1_protocol)
 
+
+# =============================================================================
+# class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
+#         unittest.TestCase):
+#     
+# =============================================================================
 
 
 if __name__ == '__main__':
