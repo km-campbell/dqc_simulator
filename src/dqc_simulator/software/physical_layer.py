@@ -47,7 +47,8 @@ from netsquid.protocols import NodeProtocol
 from netsquid.qubits import ketstates as ks
 
 
-
+#TO DO: think about enforcing some expected inheritance behaviour, eg with 
+#properties
 
 class Base4PhysicalLayerProtocol(NodeProtocol):
     """
@@ -157,8 +158,21 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     @property
     def deterministic(self):
         """
-        Bool indicating whether the entanglement is deterministic or not
+        Read-only bool property indicating whether the entanglement is 
+        deterministic or not
+        
+        Must be overwritten when subclassing by setting the value of 
+        self._deterministic in the __init__ method
         """
+        if self._deterministic is None:
+            raise NotImplementedError('Must set value of read-only '
+                                      'deterministic property by setting a '
+                                      'value for self._deterministic in the'
+                                      '__init__ method')
+        if not isinstance(self._deterministic, bool):
+            raise TypeError('The deterministic property must have type bool. '
+                            f'The currently set value ({self._deterministic})'
+                            'is not of type bool.')
         return self._deterministic
     
     @deterministic.setter
@@ -357,7 +371,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
         #defining value of read-only deterministic property (see base class)
-        self._deterministic = False 
+        self._deterministic = True 
         
     def one_way_handshake(self):
         """
@@ -421,7 +435,92 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             yield from self.handle_quantum_input()
             
 
-class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
+
+class ProbabilisticEntanglingProtocol(Base4PhysicalLayerProtocol):
+    """
+    An abstract base class for probabilistic physical layer protocols.
+    
+    Parameters
+    ----------
+    node : :class: `~netsquid.nodes.node.Node` or None, optional
+        Node this protocol runs on. If None, a node should be set later before 
+        starting this protocol. [1]_
+    name : str or None, optional
+        Name of protocol. If None, the name of the class is used.
+    role : str or None, optional
+        Whether the QPU is a 'client' (initiating the handshake) or a 
+        'server' (responding to the handshake). If None, must be overwritten
+        prior to the start of the protocol, eg in the link layer protocol.
+    other_node_name : str or None, optional. [1]_
+        The name of the other QPU node involved in the entangled link. If 
+        None, must be overwritten prior to the start of the protocol, eg in the 
+        link_layer_protocol.
+    comm_qubit_indices = list of int or None, optional
+        The index of the memory position in which the comm-qubit that should 
+        host the entanglement is being held.
+    ready4ent = bool, optional
+        Whether the QPU is ready or not for entanglement
+    max_num_ent_attempts = bool or none, optional
+        The number of entanglement attempts to make before giving up and 
+        handing back control to higher layers.
+
+    Attributes
+    ----------
+    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+        The superprotocol for this protocol. This protocol will be 
+        executed as a subprotocol of the superprotocol. The value of this 
+        attribute should be overwritten by the superprotocol.
+    num_entanglements2generate : int 
+        The number of instances of the requested entanglement to be specified.
+        For many subclasses this will be fixed but in others it will be 
+        variable and will be overwritten by the link layer.
+    entanglement_type2generate : str
+        The type of entanglement to be used. For many subclasses this will be
+        fixed but in others it will be variable and will be overwritten by the 
+        link layer.
+    ent_ready_label : str
+        The label to use to signal the successful distribution of 
+        entanglement.
+    ent_failed_label : str
+        The label to use to signal that entanglement distribution has
+        failed
+        
+    Notes
+    -----
+    Although num_entanglements2generate and entanglement_type2generate to 
+    generate will not be used in many subclasses of this protocol, they are 
+    useful for the user to be able to find.
+        
+    References
+    ----------
+    The parameters in which Ref. [1]_ was cited were inherited from 
+    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation [1]_
+    
+    .. [1] https://netsquid.org/
+    
+    .. todo::
+        
+        Think about whether to set role, other_node_name, comm_qubit_indices,
+        and read4ent as attributes or properties only, not parameters, as they 
+        should be set by protocols at higher layers. The advantage of this is
+        to avoid confusion when a user sets values for these parameters
+        and they are then overwritten. However, the parameter formulation does
+        make instantiating the physical layer within higher layers easier.
+    """
+    def __init__(self, node=None, name=None, role=None,
+                 other_node_name=None, comm_qubit_indices=None, 
+                 ready4ent=True, max_num_ent_attempts=None):
+        super().__init__(node=node, name=name, role=role, 
+                         other_node_name=other_node_name,
+                         comm_qubit_indices=comm_qubit_indices,
+                         ready4ent=ready4ent)
+        #defining value of read-only deterministic property (see base class)
+        self._deterministic = False 
+        self.max_num_ent_attempts = max_num_ent_attempts
+
+
+class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
     """
     Physical layer protocol for generating entanglement between QPUs.
     
@@ -453,6 +552,9 @@ class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
         Whether the QPU is ready or not for entanglement. If None, must be 
         overwritten prior to the the start of the protocol, eg in the 
         link layer protocol.
+    max_num_ent_attempts = bool or none, optional
+        The number of entanglement attempts to make before giving up and 
+        handing back control to higher layers.
 
     Attributes
     ----------
@@ -487,100 +589,92 @@ class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
     """
     def __init__(self, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None, 
-                 ready4ent=True):
+                 ready4ent=True, max_num_ent_attempts=100):
         super().__init__(node=node, name=name, role=role, 
                          other_node_name=other_node_name,
                          comm_qubit_indices=comm_qubit_indices,
-                         ready4ent=ready4ent)
+                         ready4ent=ready4ent, 
+                         max_num_ent_attempts=max_num_ent_attempts)
         self.entanglement_type2generate = 'bell_pair'
         self.ent_request_msg = "ENT_REQUEST"
-        #defining value of read-only deterministic property (see base class)
-        self._deterministic = True 
         #The next two instance attributes will be overwritten in the run 
         #method because this is the first time that self.node must have a value
         #other than None and it is convenient to use self.node to instantiate
         #the next two attributes.
         self.entangling_connection_port_name = None
         self.ent_conn_port = None
+        #initialising internal counter to count the number of times 
+        #entanglement has been attempted
+        self._ent_attempt_counter = 0
         
     def entangle_comm_qubits(self):
-        emit_program = QuantumProgram()
-        #By construction, self.comm_qubit_indices are the relevant comm-qubit 
-        #positional indices to act on rather than the positions of ALL 
-        #comm-qubits
-        emit_program.apply(instr.INSTR_INIT, 
-                           qubit_indices=self.comm_qubit_indices)
-        #TO DO: decide if photon_positions should be an attribute of the 
-        #qmemory or the node and add the attribute to whichever you decide on
-        photon_index = self.node.qmemory.photon_positions[0]
-        if len(self.comm_qubit_indices) == 1:
-            comm_qubit_index = self.comm_qubit_indices[0]
-        else:
-            raise ValueError('There are too many comm-qubit indices. '
-                             'Currently, only one comm-qubit can be used here.'
-                             'It is assumed that there is one photon emission'
-                             ' at a time.')
-        emit_program.apply(instr.INSTR_EMIT, 
-                           qubit_indices=[comm_qubit_index, photon_index])
-# =============================================================================
-#         #initialising a COPY of comm_qubit indices
-#         unused_comm_qubit_indices = list(self.comm_qubit_indices)
-#         #TO DO: decide if the following should be an attribute of the qmemory 
-#         #or the node and add the attributed to whichever you decide on
-#         photon_indices = self.node.qmemory.photon_positions
-#         for ii in range(self.num_entanglements2generate):
-#             comm_qubit_index = unused_comm_qubit_indices[ii]
-#             photon_index = photon_indices[ii]
-#             emit_program.apply(instr.INSTR_EMIT, 
-#                           qubit_indices=[comm_qubit_index, photon_index])
-# =============================================================================
-        yield self.node.qmemory.excute_program(emit_program)
-        yield self.await_port_input(self.ent_conn_port)
-        bsm_outcome, = self.ent_conn_port.rx_input().items
-        program = QuantumProgram()
-        if bsm_outcome.success:
-            #converting to PHI_PLUS state
-            #applying corrective gates to only one of the qubits involved in 
-            #the bell pair (which one does not matter up to a global phase)
-            if self.role == 'server':
-                #x gate needed for both PSI_PLUS and PSI_MINUS
-                program.apply(instr.INSTR_X, 
-                              qubit_indices=comm_qubit_index)
-                if bsm_outcome.bell_index == ks.BellIndex.PSI_MINUS:
-                    program.apply(instr.INSTR_Z, 
+        while True: #will be broken with break command on successful 
+                    #entanglement or when max number of entanglement attempts
+                    #is exceeded:
+            emit_program = QuantumProgram()
+            #By construction, self.comm_qubit_indices are the relevant comm-qubit 
+            #positional indices to act on rather than the positions of ALL 
+            #comm-qubits
+            emit_program.apply(instr.INSTR_INIT, 
+                               qubit_indices=self.comm_qubit_indices)
+            #TO DO: decide if photon_positions should be an attribute of the 
+            #qmemory or the node and add the attribute to whichever you decide on
+            photon_index = self.node.qmemory.photon_positions[0]
+            if len(self.comm_qubit_indices) == 1:
+                comm_qubit_index = self.comm_qubit_indices[0]
+            else:
+                raise ValueError('There are too many comm-qubit indices. '
+                                 'Currently, only one comm-qubit can be used here.'
+                                 'It is assumed that there is one photon emission'
+                                 ' at a time.')
+            emit_program.apply(instr.INSTR_EMIT, 
+                               qubit_indices=[comm_qubit_index, photon_index])
+    # =============================================================================
+    #         #initialising a COPY of comm_qubit indices
+    #         unused_comm_qubit_indices = list(self.comm_qubit_indices)
+    #         #TO DO: decide if the following should be an attribute of the qmemory 
+    #         #or the node and add the attributed to whichever you decide on
+    #         photon_indices = self.node.qmemory.photon_positions
+    #         for ii in range(self.num_entanglements2generate):
+    #             comm_qubit_index = unused_comm_qubit_indices[ii]
+    #             photon_index = photon_indices[ii]
+    #             emit_program.apply(instr.INSTR_EMIT, 
+    #                           qubit_indices=[comm_qubit_index, photon_index])
+    # =============================================================================
+            yield self.node.qmemory.excute_program(emit_program)
+            yield self.await_port_input(self.ent_conn_port)
+            bsm_outcome, = self.ent_conn_port.rx_input().items
+            program = QuantumProgram()
+            if bsm_outcome.success:
+                #converting to PHI_PLUS state
+                #applying corrective gates to only one of the qubits involved in 
+                #the bell pair (which one does not matter up to a global phase)
+                if self.role == 'server':
+                    #x gate needed for both PSI_PLUS and PSI_MINUS
+                    program.apply(instr.INSTR_X, 
                                   qubit_indices=comm_qubit_index)
-                elif bsm_outcome.bell_index != ks.BellIndex.PSI_PLUS:
-                    raise ValueError(
-                        'the BSMOutcome must have bell_index attr'
-                        'with value netsquid.qubits.ketstates.'
-                        'BellIndex.PSI_PLUS or PSI_MINUS. Instead, '
-                        f'it has value {bsm_outcome.bell_index} here.')
-                yield self.node.qmemory.execute_program(program)
-                self.classical_conn_port.tx_output(self.ent_ready_label)
-                self.send_signal(self.ent_ready_label)
-            elif self.role == 'client':
-                yield self.await_port_input(self.ent_conn_port)
-                self.sent_signal(self.ent_ready_label)
-          #TO DO: UNCOMMENT AND FINISH THE FOLLOWING
-# =============================================================================
-#         else: #if bsm_outcome.success == False:
-# =============================================================================
-            
-                
-            
-            
-# =============================================================================
-#             comm_qubit_index = self.comm_qubit_indices[0]
-#             #TO DO: add emission_position attribute to QPU nodes
-#             photon_index = self.node.emission_position
-#             emit_prog = EmitProg()
-#             self.node.qmemory.execute_program(
-#                                  emit_prog,
-#                                  qubit_mapping=[comm_qubit_index, 
-#                                                 photon_index])
-#             #wait on BSM outcome
-#             yield self.await_port_input(self.ent_conn_port)
-# =============================================================================
+                    if bsm_outcome.bell_index == ks.BellIndex.PSI_MINUS:
+                        program.apply(instr.INSTR_Z, 
+                                      qubit_indices=comm_qubit_index)
+                    elif bsm_outcome.bell_index != ks.BellIndex.PSI_PLUS:
+                        raise ValueError(
+                            'the BSMOutcome must have bell_index attr'
+                            'with value netsquid.qubits.ketstates.'
+                            'BellIndex.PSI_PLUS or PSI_MINUS. Instead, '
+                            f'it has value {bsm_outcome.bell_index} here.')
+                    yield self.node.qmemory.execute_program(program)
+                    self.classical_conn_port.tx_output(self.ent_ready_label)
+                    self.send_signal(self.ent_ready_label)
+                elif self.role == 'client':
+                    yield self.await_port_input(self.ent_conn_port)
+                    self.sent_signal(self.ent_ready_label)
+                    break #breaking the while loop at the start of this method
+            else: #if bsm_outcome.success == False:
+                if self._ent_attempt_counter > (self.max_num_ent_attempts- 1):
+                    self.send_signal(self.ent_failed_label)
+                    break #breaking the while loop at the start of this method
+                else:
+                    self._ent_attempt_counter = self._ent_attempt_counter + 1
         
     def run(self):
         while True:
@@ -595,7 +689,7 @@ class MidpointHeraldingProtocol(Base4PhysicalLayerProtocol):
             #at a time. INSTR_EMIT can only emit one photon at a time but one 
             #could use many such instructions in a program to emit more than 
             #one.
-            
+            yield from self.entangle_comm_qubits()
 
             
             

@@ -13,18 +13,18 @@ import unittest
 
 import netsquid as ns
 from netsquid.components import QuantumMemory
-from netsquid.nodes import Node
+from netsquid.nodes import Network, Node
 from netsquid.protocols import NodeProtocol
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
-#netsquid snippets
-from netsquid_physlayer.heralded_connection import MiddleHeraldedConnection
 
 from dqc_simulator.hardware.connections import ( 
-    create_classical_fibre_connection,
-    BlackBoxEntanglingQsourceConnection)
+    create_classical_fibre_link,
+    create_midpoint_heralded_entangling_link,
+    create_black_box_central_source_entangling_link)
 from dqc_simulator.software.physical_layer import ( 
-    AbstractCentralSourceEntangleProtocol)
+    AbstractCentralSourceEntangleProtocol,
+    MidpointHeraldingProtocol)
 
 #for debugging
 # =============================================================================
@@ -40,42 +40,42 @@ from dqc_simulator.software.physical_layer import (
 
 
 
+class _DummySuperprotocol(NodeProtocol):
+    """
+    Filling in for 
+    :class: `dqc_simulator.software.dqc_control.QpuOSProtocol`.
+    """
+    def __init__(self, node=None, name=None, role=None,
+                 other_node_name=None, comm_qubit_indices=None,
+                 ready4ent=None, num_entanglements2generate=1,
+                 entanglement_type2generate='bell_pair'):
+        super().__init__(node, name)
+        self.ent_request_label = "ENT_REQUEST"
+        self.add_signal(self.ent_request_label)
+        self.role = role
+        self.other_node_name = other_node_name
+        self.comm_qubit_indices = comm_qubit_indices
+        self.ready4ent = ready4ent
+        self.num_entanglements2generate = num_entanglements2generate
+        self.entanglement_type2generate = entanglement_type2generate
+
+    def run(self):
+        while True:
+            yield self.await_timer(duration=5)
+            self.send_signal(self.ent_request_label,
+                         result=(self.role,
+                                 self.other_node_name,
+                                 self.comm_qubit_indices,
+                                 self.num_entanglements2generate,
+                                 self.entanglement_type2generate))
+            break
+
 class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
         unittest.TestCase):
     """
     Integration tests of AbstractCentralSourceEntangleProtocol with
     BlackBoxEntanglingQsourceConnection.
     """
-    
-    class _DummySuperprotocol(NodeProtocol):
-        """
-        Filling in for 
-        :class: `dqc_simulator.software.dqc_control.QpuOSProtocol`.
-        """
-        def __init__(self, node=None, name=None, role=None,
-                     other_node_name=None, comm_qubit_indices=None,
-                     ready4ent=None, num_entanglements2generate=1,
-                     entanglement_type2generate='bell_pair'):
-            super().__init__(node, name)
-            self.ent_request_label = "ENT_REQUEST"
-            self.add_signal(self.ent_request_label)
-            self.role = role
-            self.other_node_name = other_node_name
-            self.comm_qubit_indices = comm_qubit_indices
-            self.ready4ent = ready4ent
-            self.num_entanglements2generate = num_entanglements2generate
-            self.entanglement_type2generate = entanglement_type2generate
-
-        def run(self):
-            while True:
-                yield self.await_timer(duration=5)
-                self.send_signal(self.ent_request_label,
-                             result=(self.role,
-                                     self.other_node_name,
-                                     self.comm_qubit_indices,
-                                     self.num_entanglements2generate,
-                                     self.entanglement_type2generate))
-                break
             
     def setUp(self):
         ns.sim_reset()
@@ -83,39 +83,25 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
                           qmemory=QuantumMemory("qmemory", num_positions=3))
         self.node1 = Node("node1",
                           qmemory=QuantumMemory("qmemory", num_positions=3))
-        self.quantum_connection = BlackBoxEntanglingQsourceConnection(
-                                      delay=10,
-                                      state4distribution=ks.b00)
-        self.node0qport_name = self.node0.connection_port_name(
-                                        self.node1.name,
-                                        label="entangling")
-        self.node1qport_name = self.node1.connection_port_name(
-                                                        self.node0.name,
-                                                        label="entangling")
-        self.node0.connect_to(self.node1, self.quantum_connection,
-                              local_port_name=self.node0qport_name,
-                              remote_port_name=self.node1qport_name)
+        self.network = Network('network', nodes=[self.node0, self.node1])
+        #establishing quantum connection
+        create_black_box_central_source_entangling_link(
+                                                self.network, 
+                                                self.node0, 
+                                                self.node1,
+                                                state4distribution=ks.b00, 
+                                                node_distance=2e-3)
         #establishing classical connection
-        self.node0cport_name = self.node0.connection_port_name(
-                                        self.node1.name,
-                                        label="classical")
-        self.node1cport_name = self.node1.connection_port_name(
-                                                        self.node0.name,
-                                                        label="classical")
-        self.classical_connection = create_classical_fibre_connection(
-                                              name='classical_fibre',
-                                              length=2e-3)
-        self.node0.connect_to(self.node1, self.classical_connection,
-                              local_port_name=self.node0cport_name,
-                              remote_port_name=self.node1cport_name)
-        self.node0_superprotocol = self._DummySuperprotocol(
+        create_classical_fibre_link(self.network, self.node0, self.node1,
+                                    length=2e-3)
+        self.node0_superprotocol = _DummySuperprotocol(
                                         name='node0superprotocol',
                                         node=self.node0,
                                         role=None,
                                         other_node_name="node1",
                                         comm_qubit_indices=[1],
                                         ready4ent=None)
-        self.node1_superprotocol = self._DummySuperprotocol(
+        self.node1_superprotocol = _DummySuperprotocol(
                                         name='node1superprotocol',
                                         node=self.node1,
                                         role=None,
@@ -132,12 +118,6 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
         self.node1_protocol.superprotocol = self.node1_superprotocol
         self.sim_runtime = 100
         
-# =============================================================================
-#         node=None, name=None, role=None, other_node_name=None,
-#                      comm_qubit_indices=None, ready4ent=True
-# =============================================================================
-        
-    #TO DO: get following tests working now that you have refactored more.
     def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
         self.node0_superprotocol.role='client'
         self.node0_superprotocol.ready4ent=True
@@ -170,6 +150,67 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
         
     def test_can_access_deterministic_property(self):
         with self.subTest(msg='deterministic property incorrect for node0'):
+            self.assertEqual(self.node0_protocol.deterministic, True)
+        with self.subTest(msg='deterministic property incorrect for node1'):
+            self.assertEqual(self.node1_protocol.deterministic, True)
+        
+    def test_deterministic_property_is_read_only(self):
+        def _write_deterministic_property(protocol):
+            protocol.deterministic = False
+            
+        with self.subTest(msg='deterministic property writeable for node0'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node0_protocol)
+        with self.subTest(msg='deterministic property writeabel for node1'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node1_protocol)
+
+
+class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
+                                                        unittest.TestCase):
+    def setUp(self):
+        ns.sim_reset()
+        self.node0 = Node("node0", 
+                          qmemory=QuantumMemory("qmemory", num_positions=3))
+        self.node1 = Node("node1",
+                          qmemory=QuantumMemory("qmemory", num_positions=3))
+        self.network = Network('network', nodes=[self.node0, self.node1])
+        #The connection created by the following has no noise by default.
+        create_midpoint_heralded_entangling_link(self.network, 
+                                                 self.node0, 
+                                                 self.node1)
+        #establishing classical connection
+        create_classical_fibre_link(self.network, self.node0, self.node1,
+                                    length=2e-3)
+        self.node0_superprotocol = _DummySuperprotocol(
+                                        name='node0superprotocol',
+                                        node=self.node0,
+                                        role=None,
+                                        other_node_name="node1",
+                                        comm_qubit_indices=[1],
+                                        ready4ent=None)
+        self.node1_superprotocol = _DummySuperprotocol(
+                                        name='node1superprotocol',
+                                        node=self.node1,
+                                        role=None,
+                                        other_node_name="node0",
+                                        comm_qubit_indices=[1],
+                                        ready4ent=None)
+        max_num_ent_attempts = 100
+        self.node0_protocol = MidpointHeraldingProtocol(
+                                    node=self.node0, 
+                                    max_num_ent_attempts=max_num_ent_attempts)
+        self.node1_protocol = MidpointHeraldingProtocol(
+                                    node=self.node0, 
+                                    max_num_ent_attempts=max_num_ent_attempts)
+        #note in actual implementations, the following two lines would be done
+        #inside higher-level protocols
+        self.node0_protocol.superprotocol = self.node0_superprotocol
+        self.node1_protocol.superprotocol = self.node1_superprotocol
+        self.sim_runtime = 100
+
+    def test_can_access_deterministic_property(self):
+        with self.subTest(msg='deterministic property incorrect for node0'):
             self.assertEqual(self.node0_protocol.deterministic, False)
         with self.subTest(msg='deterministic property incorrect for node1'):
             self.assertEqual(self.node1_protocol.deterministic, False)
@@ -184,14 +225,22 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
         with self.subTest(msg='deterministic property writeabel for node1'):
             self.assertRaises(TypeError, _write_deterministic_property,
                               self.node1_protocol)
-
-
-# =============================================================================
-# class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
-#         unittest.TestCase):
-#     
-# =============================================================================
-
+            
+    def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
+        self.node0_superprotocol.role='client'
+        self.node0_superprotocol.ready4ent=True
+        self.node1_superprotocol.role='server'
+        self.node1_superprotocol.ready4ent=True
+        self.node0_protocol.start()
+        self.node1_protocol.start()
+        self.node0_superprotocol.start()
+        self.node1_superprotocol.start()
+        ns.sim_run(self.sim_runtime)
+        #TO DO: think about what memory positions to sample from.
+        qubit_node0, = self.node0.qmemory.pop(1)
+        qubit_node1, = self.node1.qmemory.pop(1)
+        fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
+        self.assertAlmostEqual(fidelity, 1.0, 5)
 
 if __name__ == '__main__':
     unittest.main()
