@@ -54,6 +54,13 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     """
     An abstract base class for physical layer protocols.
     
+    This contains everything that all physical layer protocols should use, 
+    including the link layer itself, which is implemented as the 
+    `run_link_layer` subgenerator method. This method should be called in the 
+    run method of all physical layer protocols, typically prior to anything 
+    else other than the beginning of the while loop needed for all of the 
+    :class: `~pydynaa.core.EventExpression` subgenerators.
+    
     Parameters
     ----------
     node : :class: `~netsquid.nodes.node.Node` or None, optional
@@ -180,14 +187,15 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         raise TypeError('deterministic is a read-only property - its value'
                         'cannot be set by the user')
         
-    def handle_ent_request(self):
+    def run_link_layer(self):
         """
         Handles entanglement requests from higher-level protocols.
         
         This is a subgenerator, allowing the run method to call it and wait on
         :class: `~pydynaa.core.EventExpression`s that this subgenerator waits 
         on. It waits on a signal from higher-level protocols and changes this 
-        protocol's instance attributes to reflect information in that signal.
+        protocol's instance attributes to reflect information in that signal. 
+        It must be prepended by `yield from` when calling.
         
         Yields
         ------
@@ -276,9 +284,6 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #is received.
         #TO DO: facilitate having multiple entanglements on the same time slice,
         #which may require having some sort of job ID.
-        
-    def run(self):
-        yield from self.handle_ent_request()
         
         
     #TO DO:
@@ -427,7 +432,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #other_node_name, comm_qubit_indices, num_entanglements2generate, 
             #and entanglement_type2generate attributes with useful values (in 
             #place of the default None).
-            yield from super().run()
+            yield from super().run_link_layer()
             yield from self.one_way_handshake()
             if self.role == 'server' and self.ready4ent:
                 #sending entanglement request to quantum source
@@ -683,7 +688,7 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
             #other_node_name, comm_qubit_indices, num_entanglements2generate, 
             #and entanglement_type2generate attributes with useful values (in 
             #place of the default None).
-            yield from super().run()
+            yield from super().run_link_layer()
             yield from self.handshake() #TO DO: improve handshake 
             #At the moment, the following will only be able to emit one photon
             #at a time. INSTR_EMIT can only emit one photon at a time but one 
