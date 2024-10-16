@@ -5,22 +5,35 @@ Created on Wed Aug 16 16:37:05 2023
 @author: kenny
 """
 
+import functools as ft
 import unittest
 
 import netsquid as ns
 import numpy as np
-import functools as ft
 from netsquid.components import instructions as instr
 from netsquid.qubits import ketstates as ks
 from netsquid.qubits import qubitapi as qapi
 from netsquid.components.qprogram import QuantumProgram
 from netsquid.nodes import Node, Network
 
-
 from dqc_simulator.hardware.quantum_processors import (
-    create_qproc_with_analytical_noise_ionQ_aria_durations)
+    create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates)
 
-class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
+#for debugging
+# =============================================================================
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# # =============================================================================
+# # #resetting to default after debugging
+# # loggers = simlog.get_loggers()
+# # loggers['netsquid'].setLevel(logging.WARNING)
+# # =============================================================================
+# 
+# =============================================================================
+
+class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         unittest.TestCase):
     def setUp(self):
         ns.sim_reset()
@@ -29,9 +42,10 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         p_depolar_error_cnot = 0.
         comm_qubit_depolar_rate = 1/10 #Hz
         data_qubit_depolar_rate = 0.
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations(
-            p_depolar_error_cnot, comm_qubit_depolar_rate,
-            data_qubit_depolar_rate)
+        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+                        p_depolar_error_cnot, comm_qubit_depolar_rate,
+                        data_qubit_depolar_rate,
+                        num_comm_qubits=2)
         prog = QuantumProgram()
         prog.apply(instr.INSTR_INIT, [ii for ii in range(7)])
         processor.execute_program(prog)
@@ -50,7 +64,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         p_depolar_error_cnot = 0.
         comm_qubit_depolar_rate = 0.
         data_qubit_depolar_rate = 1/10 #Hz
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations(
+        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             p_depolar_error_cnot, comm_qubit_depolar_rate,
             data_qubit_depolar_rate)
         prog = QuantumProgram()
@@ -71,7 +85,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         p_depolar_error_cnot = 0.1
         comm_qubit_depolar_rate = 0.
         data_qubit_depolar_rate = 0.
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations(
+        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             p_depolar_error_cnot, comm_qubit_depolar_rate,
             data_qubit_depolar_rate)
         prog = QuantumProgram()
@@ -97,7 +111,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         p_depolar_error_cnot = 0.1
         comm_qubit_depolar_rate = 0.
         data_qubit_depolar_rate = 0.
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations(
+        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
             p_depolar_error_cnot, comm_qubit_depolar_rate,
             data_qubit_depolar_rate)
         prog = QuantumProgram()
@@ -121,67 +135,71 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations(
         fidelity = qapi.fidelity(qubits, desired_state)
         self.assertAlmostEqual(fidelity, 1.00000, 5)
         
-    def test_can_do_ideal_schor_error_correction_circuit(self):
-        from dqc_simulator.qlib.circuit_identities import ( 
-                                            two_control_ibm_toffoli_decomp)
-        from dqc_simulator.software.dqc_control import dqcMasterProtocol 
-        network = Network("9_qubit_monolith")
-        p_depolar_error_cnot = 0.
-        comm_qubit_depolar_rate = 0.
-        data_qubit_depolar_rate = 0.
-        alice = (
-            Node("node_0",
-                 qmemory=create_qproc_with_analytical_noise_ionQ_aria_durations(
-                 p_depolar_error_cnot, comm_qubit_depolar_rate,
-                 data_qubit_depolar_rate)))
-        network.add_nodes([alice])
-        print([0, 1, 2, 3, 4, 5, 6, 7, 8])
-        gate_tuples = [(instr.INSTR_INIT, [0, 1, 2, 3, 4, 5, 6, 7, 8], alice.name),
-                       (instr.INSTR_H, 0, alice.name),
-                       (instr.INSTR_S, 0, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 3, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 6, alice.name),
-                       (instr.INSTR_H, 0, alice.name),
-                       (instr.INSTR_H, 3, alice.name),
-                       (instr.INSTR_H, 6, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 1, alice.name),
-                       (instr.INSTR_CNOT, 3, alice.name, 4, alice.name),
-                       (instr.INSTR_CNOT, 6, alice.name, 7, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 2, alice.name),
-                       (instr.INSTR_CNOT, 3, alice.name, 5, alice.name),
-                       (instr.INSTR_CNOT, 6, alice.name, 8, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 1, alice.name),
-                       (instr.INSTR_CNOT, 3, alice.name, 4, alice.name),
-                       (instr.INSTR_CNOT, 6, alice.name, 7, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 2, alice.name),
-                       (instr.INSTR_CNOT, 3, alice.name, 5, alice.name),
-                       (instr.INSTR_CNOT, 6, alice.name, 8, alice.name),
-                       *two_control_ibm_toffoli_decomp(2, alice.name,
-                                                       1, alice.name,
-                                                       0, alice.name),
-                       *two_control_ibm_toffoli_decomp(5, alice.name,
-                                                       4, alice.name,
-                                                       3, alice.name),
-                       *two_control_ibm_toffoli_decomp(8, alice.name,
-                                                       7, 
-                                                       alice.name, 
-                                                       6,
-                                                       alice.name),
-                       (instr.INSTR_H, 0, alice.name),
-                       (instr.INSTR_H, 3, alice.name),
-                       (instr.INSTR_H, 6, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 3, alice.name),
-                       (instr.INSTR_CNOT, 0, alice.name, 6, alice.name),
-                       *two_control_ibm_toffoli_decomp(6, alice.name,
-                                                       3, alice.name, 
-                                                       0, alice.name)] 
-        master_protocol = dqcMasterProtocol(gate_tuples, network)
-        master_protocol.start()
-        ns.sim_run(10 * 10**9) #running for 10s
-        error_corrected_qubit, = alice.qmemory.pop(0)
-        desired_state_ket = (1/np.sqrt(2)) * (ks.s0 + 1j*ks.s1)
-        fidelity = qapi.fidelity(error_corrected_qubit, desired_state_ket)
-        self.assertAlmostEqual(fidelity, 1.00000, 5)
+        #commented out following because it is more of an integration test. 
+        #Deprecation of the test is being considered.
+# =============================================================================
+#     def test_can_do_ideal_schor_error_correction_circuit(self):
+#         from dqc_simulator.qlib.circuit_identities import ( 
+#                                             two_control_ibm_toffoli_decomp)
+#         from dqc_simulator.software.dqc_control import dqcMasterProtocol 
+#         network = Network("9_qubit_monolith")
+#         p_depolar_error_cnot = 0.
+#         comm_qubit_depolar_rate = 0.
+#         data_qubit_depolar_rate = 0.
+#         alice = (
+#             Node("node_0",
+#                  qmemory=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+#                  p_depolar_error_cnot, comm_qubit_depolar_rate,
+#                  data_qubit_depolar_rate)))
+#         network.add_nodes([alice])
+#         print([0, 1, 2, 3, 4, 5, 6, 7, 8])
+#         gate_tuples = [(instr.INSTR_INIT, [0, 1, 2, 3, 4, 5, 6, 7, 8], alice.name),
+#                        (instr.INSTR_H, 0, alice.name),
+#                        (instr.INSTR_S, 0, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 3, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 6, alice.name),
+#                        (instr.INSTR_H, 0, alice.name),
+#                        (instr.INSTR_H, 3, alice.name),
+#                        (instr.INSTR_H, 6, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 1, alice.name),
+#                        (instr.INSTR_CNOT, 3, alice.name, 4, alice.name),
+#                        (instr.INSTR_CNOT, 6, alice.name, 7, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 2, alice.name),
+#                        (instr.INSTR_CNOT, 3, alice.name, 5, alice.name),
+#                        (instr.INSTR_CNOT, 6, alice.name, 8, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 1, alice.name),
+#                        (instr.INSTR_CNOT, 3, alice.name, 4, alice.name),
+#                        (instr.INSTR_CNOT, 6, alice.name, 7, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 2, alice.name),
+#                        (instr.INSTR_CNOT, 3, alice.name, 5, alice.name),
+#                        (instr.INSTR_CNOT, 6, alice.name, 8, alice.name),
+#                        *two_control_ibm_toffoli_decomp(2, alice.name,
+#                                                        1, alice.name,
+#                                                        0, alice.name),
+#                        *two_control_ibm_toffoli_decomp(5, alice.name,
+#                                                        4, alice.name,
+#                                                        3, alice.name),
+#                        *two_control_ibm_toffoli_decomp(8, alice.name,
+#                                                        7, 
+#                                                        alice.name, 
+#                                                        6,
+#                                                        alice.name),
+#                        (instr.INSTR_H, 0, alice.name),
+#                        (instr.INSTR_H, 3, alice.name),
+#                        (instr.INSTR_H, 6, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 3, alice.name),
+#                        (instr.INSTR_CNOT, 0, alice.name, 6, alice.name),
+#                        *two_control_ibm_toffoli_decomp(6, alice.name,
+#                                                        3, alice.name, 
+#                                                        0, alice.name)] 
+#         master_protocol = dqcMasterProtocol(gate_tuples, network)
+#         master_protocol.start()
+#         ns.sim_run(10 * 10**9) #running for 10s
+#         error_corrected_qubit, = alice.qmemory.pop(0)
+#         desired_state_ket = (1/np.sqrt(2)) * (ks.s0 + 1j*ks.s1)
+#         fidelity = qapi.fidelity(error_corrected_qubit, desired_state_ket)
+#         self.assertAlmostEqual(fidelity, 1.00000, 5)
+# =============================================================================
             
 
 
