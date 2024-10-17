@@ -19,7 +19,7 @@ from netsquid.nodes import Node, Network
 
 from dqc_simulator.hardware.quantum_processors import (
     create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
-    Qpu)
+    QPU)
 
 #for debugging
 # =============================================================================
@@ -34,6 +34,34 @@ from dqc_simulator.hardware.quantum_processors import (
 # # =============================================================================
 # 
 # =============================================================================
+
+
+class TestQPU(unittest.TestCase):
+    def test_QPU_is_valid_subclass_of_QuantumProcessor(self):
+        #I have found in the past that subclassing can be more complicated than 
+        #expected when abstract base classes are involved and so it pays to 
+        #explicitly check
+        is_subclass = issubclass(QPU, QuantumProcessor)
+        self.assertIs(is_subclass, True)
+        
+    def test_different_types_of_qubit_in_correct_places(self):
+        qpu = QPU('qpu', num_positions=20, num_comm_qubits=5)
+        with self.subTest(msg='comm-qubits not in right place'):
+            self.assertEqual(qpu.comm_qubit_positions, [0, 1, 2, 3, 4])
+        with self.subTest(msg='processing qubits not in right place'):
+            self.assertEqual(qpu.processing_qubit_positions, 
+                             [ii for ii in range(5, 20)])
+        with self.subTest(msg='photon emission positions not in right place'):
+            self.assertEqual(qpu.photon_positions, [20, 21, 22, 23, 24])
+            
+    def test_can_correctly_instantiate_comm_qubits_free(self):
+        qpu = QPU('qpu', num_positions=20, num_comm_qubits=5)
+        self.assertEqual(qpu.comm_qubits_free, qpu.comm_qubit_positions)
+        
+    def test_correct_num_real_positions(self):
+        qpu = QPU('qpu', num_positions=20, num_comm_qubits=5)
+        self.assertEqual(qpu.num_real_positions, 20)
+
 
 class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         unittest.TestCase):
@@ -204,31 +232,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
 # =============================================================================
             
 
-class TestQpu(unittest.TestCase):
-    def test_Qpu_is_valid_subclass_of_QuantumProcessor(self):
-        #I have found in the past that subclassing can be more complicated than 
-        #expected when abstract base classes are involved and so it pays to 
-        #explicitly check
-        is_subclass = issubclass(Qpu, QuantumProcessor)
-        self.assertIs(is_subclass, True)
-        
-    def test_different_types_of_qubit_in_correct_places(self):
-        qpu = Qpu('qpu', num_positions=20, num_comm_qubits=5)
-        with self.subTest(msg='comm-qubits not in right place'):
-            self.assertEqual(qpu.comm_qubit_positions, [0, 1, 2, 3, 4])
-        with self.subTest(msg='processing qubits not in right place'):
-            self.assertEqual(qpu.processing_qubit_positions, 
-                             [ii for ii in range(5, 20)])
-        with self.subTest(msg='photon emission positions not in right place'):
-            self.assertEqual(qpu.photon_positions, [20, 21, 22, 23, 24])
-            
-    def test_can_correctly_instantiate_comm_qubits_free(self):
-        qpu = Qpu('qpu', num_positions=20, num_comm_qubits=5)
-        self.assertEqual(qpu.comm_qubits_free, qpu.comm_qubit_positions)
-        
-    def test_correct_num_real_positions(self):
-        qpu = Qpu('qpu', num_positions=20, num_comm_qubits=5)
-        self.assertEqual(qpu.num_real_positions, 20)
+
         
 
 

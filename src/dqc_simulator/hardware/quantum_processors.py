@@ -18,75 +18,8 @@ from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
                                       INSTR_TWO_QUBIT_UNITARY,
                                       INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME)
 
-#deprecate following two functions once depencies on it have been removed 
-#replace with method in Qpu class below
-def _get_mem_pos_types_N_num_photons(num_positions, num_comm_qubits):
-    """
-    Create a list of memory position types.
-    
-    The output of this should be of a form useable as the value for the
-    `mem_pos_types` parameter for a 
-    `~netsquid.components.qprocessor.QuantumProcessor`.
 
-    Parameters
-    ----------
-    num_positions : int
-        The total number of memory positions.
-    num_comm_qubits : int
-        The number of comm_qubits.
-
-    Returns
-    -------
-    mem_pos_types : list of str
-        The types of memory position. There should be one string for each 
-        memory position.
-
-    """
-    #determining number of fictitious memory positions needed to model photon 
-    #emission
-    num_photon_spaces = num_comm_qubits
-    #photons are not included in the next line because num_positions
-    num_processing_qubits = num_positions - num_comm_qubits
-    mem_pos_types = (["comm"] * num_comm_qubits
-                     + ["processing"] * num_processing_qubits
-                     + ["photon"] * num_photon_spaces)
-    return mem_pos_types, num_photon_spaces
-
-def _get_mem_noise_models(mem_pos_types, comm_qubit_mem_noise_model,
-                          processing_qubit_mem_noise_model):
-    """
-    Gets an ordered list of memory noise models
-
-    Parameters
-    ----------
-    mem_pos_types : list of str
-        The types of memory position. There should be one string for each 
-        memory position.
-
-    Returns
-    -------
-    mem_noise_models: list of :class: `~netsquid.components.models.qerrormodels.QuantumErrorModel`
-        The noise models to apply to the corresponding memory positions.
-    """
-    mem_noise_models = []
-    for mem_pos_type in mem_pos_types:
-        if mem_pos_type == 'comm':
-            mem_noise_models.append(comm_qubit_mem_noise_model)
-        elif mem_pos_type == 'processing':
-            mem_noise_models.append(processing_qubit_mem_noise_model)
-        elif mem_pos_type == 'photon':
-            mem_noise_models.append(None) #None because photons are not sitting 
-                                          #within the memory. Any noise they 
-                                          #have should be modelled using an 
-                                          #emission noise model.
-        else:
-            raise ValueError(f'"{mem_pos_type}" is not of one of the allowed '
-                             'values for mem_pos_type for this processor.' 
-                             'The allowed values are: "comm", "data", and '
-                             '"photon".')
-    return mem_noise_models
-
-class Qpu(QuantumProcessor):
+class QPU(QuantumProcessor):
     """
     
 
@@ -139,7 +72,7 @@ class Qpu(QuantumProcessor):
     ebit_ready : bool
         Whether there is an ebit (entangled bit) ready or not. This defaults to
         False and will become True when entanglement is successfully 
-        distributed between this `Qpu` and another.
+        distributed between this `QPU` and another.
     """
     def __init__(self, name, num_positions=20, mem_noise_models=None, 
                  phys_instructions=None, 
@@ -147,13 +80,13 @@ class Qpu(QuantumProcessor):
                  num_comm_qubits=0,
                  comm_qubit_mem_noise_model=None, 
                  processing_qubit_mem_noise_model=None):
-        mem_pos_types, num_photon_spaces = _get_mem_pos_types_N_num_photons(
+        mem_pos_types, num_photon_spaces = self._get_mem_pos_types_N_num_photons(
                                                  num_positions, 
                                                  num_comm_qubits)
         self.mem_pos_types = mem_pos_types
         if (comm_qubit_mem_noise_model or processing_qubit_mem_noise_model 
             is not None):
-            mem_noise_models = _get_mem_noise_models(
+            mem_noise_models = self._get_mem_noise_models(
                                             mem_pos_types, 
                                             comm_qubit_mem_noise_model,
                                             processing_qubit_mem_noise_model)
@@ -173,7 +106,7 @@ class Qpu(QuantumProcessor):
         #comm_qubit_positions (initially).
         self.comm_qubits_free = self.comm_qubit_positions
         self.ebit_ready = False
-        #TO DO: reimplement processor creation functions using this Qpu class
+        #TO DO: reimplement processor creation functions using this QPU class
             
     def get_positions_matching_type(self, pos_type):
         """
@@ -198,6 +131,73 @@ class Qpu(QuantumProcessor):
             if mem_pos_type == pos_type:
                 positions_matching_pos_type.append(ii)
         return positions_matching_pos_type
+    
+    def _get_mem_pos_types_N_num_photons(self, num_positions, num_comm_qubits):
+        """
+        Create a list of memory position types.
+        
+        The output of this should be of a form useable as the value for the
+        `mem_pos_types` parameter for a 
+        `~netsquid.components.qprocessor.QuantumProcessor`.
+
+        Parameters
+        ----------
+        num_positions : int
+            The total number of memory positions.
+        num_comm_qubits : int
+            The number of comm_qubits.
+
+        Returns
+        -------
+        mem_pos_types : list of str
+            The types of memory position. There should be one string for each 
+            memory position.
+
+        """
+        #determining number of fictitious memory positions needed to model photon 
+        #emission
+        num_photon_spaces = num_comm_qubits
+        #photons are not included in the next line because num_positions
+        num_processing_qubits = num_positions - num_comm_qubits
+        mem_pos_types = (["comm"] * num_comm_qubits
+                         + ["processing"] * num_processing_qubits
+                         + ["photon"] * num_photon_spaces)
+        return mem_pos_types, num_photon_spaces
+    
+    def _get_mem_noise_models(self, mem_pos_types, comm_qubit_mem_noise_model,
+                              processing_qubit_mem_noise_model):
+        """
+        Gets an ordered list of memory noise models
+
+        Parameters
+        ----------
+        mem_pos_types : list of str
+            The types of memory position. There should be one string for each 
+            memory position.
+
+        Returns
+        -------
+        mem_noise_models: list of :class: `~netsquid.components.models.qerrormodels.QuantumErrorModel`
+            The noise models to apply to the corresponding memory positions.
+        """
+        mem_noise_models = []
+        for mem_pos_type in mem_pos_types:
+            if mem_pos_type == 'comm':
+                mem_noise_models.append(comm_qubit_mem_noise_model)
+            elif mem_pos_type == 'processing':
+                mem_noise_models.append(processing_qubit_mem_noise_model)
+            elif mem_pos_type == 'photon':
+                mem_noise_models.append(None) #None because photons are not sitting 
+                                              #within the memory. Any noise they 
+                                              #have should be modelled using an 
+                                              #emission noise model.
+            else:
+                raise ValueError(f'"{mem_pos_type}" is not of one of the allowed '
+                                 'values for mem_pos_type for this processor.' 
+                                 'The allowed values are: "comm", "data", and '
+                                 '"photon".')
+        return mem_noise_models
+
 
 def create_processor(alpha=1, beta=0, depolar_rate=0, dephase_rate=0, 
                      num_positions=7, mem_pos_types=None,
@@ -414,9 +414,6 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
     .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
         Information, 10th ed. (Cambridge University Press, 2010).
     """
-    mem_pos_types, num_photon_spaces = _get_mem_pos_types_N_num_photons(
-                                                     num_positions,
-                                                     num_comm_qubits)
     cnot_depolar_model = AnalyticalDepolarisationModel(
         p_error=p_depolar_error_cnot, time_independent=True)
     #TO DO: decide whether to replace the following with NetSquid's built-in 
@@ -426,9 +423,6 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         comm_qubit_depolar_rate, time_independent=False)
     processing_qubit_memory_depolar_model = AnalyticalDepolarisationModel(
         data_qubit_depolar_rate, time_independent=False)
-    mem_noise_models = _get_mem_noise_models(mem_pos_types, 
-                                             comm_qubit_memory_depolar_model,
-                                             processing_qubit_memory_depolar_model)
     #creating processor for all Nodes
     physical_instructions = ( 
         _phys_instructions_4_standard_lib_gates_and_convenience_ops(
@@ -438,12 +432,12 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                             two_qubit_gate_time,
                                             measurement_time,
                                             alpha, beta))
-    qprocessor = QuantumProcessor(
-        "custom_noisy_qprocessor",
-        phys_instructions=physical_instructions, 
-        num_positions=num_positions + num_photon_spaces, 
-        mem_pos_types=mem_pos_types, 
-        mem_noise_models=mem_noise_models)
+    qprocessor = QPU("custom_noisy_qprocessor",
+                     phys_instructions=physical_instructions, 
+                     num_positions=num_positions,
+                     num_comm_qubits=num_comm_qubits,
+                     comm_qubit_mem_noise_model=comm_qubit_memory_depolar_model, 
+                     processing_qubit_mem_noise_model=processing_qubit_memory_depolar_model)
     
     qprocessor.add_composite_instruction(instr.INSTR_SWAP, 
                                          [(instr.INSTR_CNOT, (0, 1)),
@@ -505,18 +499,12 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
     .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
         Information, 10th ed. (Cambridge University Press, 2010).
     """
-    mem_pos_types, num_photon_spaces = _get_mem_pos_types_N_num_photons(
-                                                     num_positions,
-                                                     num_comm_qubits)
     cnot_depolar_model = DepolarNoiseModel(p_depolar_error_cnot, 
                                            time_independent=True)
     comm_qubit_memory_depolar_model = DepolarNoiseModel(comm_qubit_depolar_rate,
                                                         time_independent=False)
     processing_qubit_memory_depolar_model = DepolarNoiseModel(data_qubit_depolar_rate,
                                                         time_independent=False)
-    mem_noise_models = _get_mem_noise_models(mem_pos_types, 
-                                             comm_qubit_memory_depolar_model,
-                                             processing_qubit_memory_depolar_model)
     #creating processor for all Nodes
     physical_instructions = ( 
         _phys_instructions_4_standard_lib_gates_and_convenience_ops(
@@ -526,12 +514,12 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                             two_qubit_gate_time,
                                             measurement_time,
                                             alpha, beta))
-    qprocessor = QuantumProcessor(
-        "custom_noisy_qprocessor",
-        phys_instructions=physical_instructions, 
-        num_positions=num_positions + num_photon_spaces,
-        mem_pos_types=mem_pos_types, 
-        mem_noise_models=mem_noise_models)
+    qprocessor = QPU("custom_noisy_qprocessor",
+                     phys_instructions=physical_instructions, 
+                     num_positions=num_positions,
+                     num_comm_qubits=num_comm_qubits,
+                     comm_qubit_mem_noise_model=comm_qubit_memory_depolar_model, 
+                     processing_qubit_mem_noise_model=processing_qubit_memory_depolar_model)
     
     qprocessor.add_composite_instruction(instr.INSTR_SWAP, 
                                          [(instr.INSTR_CNOT, (0, 1)),
