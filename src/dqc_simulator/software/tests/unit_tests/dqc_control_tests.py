@@ -52,8 +52,6 @@ class TestDqcMasterProtocol(unittest.TestCase):
                                classical_topology=None,
                                want_classical_2way_link=True,
                                want_entangling_link=True,
-                               node_comm_qubits_free=[0, 1],
-                               node_comm_qubit_positions=[0,1],
                                name="linear network")
         self.node_0 = self.network.get_node('node_0')
         self.node_1 = self.network.get_node('node_1')

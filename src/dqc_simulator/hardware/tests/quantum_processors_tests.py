@@ -73,8 +73,9 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         comm_qubit_depolar_rate = 1/10 #Hz
         proc_qubit_depolar_rate = 0.
         processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
-                        p_depolar_error_cnot, comm_qubit_depolar_rate,
-                        proc_qubit_depolar_rate,
+                        p_depolar_error_cnot=p_depolar_error_cnot,
+                        comm_qubit_depolar_rate=comm_qubit_depolar_rate,
+                        proc_qubit_depolar_rate=proc_qubit_depolar_rate,
                         num_comm_qubits=2)
         prog = QuantumProgram()
         prog.apply(instr.INSTR_INIT, [ii for ii in range(7)])
@@ -95,8 +96,9 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         comm_qubit_depolar_rate = 0.
         proc_qubit_depolar_rate = 1/10 #Hz
         processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
-            p_depolar_error_cnot, comm_qubit_depolar_rate,
-            proc_qubit_depolar_rate)
+            p_depolar_error_cnot=p_depolar_error_cnot, 
+            comm_qubit_depolar_rate=comm_qubit_depolar_rate,
+            proc_qubit_depolar_rate=proc_qubit_depolar_rate)
         prog = QuantumProgram()
         prog.apply(instr.INSTR_INIT, [ii for ii in range(7)])
         processor.execute_program(prog)
@@ -116,8 +118,9 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         comm_qubit_depolar_rate = 0.
         proc_qubit_depolar_rate = 0.
         processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
-            p_depolar_error_cnot, comm_qubit_depolar_rate,
-            proc_qubit_depolar_rate)
+            p_depolar_error_cnot=p_depolar_error_cnot, 
+            comm_qubit_depolar_rate=comm_qubit_depolar_rate,
+            proc_qubit_depolar_rate=proc_qubit_depolar_rate)
         prog = QuantumProgram()
         prog.apply(instr.INSTR_INIT, [ii for ii in range(7)])
         prog.apply(instr.INSTR_H, [0])
@@ -142,8 +145,9 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         comm_qubit_depolar_rate = 0.
         proc_qubit_depolar_rate = 0.
         processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
-            p_depolar_error_cnot, comm_qubit_depolar_rate,
-            proc_qubit_depolar_rate)
+            p_depolar_error_cnot=p_depolar_error_cnot,
+            comm_qubit_depolar_rate=comm_qubit_depolar_rate,
+            proc_qubit_depolar_rate=proc_qubit_depolar_rate)
         prog = QuantumProgram()
         prog.apply(instr.INSTR_INIT, [ii for ii in range(7)])
         prog.apply(instr.INSTR_H, [2])
@@ -179,8 +183,9 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
 #         alice = (
 #             Node("node_0",
 #                  qmemory=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
-#                  p_depolar_error_cnot, comm_qubit_depolar_rate,
-#                  proc_qubit_depolar_rate)))
+#                  p_depolar_error_cnot=p_depolar_error_cnot,
+#                  comm_qubit_depolar_rate=comm_qubit_depolar_rate,
+#                  proc_qubit_depolar_rate=proc_qubit_depolar_rate)))
 #         network.add_nodes([alice])
 #         print([0, 1, 2, 3, 4, 5, 6, 7, 8])
 #         gate_tuples = [(instr.INSTR_INIT, [0, 1, 2, 3, 4, 5, 6, 7, 8], alice.name),

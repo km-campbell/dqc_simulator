@@ -20,7 +20,9 @@ from netsquid.components.models.delaymodels import FibreDelayModel
 from dqc_simulator.hardware.connections import ( 
     BlackBoxEntanglingQsourceConnection, 
     create_black_box_central_source_entangling_link)
-from dqc_simulator.hardware.quantum_processors import create_processor
+from dqc_simulator.hardware.quantum_processors import ( 
+    create_processor, 
+    create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates)
 from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
                                        filter_kwargs4internal_functions)
 
@@ -251,23 +253,6 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
         create_entangling_link(network, node_a, node_b,
                                **kwargs4create_entangling_link)
 
-class QpuNode(Node):
-    """Creates QPU nodes.
-    
-    The QPU nodes have a QPU and all classical control functionality.
-    """
-    def __init__(self, name, comm_qubit_positions=(0, 1),
-                 comm_qubits_free=None,
-                 ebit_ready=False, ID=None, qmemory=None, port_names=None):
-        super().__init__(name, ID=ID, qmemory=qmemory, port_names=port_names)
-        self.comm_qubit_positions = comm_qubit_positions
-        self.ebit_ready = ebit_ready
-        self.comm_qubits_free = comm_qubits_free
-        if comm_qubits_free is None:
-            self.comm_qubits_free = [0, 1]
-        else:
-            self.comm_qubits_free = comm_qubits_free
-
 
 def create_dqc_network(
                 *args4qproc,
@@ -280,10 +265,11 @@ def create_dqc_network(
                 want_classical_2way_link=True,
                 want_entangling_link=True,
                 create_entangling_link=None,
-                nodes_have_ebit_ready=False,
-                node_comm_qubits_free=None, #[0, 1] defined in function body
-                node_comm_qubit_positions=None, #(0, 1) defined in function body
-                custom_qprocessor_func=None,
+                num_comm_qubit_positions=2,
+                custom_qpu_func=None,
+                p_depolar_error_cnot=0,
+                comm_qubit_depolar_rate=0,
+                proc_qubit_depolar_rate=0,
                 name="linear network",
                 **kwargs):
     """
@@ -301,7 +287,7 @@ def create_dqc_network(
     Parameters
     ----------
     *args4qproc : 
-        The arguments for the custom_qprocessor_func specified. By default,
+        The arguments for the custom_qpu_func specified. By default,
         there are none of these.
     state4distribution : numpy.ndarray 
         The entangled state distributed between nodes when
@@ -335,14 +321,14 @@ def create_dqc_network(
     create_entangling_link : func, optional
         The function to use in order to create an entangling link. By default,
         :func: `create_black_box_central_source_entangling_link` is used.
-    custom_qprocessor_func: function or None, optional
+    custom_qpu_func: function or None, optional
         Creates the quantum processor object to use on each node. It must
         be able to run with no arguments. If unspecified then
         a default noiseless processor will be used
     name : str, optional
         Name of the network
     **kwargs : 
-        The name-value arguments for the custom_qprocessor_func and 
+        The name-value arguments for the custom_qpu_func and 
         create_entangling_link functions specified.
 
     Returns
@@ -354,12 +340,16 @@ def create_dqc_network(
     #initialising default arguments
     if state4distribution is None:
         state4distribution=ks.b00
-    if node_comm_qubit_positions is None:
-        node_comm_qubit_positions = (0, 1)
-    if node_comm_qubits_free is None:
-        node_comm_qubits_free = [0, 1]
-    if custom_qprocessor_func is None:
-        custom_qprocessor_func = create_processor
+    if custom_qpu_func is None:
+        custom_qpu_func = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates
+        #instantiating keyword arguments for default custom_qpu_func
+        #function, this is necessary because I have explicitly included those 
+        #keyword arguments in the function definition above. This is done to 
+        #make the documentation clearer (ie, explicitly make the user aware of 
+        #the default options)
+        kwargs['p_depolar_error_cnot'] = p_depolar_error_cnot
+        kwargs['comm_qubit_depolar_rate'] = comm_qubit_depolar_rate
+        kwargs['proc_qubit_depolar_rate'] = proc_qubit_depolar_rate
     if create_entangling_link is None:
         create_entangling_link = create_black_box_central_source_entangling_link
         #instantiating keyword arguments for default create_entangling_link 
@@ -372,7 +362,7 @@ def create_dqc_network(
         kwargs['ent_dist_rate'] = ent_dist_rate
         
     kwargs4qproc, kwargs4create_entangling_link = ( 
-        filter_kwargs4internal_functions([custom_qprocessor_func,
+        filter_kwargs4internal_functions([custom_qpu_func,
                                           create_entangling_link], 
                                          kwargs).values())
     
@@ -389,14 +379,10 @@ def create_dqc_network(
             #same processor object to different nodes, as opposed to a copy
             #of it. Therefore, it makes most sense to define this here within
             #create_dqc_network
-            qproc = custom_qprocessor_func(*args4qproc, **kwargs4qproc)
-            qproc.name = f"qproc4node_{ii+starting_index}"
-            qpu = QpuNode(
-                        f"node_{ii+starting_index}", 
-                        comm_qubit_positions=node_comm_qubit_positions,
-                        comm_qubits_free=node_comm_qubits_free,
-                        ebit_ready=nodes_have_ebit_ready, qmemory=qproc)
-            qpu_list = qpu_list + [qpu] #appending node to node_list
+            qpu = custom_qpu_func(*args4qproc, **kwargs4qproc)
+            qpu.name = f"qproc4node_{ii+starting_index}"
+            qpu_node = Node(f"node_{ii+starting_index}", qmemory=qpu)
+            qpu_list = qpu_list + [qpu_node] #appending node to node_list
         return qpu_list
     
     def _handle_even_num_qpus(network, num_qpus_considered):

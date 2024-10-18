@@ -13,11 +13,11 @@ from netsquid.nodes.node import Node
 from netsquid.protocols.protocol import Signals, Protocol
 from netsquid.protocols.nodeprotocols import NodeProtocol
 
+from dqc_simulator.hardware.quantum_processors import QPU
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.physical_layer import (
                                     Base4PhysicalLayerProtocol, 
                                     AbstractCentralSourceEntangleProtocol)
-from dqc_simulator.hardware.dqc_creation import QpuNode
 
 #The following will act on the qsource node, Charlie, when one of the nodes 
 #either side of Charlie a message to Charlie asking for an entangled pair.
@@ -244,6 +244,7 @@ class QpuOSProtocol(NodeProtocol):
             qprogram.apply(gate_instr, qubit_indices)
         else:
             qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
+        print(f'finished _flexi_program_apply for gate_instr={gate_instr}')
             
     def _request_entanglement(self, role, other_node_name, comm_qubit_indices,
                               num_entanglements2generate=1,
@@ -304,7 +305,7 @@ class QpuOSProtocol(NodeProtocol):
                       data_or_tele_qubit_index, classical_comm_port):
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
-        if len(self.node.comm_qubits_free) == 0: 
+        if len(self.node.qmemory.comm_qubits_free) == 0: 
             #if there are NO comm_qubits free:
             #using first comm-qubit that's free with a
             #name unique to this role so that it can
@@ -315,10 +316,10 @@ class QpuOSProtocol(NodeProtocol):
                             f"gates on {self.node.name}"
                             f"in this time slice")
         else:
-            comm_qubit_index = self.node.comm_qubits_free[0]
+            comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
             #removing comm qubit being used from list
             #of available comm-qubits:
-            if not self.node.ebit_ready: #if there is no ebit ready:
+            if not self.node.qmemory.ebit_ready: #if there is no ebit ready:
                 yield from self._request_entanglement('client', 
                                                       other_node_name, 
                                                       [comm_qubit_index])
@@ -345,7 +346,7 @@ class QpuOSProtocol(NodeProtocol):
     def _cat_correct(self, program, other_node_name, classical_comm_port):
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
-        if len(self.node.comm_qubits_free) == 0: 
+        if len(self.node.qmemory.comm_qubits_free) == 0: 
             #if there are NO comm_qubits free:
             raise Exception(f"Scheduling error: No"
                             f" comm-qubits free. There"
@@ -357,14 +358,14 @@ class QpuOSProtocol(NodeProtocol):
             #using first comm_qubit that's free with
             #name specific to role (so that it can be
             #found by "disentangle_start")
-            comm_qubit_index = self.node.comm_qubits_free[0]
+            comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
             #removing comm qubit being used from list
             #of available comm-qubits:
-            if not self.node.ebit_ready: #if there is no ebit ready:
+            if not self.node.qmemory.ebit_ready: #if there is no ebit ready:
                 yield from self._request_entanglement('server', 
                                                       other_node_name, 
                                                       [comm_qubit_index])
-            del self.node.comm_qubits_free[0]
+            del self.node.qmemory.comm_qubits_free[0]
             #wait for measurement result
             yield self.await_port_input(classical_comm_port)
             meas_result, = classical_comm_port.rx_input().items
@@ -388,10 +389,10 @@ class QpuOSProtocol(NodeProtocol):
         program = QuantumProgram() #re-initialising
         classical_comm_port.tx_output(meas_result)
         #freeing comm-qubit now that it is not needed
-        self.node.comm_qubits_free = (self.node.comm_qubits_free +
+        self.node.qmemory.comm_qubits_free = (self.node.qmemory.comm_qubits_free +
                                       [comm_qubit_index])
         #re-odering form smallest number to largest
-        self.node.comm_qubits_free.sort()
+        self.node.qmemory.comm_qubits_free.sort()
         return program
     
     def _cat_disentangle_end(self, program, classical_comm_port,
@@ -412,7 +413,7 @@ class QpuOSProtocol(NodeProtocol):
              classical_comm_port):
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
-        if len(self.node.comm_qubits_free) == 0 :
+        if len(self.node.qmemory.comm_qubits_free) == 0 :
             #if there are no comm-qubits free:
             raise Exception(f"Scheduling error:"
                             f"No comm-qubits free."
@@ -421,20 +422,20 @@ class QpuOSProtocol(NodeProtocol):
                             f" {self.node.name} in"
                             f" this time slice")
         else: #if there are comm-qubits free
-            comm_qubit_index = self.node.comm_qubits_free[0]
+            comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
             #there is no need to delete a comm-qubit 
             #it will be restored at the end of this 
             #block
             if (data_or_tele_qubit_index == -1 and
-                len(self.node.comm_qubits_free) <
-                len(self.node.comm_qubit_positions)):
+                len(self.node.qmemory.comm_qubits_free) <
+                len(self.node.qmemory.comm_qubit_positions)):
                 #letting qubit to be teleported be the 
                 #last used communication qubit from the 
                 #prev time-slice
                 data_or_tele_qubit_index = comm_qubit_index - 1
             #TO DO: implement the following if block as a subgenerator because 
             #it appears many times in your different subgenerators
-            if not self.node.ebit_ready: 
+            if not self.node.qmemory.ebit_ready: 
                 yield from self._request_entanglement('client', 
                                                       other_node_name, 
                                                       [comm_qubit_index])
@@ -478,14 +479,14 @@ class QpuOSProtocol(NodeProtocol):
 #                                         program = QuantumProgram()
 # =============================================================================
             classical_comm_port.tx_output((m1, m2))
-            if data_or_tele_qubit_index in self.node.comm_qubit_positions:
+            if data_or_tele_qubit_index in self.node.qmemory.comm_qubit_positions:
                 #freeing comm_qubit now that it has been
                 #measured
-                self.node.comm_qubits_free = (self.node.comm_qubits_free + 
+                self.node.qmemory.comm_qubits_free = (self.node.qmemory.comm_qubits_free + 
                                               [data_or_tele_qubit_index])
                 #re-ordering from smallest number to
                 #largest
-                self.node.comm_qubits_free.sort()
+                self.node.qmemory.comm_qubits_free.sort()
         return program
     
     def _tp_correct(self, program, other_node_name,
@@ -527,7 +528,7 @@ class QpuOSProtocol(NodeProtocol):
         """
         yield self.node.qmemory.execute_program(program)
         program=QuantumProgram()
-        if len(self.node.comm_qubits_free) == 0 :
+        if len(self.node.qmemory.comm_qubits_free) == 0 :
             #if there are no comm-qubits free:
             raise Exception(f"Scheduling error: No "
                             f" comm-qubits free. "
@@ -538,12 +539,12 @@ class QpuOSProtocol(NodeProtocol):
         else: #if there are comm-qubits free
             #establishing new comm-qubit for the current
             #teleportation
-            comm_qubit_index = self.node.comm_qubits_free[0]
+            comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
             if reserve_comm_qubit:
-                del self.node.comm_qubits_free[0]
+                del self.node.qmemory.comm_qubits_free[0]
             #removing comm qubit being used from list of 
             #available comm-qubits:
-            if not self.node.ebit_ready:#if there is no ebit ready:
+            if not self.node.qmemory.ebit_ready:#if there is no ebit ready:
                 yield from self._request_entanglement('server', 
                                                       other_node_name, 
                                                       [comm_qubit_index])
@@ -718,6 +719,8 @@ class QpuOSProtocol(NodeProtocol):
         #to avoid overwriting the program and comm_qubit_index
         while True:
             for gate_tuple in gate_tuples4time_slice:
+                print('entered loop within _run_time_slice, gate_tuple is'
+                      f'{gate_tuple}')
                 gate_instr = gate_tuple[0] 
                 #handling gate types with associated parameters:
                 try: #if gate_instr is iterable:
@@ -728,6 +731,7 @@ class QpuOSProtocol(NodeProtocol):
                     
                 if len(gate_tuple) == 2: #if single-qubit gate
                     qubit_index = gate_tuple[1]
+                    print(f'program is {program}')
                     self._flexi_program_apply(program, gate_instr, qubit_index,
                                               gate_op)
                 elif type(gate_tuple[-1]) == str: #if primitive for remote gate
@@ -782,7 +786,9 @@ class QpuOSProtocol(NodeProtocol):
             #important that the quantum program is always reset after each node
             #to avoid waiting infinitely long if there is nothing left to
             #execute
+            print('about to execute program')
             yield self.node.qmemory.execute_program(program) 
+            print('executed program')
             self.send_signal(Signals.SUCCESS)
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
@@ -929,9 +935,6 @@ class dqcMasterProtocol(Protocol):
         protocols by node and time-slice. If None (default), then 
         :func: `~dqc_simulator.software.compilers.sort_greedily_by_node_and_time`
         is used.
-    allowed_qpu_types : tuple or subclass of :class: `~netsquid.nodes.node.Node`
-        The class(es) that should be interpretted as QPU nodes. These should be
-        distinct from those used for other purposes.
     num_entanglement_attempts : int or None, optional
         The number of entanglement attempts for the physical layer to use 
         before returning control to higher layers. This must be specified if 
@@ -986,7 +989,6 @@ class dqcMasterProtocol(Protocol):
                  physical_layer_protocol_class=None,
                  background_protocol_lookup=None,
                  compiler_func=None,
-                 allowed_qpu_types=None,
                  num_entanglement_attempts=None,
                  name=None):
         super().__init__(name)
@@ -1008,23 +1010,14 @@ class dqcMasterProtocol(Protocol):
             self.compiler_func = sort_greedily_by_node_and_time
         else:
             self.compiler_func = compiler_func
-        if background_protocol_lookup is None:
-            #defaulting to starting AbstractFromPhotonsEntangleProtocol on 
-            #anything that is not a QpuNode
-            self.background_protocol_lookup = ( 
-                            {Node : AbstractFromPhotonsEntangleProtocol})
-        else:
-            self.background_protocol_lookup = background_protocol_lookup
-        if allowed_qpu_types is None:
-            self.allowed_qpu_types = QpuNode
-        else:
-            self.allowed_qpu_types = allowed_qpu_types
+            
+        self.background_protocol_lookup = background_protocol_lookup
             
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
         self.qpu_dict = {}
         for node_name, node in self.network.nodes.items():
-            if isinstance(node, self.allowed_qpu_types): #isinstance also 
-                                                         #looks for subclasses
+            if isinstance(node.qmemory, QPU): #isinstance also looks for 
+                                              #subclasses
                 self.qpu_dict[node_name] = node
                 qpu_protocol = QpuOSProtocol(
                                     superprotocol=self, 
@@ -1052,24 +1045,6 @@ class dqcMasterProtocol(Protocol):
     def run(self):
         for qpu_name in self.qpu_op_dict:
             self.subprotocols[f'{qpu_name}_OS'].start()
-# =============================================================================
-#         qpu_op_dict = self.compiler_func(self.partitioned_gates)
-#         qpu_dict = {}
-#         for node_name, node in self.network.nodes.items():
-# # =============================================================================
-# #             print(node)
-# # =============================================================================
-#             if isinstance(node, self.allowed_qpu_types): #isinstance also 
-#                                                          #looks for subclasses
-#                 qpu_dict[node_name] = node
-#             else:
-#                 node_type = type(node)
-#                 background_protocol = self.background_protocol_lookup[node_type](
-#                                          node=node,
-#                                          name=f"{node_name}_protocol")
-#                 background_protocol.start()
-# =============================================================================
-
         #initialising dummy event expression 
         dummy_entity = pydynaa.Entity()
         evtype_dummy = pydynaa.EventType("dummy_event", "dummy event")
@@ -1087,25 +1062,12 @@ class dqcMasterProtocol(Protocol):
                     #if QPU still has instructions to carry out:
                     if time_slice < len(self.qpu_op_dict[qpu_name]):
                     #strictly less than because python indexes from 0
-# =============================================================================
-#                         gate_tuples4node_and_time = (
-#                             qpu_op_dict[qpu_name][time_slice])
-#                         protocol4node_and_time = (
-#                             QpuOSProtocol(
-#                                 gate_tuples4node_and_time,
-#                                 node=qpu_dict[qpu_name]))
-#                         expr = expr & self.await_signal(protocol4node_and_time, 
-#                                                         Signals.SUCCESS)
-# =============================================================================
                         #signalling subprotocols to start the next time slice
                         self.send_signal(self.start_time_slice_label)
                         #waiting on subprotocols to complete time slice
                         expr = expr & self.await_signal(
                                         self.subprotocols[f'{qpu_name}_OS'], 
                                         Signals.SUCCESS)
-# =============================================================================
-#                         protocol4node_and_time.start()
-# =============================================================================
                 yield expr
                 #re-initialising
                 expr = evexpr_dummy 

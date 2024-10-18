@@ -361,9 +361,9 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
 
 
 def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(   
-                                         p_depolar_error_cnot,
-                                         comm_qubit_depolar_rate,
-                                         proc_qubit_depolar_rate,
+                                         p_depolar_error_cnot=0,
+                                         comm_qubit_depolar_rate=0,
+                                         proc_qubit_depolar_rate=0,
                                          single_qubit_gate_time=135 * 10**3,
                                          two_qubit_gate_time=600 * 10**3,
                                          measurement_time=600 * 10**4,
@@ -376,12 +376,15 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
     
     Parameters
     ----------
-    p_depolar_error_cnot : float
+    p_depolar_error_cnot : float, optional
         The probability of a depolarisation error after each CNOT gate.
-    comm_qubit_depolar_rate : float
-        The depolarisation rate for communication qubits
+        The default value is 0.
+    comm_qubit_depolar_rate : float, optional
+        The depolarisation rate for communication qubits. 
+        The default value is 0.
     proc_qubit_depolar_rate : float
-        The depolarisation rate for data qubits
+        The depolarisation rate for data qubits.
+        The default value is 0.
     single_qubit_gate_time : TYPE, optional
         DESCRIPTION. The default is 135 * 10**3.
     two_qubit_gate_time : TYPE, optional
@@ -448,9 +451,9 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
 
 
 def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(   
-                                         p_depolar_error_cnot,
-                                         comm_qubit_depolar_rate,
-                                         proc_qubit_depolar_rate,
+                                         p_depolar_error_cnot=0,
+                                         comm_qubit_depolar_rate=0,
+                                         proc_qubit_depolar_rate=0,
                                          single_qubit_gate_time=135 * 10**3,
                                          two_qubit_gate_time=600 * 10**3,
                                          measurement_time=600 * 10**4, 
@@ -463,12 +466,15 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
     
     Parameters
     ----------
-    p_depolar_error_cnot : float
+    p_depolar_error_cnot : float, optional
         The probability of a depolarisation error after each CNOT gate.
-    comm_qubit_depolar_rate : float
-        The depolarisation rate for communication qubits
+        The default value is 0.
+    comm_qubit_depolar_rate : float, optional
+        The depolarisation rate for communication qubits. 
+        The default value is 0.
     proc_qubit_depolar_rate : float
-        The depolarisation rate for data qubits
+        The depolarisation rate for data qubits.
+        The default value is 0.
     single_qubit_gate_time : TYPE, optional
         DESCRIPTION. The default is 135 * 10**3.
     two_qubit_gate_time : TYPE, optional

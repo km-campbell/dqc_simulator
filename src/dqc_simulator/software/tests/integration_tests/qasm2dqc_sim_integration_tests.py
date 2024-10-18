@@ -51,13 +51,10 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                                                         filepath, 
                                                         scheme='tp_safe',
                                                         include_path='.')
-        p_depolar_error_cnot = 0
-        comm_qubit_depolar_rate = 0
-        proc_qubit_depolar_rate = 0
         network = create_dqc_network(
-                        p_depolar_error_cnot,
-                        comm_qubit_depolar_rate,
-                        proc_qubit_depolar_rate,
+                        p_depolar_error_cnot=0,
+                        comm_qubit_depolar_rate=0,
+                        proc_qubit_depolar_rate=0,
                         state4distribution=None, #ks.b00 defined in function body
                         node_list=None,
                         num_qpus=2,
@@ -186,13 +183,10 @@ class Test_can_run_sim_from_qasm_file_with_noise(unittest.TestCase):
                                                         filepath, 
                                                         scheme='tp_safe',
                                                         include_path='.')
-        p_depolar_error_cnot = 0.9
-        comm_qubit_depolar_rate = 0.1
-        proc_qubit_depolar_rate = 0.1
         network = create_dqc_network(
-                        p_depolar_error_cnot,
-                        comm_qubit_depolar_rate,
-                        proc_qubit_depolar_rate,
+                        p_depolar_error_cnot=0.9,
+                        comm_qubit_depolar_rate=0.1,
+                        proc_qubit_depolar_rate=0.1,
                         state4distribution=None, #ks.b00 defined in function body
                         node_list=None,
                         num_qpus=2,
