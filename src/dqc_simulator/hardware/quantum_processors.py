@@ -383,7 +383,7 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         The depolarisation rate for communication qubits. 
         The default value is 0.
     proc_qubit_depolar_rate : float
-        The depolarisation rate for data qubits.
+        The depolarisation rate for processing qubits.
         The default value is 0.
     single_qubit_gate_time : TYPE, optional
         DESCRIPTION. The default is 135 * 10**3.
@@ -473,7 +473,7 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
         The depolarisation rate for communication qubits. 
         The default value is 0.
     proc_qubit_depolar_rate : float
-        The depolarisation rate for data qubits.
+        The depolarisation rate for processing qubits.
         The default value is 0.
     single_qubit_gate_time : TYPE, optional
         DESCRIPTION. The default is 135 * 10**3.

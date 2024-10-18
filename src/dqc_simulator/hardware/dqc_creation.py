@@ -265,8 +265,8 @@ def create_dqc_network(
                 want_classical_2way_link=True,
                 want_entangling_link=True,
                 create_entangling_link=None,
-                num_comm_qubit_positions=2,
                 custom_qpu_func=None,
+                num_comm_qubits=2,
                 p_depolar_error_cnot=0,
                 comm_qubit_depolar_rate=0,
                 proc_qubit_depolar_rate=0,
@@ -292,7 +292,9 @@ def create_dqc_network(
     state4distribution : numpy.ndarray 
         The entangled state distributed between nodes when
         an EPR pair is requested. Default is |phi^+> Bell state (formalism not
-        fixed to ket)
+        fixed to ket). This argument is used by the default 
+        `create_entangling_link` function but may be ignored if another 
+         function is specified using `create_entangling_link`.
     node_list :  list of netsquid.components.nodes.Node objects, optional
         List of nodes to be included in network. Overrides num_qpus if
         specified.
@@ -325,6 +327,29 @@ def create_dqc_network(
         Creates the quantum processor object to use on each node. It must
         be able to run with no arguments. If unspecified then
         a default noiseless processor will be used
+    num_comm_qubits : int, optional
+        The number of communication qubit positions on the QPU. Default is 2.  
+        This argument is used by the default custom_qpu_func but may be ignored  
+        if a different function is specified using the `create_qpu_func` 
+        parameter and that function does not use this argument.
+    p_depolar_error_cnot : float, optional
+        The probability of a depolarisation error after each CNOT gate.
+        The default value is 0. 
+        This argument is used by the default custom_qpu_func but may be ignored  
+        if a different function is specified using the `create_qpu_func` 
+        parameter and that function does not use this argument.
+    comm_qubit_depolar_rate : float, optional
+        The depolarisation rate for communication qubits. 
+        The default value is 0.
+        This argument is used by the default custom_qpu_func but may be ignored  
+        if a different function is specified using the `create_qpu_func` 
+        parameter and that function does not use this argument.
+    proc_qubit_depolar_rate : float
+        The depolarisation rate for processing qubits.
+        The default value is 0.
+        This argument is used by the default custom_qpu_func but may be ignored  
+        if a different function is specified using the `create_qpu_func` 
+        parameter and that function does not use this argument.
     name : str, optional
         Name of the network
     **kwargs : 
@@ -342,24 +367,25 @@ def create_dqc_network(
         state4distribution=ks.b00
     if custom_qpu_func is None:
         custom_qpu_func = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates
-        #instantiating keyword arguments for default custom_qpu_func
-        #function, this is necessary because I have explicitly included those 
-        #keyword arguments in the function definition above. This is done to 
-        #make the documentation clearer (ie, explicitly make the user aware of 
-        #the default options)
-        kwargs['p_depolar_error_cnot'] = p_depolar_error_cnot
-        kwargs['comm_qubit_depolar_rate'] = comm_qubit_depolar_rate
-        kwargs['proc_qubit_depolar_rate'] = proc_qubit_depolar_rate
     if create_entangling_link is None:
         create_entangling_link = create_black_box_central_source_entangling_link
-        #instantiating keyword arguments for default create_entangling_link 
-        #function, this is necessary because I have explicitly included those 
-        #keyword arguments in the function definition above. This is done to 
-        #make the documentation clearer (ie, explicitly make the user aware of 
-        #the default options)
-        kwargs['state4distribution'] = state4distribution
-        kwargs['node_distance'] = node_distance
-        kwargs['ent_dist_rate'] = ent_dist_rate
+    #instantiating keyword arguments for default custom_qpu_func
+    #function, this is necessary because I have explicitly included those 
+    #keyword arguments in the function definition above. This is done to 
+    #make the documentation clearer (ie, explicitly make the user aware of 
+    #the default options)
+    kwargs['num_comm_qubits'] = num_comm_qubits
+    kwargs['p_depolar_error_cnot'] = p_depolar_error_cnot
+    kwargs['comm_qubit_depolar_rate'] = comm_qubit_depolar_rate
+    kwargs['proc_qubit_depolar_rate'] = proc_qubit_depolar_rate
+    #instantiating keyword arguments for default create_entangling_link 
+    #function, this is necessary because I have explicitly included those 
+    #keyword arguments in the function definition above. This is done to 
+    #make the documentation clearer (ie, explicitly make the user aware of 
+    #the default options)
+    kwargs['state4distribution'] = state4distribution
+    kwargs['node_distance'] = node_distance
+    kwargs['ent_dist_rate'] = ent_dist_rate
         
     kwargs4qproc, kwargs4create_entangling_link = ( 
         filter_kwargs4internal_functions([custom_qpu_func,
