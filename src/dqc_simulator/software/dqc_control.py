@@ -244,7 +244,6 @@ class QpuOSProtocol(NodeProtocol):
             qprogram.apply(gate_instr, qubit_indices)
         else:
             qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
-        print(f'finished _flexi_program_apply for gate_instr={gate_instr}')
             
     def _request_entanglement(self, role, other_node_name, comm_qubit_indices,
                               num_entanglements2generate=1,
@@ -719,8 +718,6 @@ class QpuOSProtocol(NodeProtocol):
         #to avoid overwriting the program and comm_qubit_index
         while True:
             for gate_tuple in gate_tuples4time_slice:
-                print('entered loop within _run_time_slice, gate_tuple is'
-                      f'{gate_tuple}')
                 gate_instr = gate_tuple[0] 
                 #handling gate types with associated parameters:
                 try: #if gate_instr is iterable:
@@ -731,7 +728,6 @@ class QpuOSProtocol(NodeProtocol):
                     
                 if len(gate_tuple) == 2: #if single-qubit gate
                     qubit_index = gate_tuple[1]
-                    print(f'program is {program}')
                     self._flexi_program_apply(program, gate_instr, qubit_index,
                                               gate_op)
                 elif type(gate_tuple[-1]) == str: #if primitive for remote gate
@@ -786,9 +782,7 @@ class QpuOSProtocol(NodeProtocol):
             #important that the quantum program is always reset after each node
             #to avoid waiting infinitely long if there is nothing left to
             #execute
-            print('about to execute program')
             yield self.node.qmemory.execute_program(program) 
-            print('executed program')
             self.send_signal(Signals.SUCCESS)
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
