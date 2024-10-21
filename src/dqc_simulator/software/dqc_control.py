@@ -1006,11 +1006,15 @@ class dqcMasterProtocol(Protocol):
         self.background_protocol_lookup = background_protocol_lookup
             
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
-        self.qpu_dict = {}
-        for node_name, node in self.network.nodes.items():
-            if isinstance(node.qmemory, QPU): #isinstance also looks for 
-                                              #subclasses
-                self.qpu_dict[node_name] = node
+        all_nodes = self.network.nodes
+        for node_name in self.qpu_op_dict:
+        #I use qpu_op_dict rather than network.nodes here to avoid any
+        #situations in which a QPU node has not been added to the network but 
+        #has instructions specified for it without an error being raised 
+            node = all_nodes[node_name]
+            if isinstance(node.qmemory, QPU): 
+            #if the node has a QPU and that QPU has instructions to run at any
+            #point
                 qpu_protocol = QpuOSProtocol(
                                     superprotocol=self, 
                                     gate_tuples=self.qpu_op_dict[node_name],
