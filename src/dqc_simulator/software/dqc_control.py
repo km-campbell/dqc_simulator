@@ -421,23 +421,17 @@ class QpuOSProtocol(NodeProtocol):
                             f" {self.node.name} in"
                             f" this time slice")
         else: #if there are comm-qubits free
-            print(f'the comm-qubits free are: {self.node.qmemory.comm_qubits_free}')
             comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
             #there is no need to delete a comm-qubit 
             #it will be restored at the end of this 
             #block
-            print(f'qubit to be teleported is {data_or_tele_qubit_index}'
-                  '(before if statement)')
-            print(f'the comm-qubit positions are {self.node.qmemory.comm_qubit_positions}')
             if (data_or_tele_qubit_index == -1 and
                 len(self.node.qmemory.comm_qubits_free) <
                 len(self.node.qmemory.comm_qubit_positions)):
                 #letting qubit to be teleported be the 
                 #last used communication qubit from the 
                 #prev time-slice
-                print(f'entered handler block for {self.node.qmemory.comm_qubits_free}')
                 data_or_tele_qubit_index = comm_qubit_index - 1
-            print(f'qubit to be teleported is {data_or_tele_qubit_index}')
             if not self.node.qmemory.ebit_ready: 
                 yield from self._request_entanglement('client', 
                                                       other_node_name, 
