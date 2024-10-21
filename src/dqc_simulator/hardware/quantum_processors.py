@@ -103,8 +103,10 @@ class QPU(QuantumProcessor):
         self.num_real_positions = (self.num_positions 
                                    - len(self.photon_positions))
         #instantiating the comm_qubits_free attribute to be the same as 
-        #comm_qubit_positions (initially).
-        self.comm_qubits_free = self.comm_qubit_positions
+        #comm_qubit_positions (initially). The list constructor is important 
+        #here to make sure that comm-qubits free is a copy of 
+        #comm_qubit_positions rather than an alias for it.
+        self.comm_qubits_free = list(self.comm_qubit_positions)
         self.ebit_ready = False
         #TO DO: reimplement processor creation functions using this QPU class
             
