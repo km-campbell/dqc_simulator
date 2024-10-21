@@ -18,8 +18,7 @@ from netsquid.qubits.qformalism import set_qstate_formalism, QFormalism
 
 from dqc_simulator.hardware.dqc_creation import create_dqc_network
 from dqc_simulator.software.dqc_control import (
-    dqcMasterProtocol, sort_greedily_by_node_and_time,
-    EntangleLinkedNodesProtocol)
+    dqcMasterProtocol, sort_greedily_by_node_and_time)
 from dqc_simulator.qlib.circuit_identities import ( 
     two_control_ibm_toffoli_decomp)
 from dqc_simulator.util.helper import get_data_qubit_indices
@@ -28,24 +27,24 @@ class TestToffoliDecomp(unittest.TestCase):
     def setUp(self):
         ns.sim_reset()
         set_qstate_formalism(QFormalism.DM)
-        self.network = create_dqc_network(state4distribution=ks.b00, 
-                                          node_list=None, num_qpus=2,
+        self.network = create_dqc_network(
+                                  state4distribution=ks.b00, 
+                                  node_list=None, num_qpus=2,
                                   node_distance=4e-3, quantum_topology = None, 
                                   classical_topology = None,
                                   want_classical_2way_link=True,
                                   want_entangling_link=True,
                                   nodes_have_ebit_ready=False,
-                                  node_comm_qubits_free=[0, 1],
-                                  node_comm_qubit_positions=(0, 1),
+                                  num_comm_qubits=2,
                                   name="linear network")
         self.node_a = self.network.get_node("node_0")
         self.node_b = self.network.get_node("node_1")
-        self.cycle_runtime = 500
+        self.cycle_runtime = 1e9
         
     def test_both_controls_on_1_flips_target(self):
         #single local quantum computing node
-        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = get_data_qubit_indices(
-                                                                                self.node_a,3)
+        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = (
+            self.node_a.qmemory.processing_qubit_positions[:3])
         ctrl_node_name1 = self.node_a.name
         ctrl_node_name2 = ctrl_node_name1
         target_node_name = ctrl_node_name1
@@ -74,8 +73,8 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_first_control_only_not_enough(self):
         #single local quantum computing node
-        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = get_data_qubit_indices(
-                                                                                self.node_a,3)
+        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = (
+            self.node_a.qmemory.processing_qubit_positions[:3])
         ctrl_node_name1 = self.node_a.name
         ctrl_node_name2 = ctrl_node_name1
         target_node_name = ctrl_node_name1
@@ -103,8 +102,8 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_second_control_only_not_enough(self):
         #single local quantum computing node
-        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = get_data_qubit_indices(
-                                                                                self.node_a,3)
+        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = (
+            self.node_a.qmemory.processing_qubit_positions[:3])
         ctrl_node_name1 = self.node_a.name
         ctrl_node_name2 = ctrl_node_name1
         target_node_name = ctrl_node_name1
@@ -132,8 +131,8 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_double_zero_control_does_not_change_target(self):
         #single local quantum computing node
-        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = get_data_qubit_indices(
-                                                                                self.node_a,3)
+        ctrl_qubit1_index, ctrl_qubit2_index, target_qubit_index = (
+            self.node_a.qmemory.processing_qubit_positions[:3])
         ctrl_node_name1 = self.node_a.name
         ctrl_node_name2 = ctrl_node_name1
         target_node_name = ctrl_node_name1
@@ -160,8 +159,9 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_remote_gate_ctrl_11(self):
         #single local quantum computing node
-        ctrl_qubit1_index, = get_data_qubit_indices(self.node_a,1)
-        ctrl_qubit2_index, target_qubit_index = get_data_qubit_indices(self.node_b, 2)
+        ctrl_qubit1_index = self.node_a.qmemory.processing_qubit_positions[0]
+        ctrl_qubit2_index, target_qubit_index = (
+            self.node_a.qmemory.processing_qubit_positions[:2])
         ctrl_node_name1 = self.node_a.name
         ctrl_node_name2 = self.node_b.name
         target_node_name = self.node_b.name
@@ -191,8 +191,9 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_remote_gate_ctrl_10(self):
         #single local quantum computing node
-        ctrl_qubit1_index, = get_data_qubit_indices(self.node_a,1)
-        ctrl_qubit2_index, target_qubit_index = get_data_qubit_indices(self.node_b, 2)
+        ctrl_qubit1_index = self.node_a.qmemory.processing_qubit_positions[0]
+        ctrl_qubit2_index, target_qubit_index = (
+            self.node_a.qmemory.processing_qubit_positions[:2])
         ctrl_node_name1 = self.node_a.name
         ctrl_node_name2 = self.node_b.name
         target_node_name = self.node_b.name
@@ -221,7 +222,7 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_remote_gate_in_schor_error_correction_code_ctrl00(self):
         #single local quantum computing node
-        q1, q2, q3, q4, q5 = get_data_qubit_indices(self.node_a, 5)
+        q1, q2, q3, q4, q5 = self.node_a.qmemory.processing_qubit_positions[:5]
         gate_tuples = [(instr.INSTR_INIT, [q1, q2, q3, q4, q5], self.node_a.name),
                        (instr.INSTR_INIT, [q1, q2, q3, q4], self.node_b.name),
                        *two_control_ibm_toffoli_decomp(q1, self.node_b.name,
@@ -242,7 +243,7 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_remote_gate_in_schor_error_correction_code_ctrl_10(self):
         #single local quantum computing node
-        q1, q2, q3, q4, q5 = get_data_qubit_indices(self.node_a, 5)
+        q1, q2, q3, q4, q5 = self.node_a.qmemory.processing_qubit_positions[:5]
         gate_tuples = [(instr.INSTR_INIT, [q1, q2, q3, q4, q5], self.node_a.name),
                        (instr.INSTR_INIT, [q1, q2, q3, q4], self.node_b.name),
                        (instr.INSTR_X, q1, self.node_b.name),
@@ -264,7 +265,7 @@ class TestToffoliDecomp(unittest.TestCase):
         
     def test_remote_gate_in_schor_error_correction_code_ctrl_01(self):
         #single local quantum computing node
-        q1, q2, q3, q4, q5 = get_data_qubit_indices(self.node_a, 5)
+        q1, q2, q3, q4, q5 = self.node_a.qmemory.processing_qubit_positions[:5]
         gate_tuples = [(instr.INSTR_INIT, [q1, q2, q3, q4, q5], self.node_a.name),
                        (instr.INSTR_INIT, [q1, q2, q3, q4], self.node_b.name),
                        (instr.INSTR_X, q5, self.node_a.name),
@@ -286,7 +287,7 @@ class TestToffoliDecomp(unittest.TestCase):
     
     def test_remote_gate_in_schor_error_correction_code_ctrl_11(self):
         #single local quantum computing node
-        q1, q2, q3, q4, q5 = get_data_qubit_indices(self.node_a, 5)
+        q1, q2, q3, q4, q5 = self.node_a.qmemory.processing_qubit_positions[:5]
         gate_tuples = [(instr.INSTR_INIT, [q1, q2, q3, q4, q5], self.node_a.name),
                        (instr.INSTR_INIT, [q1, q2, q3, q4], self.node_b.name),
                        (instr.INSTR_X, q1, self.node_b.name),
@@ -453,8 +454,7 @@ class TestToffoliDecomp(unittest.TestCase):
 # =============================================================================
         
     def test_toffoli_makes_no_difference(self):
-        #single local quantum computing node
-        q1, q2, q3, q4, q5 = get_data_qubit_indices(self.node_a, 5)
+        q1, q2, q3, q4, q5 = self.node_a.qmemory.processing_qubit_positions[:5]
         alice_qubits = ns.qubits.create_qubits(5)
         bob_qubits = ns.qubits.create_qubits(4)
         qubits = alice_qubits + bob_qubits
@@ -468,7 +468,6 @@ class TestToffoliDecomp(unittest.TestCase):
                                                        q5, self.node_a.name,
                                                        q4, self.node_a.name,
                                                        scheme="cat")]
-        node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
         master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
