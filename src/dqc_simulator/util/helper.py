@@ -88,28 +88,7 @@ def filter_kwargs4internal_functions(funcs_with_kwargs, kwargs):
     return sorted_kwargs
     
 
-def get_data_qubit_indices(node, num_indices):
-    """
-    Convenience function for obtaining data qubit indices.
-    
-    Gives the data qubit indices associated with a specific QPU `node`.
-    
-    Parameters
-    ----------
-    node: :class: `~dqc_simulator.hardware.QpuNode`
-        The QPU node whose data qubits should be recovered.
-    num_indices: int
-        The number of data qubit indices requested
-    
-    Returns
-    -------
-    index_list : list
-        The data qubit indices requested.
-    """
-    starting_data_qubit_index = len(node.comm_qubit_positions)
-    end = starting_data_qubit_index + num_indices
-    index_list = [ii for ii in range(starting_data_qubit_index, end)]
-    return index_list
+
 
 # =============================================================================
 # #_idx for debugging only REMOVE ONCE debugged

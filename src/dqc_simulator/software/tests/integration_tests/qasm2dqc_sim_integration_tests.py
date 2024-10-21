@@ -63,9 +63,7 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                         classical_topology = None,
                         want_classical_2way_link=True,
                         want_entangling_link=True,
-                        nodes_have_ebit_ready=False,
-                        node_comm_qubits_free=None, #[0, 1] defined in function body
-                        node_comm_qubit_positions=None, #(0, 1) defined in function body
+                        num_comm_qubits=2,
                         custom_qprocessor_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
                         name="linear network")
         protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
@@ -195,9 +193,7 @@ class Test_can_run_sim_from_qasm_file_with_noise(unittest.TestCase):
                         classical_topology = None,
                         want_classical_2way_link=True,
                         want_entangling_link=True,
-                        nodes_have_ebit_ready=False,
-                        node_comm_qubits_free=None, #[0, 1] defined in function body
-                        node_comm_qubit_positions=None, #(0, 1) defined in function body
+                        num_comm_qubits=2,
                         custom_qprocessor_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
                         name="linear network")
         protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
