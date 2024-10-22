@@ -284,13 +284,6 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #is received.
         #TO DO: facilitate having multiple entanglements on the same time slice,
         #which may require having some sort of job ID.
-        
-        
-    #TO DO:
-    #1) Add transduction methods where appropriate. Emission can be done
-    #with the emit instruction. 
-
-        
 
 #Following decorator explicitly labels the next class as a subprotocol of 
 #Base4PhysicalLayerProtocol

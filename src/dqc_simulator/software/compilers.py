@@ -597,8 +597,8 @@ def sort_greedily_by_node_and_time(partitioned_gates):
                     or isinstance(gate_instructions, tuple)):
                     #putting into correct form to use the comm-qubit index
                     #as the control (defers exact index choice to 
-                    #HandleOneNodeProtocol in
-                    #dqc_simulator.softwaredqc_control.py):
+                    #QpuOSProtocol in
+                    #dqc_simulator.software.dqc_control.py):
                     gate_instructions = [(gate_instructions, -1, qubit_index1)]
                 if node0_name not in qpu_ops.ops: 
                     qpu_ops.add_empty_node_entry(node0_name)
