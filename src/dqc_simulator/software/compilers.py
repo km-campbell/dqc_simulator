@@ -609,6 +609,8 @@ def sort_greedily_by_node_and_time(partitioned_gates):
                 qpu_ops.apply_remote_gate(scheme, gate_instructions, 
                                            qubit_index0, qubit_index1, 
                                            node0_name, node1_name)
+                #Time slices are added in the above line as part of the QpuOps
+                #methods corresponding to specific remote gate schemes
     qpu_ops.remove_empty_trailing_time_slices()
     return qpu_ops.ops
 
