@@ -227,6 +227,7 @@ class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
                               self.node1_protocol)
             
     def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
+        #TO DO: get this test working
         self.node0_superprotocol.role='client'
         self.node0_superprotocol.ready4ent=True
         self.node1_superprotocol.role='server'

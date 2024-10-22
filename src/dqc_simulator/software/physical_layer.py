@@ -203,8 +203,10 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
             Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
         """
+        print(f'waiting on ent_request on {self.node.name}')
         yield self.await_signal(self.superprotocol, 
                                 signal_label=self.ent_request_label)
+        print(f'ent_request has arrived on {self.node.name}')
         #the following could be replaced with any desired specs (including 
         #a tuple of them). TO DO: think about whether you want to have more
         #specs (eg, entanglement fidelity like in Wehner stack papers).
@@ -387,6 +389,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
 # =============================================================================
         elif self.role == 'server':
             yield self.await_port_input(self.classical_conn_port)
+            print(f'finished one way handshake on {self.node.name}')
 
     def handle_quantum_input(self):
         """
