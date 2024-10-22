@@ -203,10 +203,8 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
             Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
         """
-        print(f'waiting on ent_request on {self.node.name}')
         yield self.await_signal(self.superprotocol, 
                                 signal_label=self.ent_request_label)
-        print(f'ent_request has arrived on {self.node.name}')
         #the following could be replaced with any desired specs (including 
         #a tuple of them). TO DO: think about whether you want to have more
         #specs (eg, entanglement fidelity like in Wehner stack papers).
@@ -265,11 +263,17 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
 
         """
         if self.role == 'client':
+            wait_time = 100 #ns
             self.classical_conn_port.tx_output(self.handshake_ready_label)
-# =============================================================================
-#             #await response from server
-#             yield self.await_port_input(self.classical_conn_port)
-# =============================================================================
+            #await response from server or timeout
+            evexpr = yield (self.await_port_input(self.classical_conn_port) | 
+                            self.await_timer(wait_time))
+            #note: timeout may occur if physical layers signalled at different 
+            #times by their QpuOSProtocol
+            if evexpr.second_term.value:
+            #if timeout occurred:
+                #resend handshake message
+                self.classical_conn_port.tx_output(self.handshake_ready_label)
         elif self.role == 'server':
             yield self.await_port_input(self.classical_conn_port)
             #TO DO: get signal results here to bring in time?
@@ -389,7 +393,6 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
 # =============================================================================
         elif self.role == 'server':
             yield self.await_port_input(self.classical_conn_port)
-            print(f'finished one way handshake on {self.node.name}')
 
     def handle_quantum_input(self):
         """
@@ -429,10 +432,16 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             #and entanglement_type2generate attributes with useful values (in 
             #place of the default None).
             yield from super().run_link_layer()
-            yield from self.one_way_handshake()
-            if self.role == 'server' and self.ready4ent:
+# =============================================================================
+#             yield from self.one_way_handshake()
+# =============================================================================
+            yield from self.handshake()
+            if self.role == 'client' and self.ready4ent:
                 #sending entanglement request to quantum source
                 self.ent_conn_port.tx_output(self.ent_request_msg)
+                #the sending of the request must be done by the client because
+                #the client receiving a message back from the server is the 
+                #last part of the handshake
             yield from self.handle_quantum_input()
             
 
