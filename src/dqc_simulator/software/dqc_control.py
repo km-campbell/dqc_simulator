@@ -303,6 +303,11 @@ class QpuOSProtocol(NodeProtocol):
             program.apply(instr.INSTR_Z, [data_or_tele_qubit_index])
             yield self.node.qmemory.execute_program(program)
             program = QuantumProgram()
+        elif meas_result != 0:
+            raise ValueError('Measurement result must be an integer with value'
+                             f' 0 or 1. The current value, {meas_result}, does '
+                             'not meet this criteria.')
+        #if meas_result == 0, we do nothing. No gates are required.
         return program
     
     def _bsm(self, program, data_or_tele_qubit_index, other_node_name,
@@ -383,6 +388,21 @@ class QpuOSProtocol(NodeProtocol):
                 self.node.qmemory.comm_qubits_free.sort()
         return program
     
+    def _handle_meas_results4tp_correct(self, meas_results, index, program):
+        error_msg = ('All elements of meas_results must be integers with value'
+                     ' 0 or 1. The current meas_results, which have the value,'
+                     f' {meas_results} do not meet this criteria')
+        if meas_results[0] == 1:
+            program.apply(instr.INSTR_X, index)
+        elif meas_results[0] != 0:
+            raise ValueError(error_msg)
+        #elif meas_results[0] == 0, do nothing
+        if meas_results[1] == 1:
+            program.apply(instr.INSTR_Z, index)
+        elif meas_results[1] != 0:
+            raise ValueError(error_msg)
+        #elif meas_results[1] == 0, do nothing
+    
     def _tp_correct(self, program, other_node_name,
                     classical_comm_port, reserve_comm_qubit, swap_commNdata,
                     data_qubit_index=None):
@@ -455,15 +475,13 @@ class QpuOSProtocol(NodeProtocol):
 # =============================================================================
                 program.apply(instr.INSTR_SWAP, [comm_qubit_index,
                                                  data_qubit_index])
-                if meas_results[0] == 1:
-                    program.apply(instr.INSTR_X, data_qubit_index)
-                if meas_results[1] == 1:
-                    program.apply(instr.INSTR_Z, data_qubit_index)
+                self._handle_meas_results4tp_correct(meas_results, 
+                                                     data_qubit_index, 
+                                                     program)
             else:
-                if meas_results[0] == 1:
-                    program.apply(instr.INSTR_X, comm_qubit_index)
-                if meas_results[1] == 1:
-                    program.apply(instr.INSTR_Z, comm_qubit_index)
+                self._handle_meas_results4tp_correct(meas_results, 
+                                                     comm_qubit_index, 
+                                                     program)
             yield self.node.qmemory.execute_program(program)
             program = QuantumProgram()
         return (comm_qubit_index, program)
@@ -612,7 +630,11 @@ class QpuOSProtocol(NodeProtocol):
         #a while loop in the enclosing scope. One reason to keep it would be
         #to avoid overwriting the program and comm_qubit_index
         while True:
-            for gate_tuple in gate_tuples4time_slice:
+            #REMOVE INDEX AND ENUMERATE when finished debugging
+            for ii, gate_tuple in enumerate(gate_tuples4time_slice):
+                print(f'gate_tuple is {gate_tuple}. There are '
+                      f'{len(gate_tuples4time_slice) - ii -1} gate tuples left'
+                      f' to evaluate on {self.node.name}')
                 gate_instr = gate_tuple[0] 
                 #handling gate types with associated parameters:
                 try: #if gate_instr is iterable:
