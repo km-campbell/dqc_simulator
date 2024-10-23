@@ -196,6 +196,9 @@ class TestToffoliDecomp(unittest.TestCase):
         ctrl_qubit2, = self.node_b.qmemory.pop(ctrl_qubit2_index)
         target_qubit, = self.node_b.qmemory.pop(target_qubit_index)
         desired_state_ket = np.kron(ks.s1, np.kron(ks.s1, ks.s1))
+# =============================================================================
+#         qapi.combine_qubits([ctrl_qubit1, ctrl_qubit2, target_qubit])
+# =============================================================================
         print(f'desired state is {ns.qubits.ketutil.ket2dm(desired_state_ket)}')
         print(f'ctrl_qubit1 has state {ctrl_qubit1.qstate.qrepr}')
         fidelity = qapi.fidelity([ctrl_qubit1, ctrl_qubit2, target_qubit],
