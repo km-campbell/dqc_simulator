@@ -288,7 +288,7 @@ class QpuOSProtocol(NodeProtocol):
         #freeing comm-qubit now that it is not needed
         self.node.qmemory.comm_qubits_free = (self.node.qmemory.comm_qubits_free +
                                       [comm_qubit_index])
-        #re-odering form smallest number to largest
+        #re-odering from smallest number to largest
         self.node.qmemory.comm_qubits_free.sort()
         return program
     
