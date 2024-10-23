@@ -19,7 +19,8 @@ from netsquid.components.models.delaymodels import FibreDelayModel
 
 from dqc_simulator.hardware.connections import ( 
     BlackBoxEntanglingQsourceConnection, 
-    create_black_box_central_source_entangling_link)
+    create_black_box_central_source_entangling_link,
+    create_classical_fibre_link)
 from dqc_simulator.hardware.quantum_processors import ( 
     create_processor, 
     create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates)
@@ -30,6 +31,8 @@ from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
 def link_2_qpus(network, node_a, node_b, state4distribution=None, 
                  node_distance=2e-3, ent_dist_rate=0,
                  want_classical_2way_link=True,
+                 want_extra_classical_2way_link=None, #can make scheduling 
+                                                      #easier
                  want_entangling_link=True,
                  create_entangling_link=None,
                  **kwargs4create_entangling_link):
@@ -65,7 +68,10 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
         `create_entangling_link` function is used.
     want_classical_2way_link : bool, optional
         Whether a two-way classical link should be created between all nodes
-        (True) or not (False). 
+        (True) or not (False). Default is True.
+    want_extra_classical_2way_link : bool, optional
+        Whether an extra two-way classical link should be created between all 
+        nodes (True) or not (False). Default is True.
     want_entangling_link : bool, optional
         Whether a two-way quantum link should be created between all nodes
         (True) or not (False). Nodes can request entangled pairs using this
@@ -101,20 +107,24 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
                          the function call would be redundant""")
     # Set up classical connection between nodes:
     if want_classical_2way_link:
-        node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                       label="classical")
-        node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                       label="classical")
-        network.add_connection(node_a, node_b,
-                               channel_to=ClassicalChannel(
-                                   "Channel_A2B", length=node_distance,
-                                    models={"delay_model": FibreDelayModel()}),
-                               channel_from=ClassicalChannel(
-                                   "Channel_B2A", length=node_distance,
-                                    models={"delay_model": FibreDelayModel()}), 
-                               port_name_node1=node_a_port_name,
-                               port_name_node2=node_b_port_name,
-                               label='classical')
+        #TO DO: give the user option to specify what type of link is used (as 
+        #they can for the entangling link). Eg, the user may wish to use a 
+        #free-space classical connection instead.
+        create_classical_fibre_link(network, node_a, node_b, 
+                                    length=node_distance, 
+                                    label='classical')
+        
+    if want_extra_classical_2way_link:
+    #This is useful if you want to make scheduling easier by separating out 
+    #tasks. For example, one link for exchanging measurement results and one 
+    #for doing handshake protocols.
+        #TO DO: give the user option to specify what type of link is used (as 
+        #they can for the entangling link). Eg, the user may wish to use a 
+        #free-space classical connection instead.
+        create_classical_fibre_link(network, node_a, node_b, 
+                                    length=node_distance, 
+                                    label='extra_classical')
+        
     if want_entangling_link:
         create_entangling_link(network, node_a, node_b,
                                **kwargs4create_entangling_link)
@@ -129,6 +139,7 @@ def create_dqc_network(
                 quantum_topology = None, 
                 classical_topology = None,
                 want_classical_2way_link=True,
+                want_extra_classical_2way_link=True,
                 want_entangling_link=True,
                 create_entangling_link=None,
                 custom_qpu_func=None,
@@ -180,12 +191,19 @@ def create_dqc_network(
             refer to the nodes.to be connected should be connected in the tuple.
     want_classical_2way_link : bool, optional
         Whether a two-way classical link should be created between all nodes
-        (True) or not (False). Unused if classical_topology or 
-        quantum_topology is not None.
+        (True) or not (False). Default is True. Unused if `classical_topology` 
+        or `quantum_topology` is not None.
+    want_extra_classical_2way_link : bool or None, optional
+        Whether an extra two-way classical link should be created between all 
+        nodes (True) or not (False). Default is None. If None, it will take 
+        the same value as `want_classical_2way_link`. Unlike, 
+        `want_classical_2way_link` this will be used if `classical_topology` is
+        not None (in which case an extra classical link will be created 
+        everywhere a classical link is created).
     want_entangling_link : bool, optional
         Whether a two-way quantum link should be created between all nodes 
         (True) or not (False). Nodes can request entangled pairs using this
-        link. Unused if classical_topology or quantum_topology is not None.
+        link. Unused if `classical_topology` or `quantum_topology` is not None.
     create_entangling_link : func, optional
         The function to use in order to create an entangling link. By default,
         :func: `create_black_box_central_source_entangling_link` is used.
@@ -229,6 +247,8 @@ def create_dqc_network(
     """
     
     #initialising default arguments
+    if want_extra_classical_2way_link is None:
+        want_extra_classical_2way_link = want_classical_2way_link
     if state4distribution is None:
         state4distribution=ks.b00
     if custom_qpu_func is None:
@@ -318,6 +338,7 @@ def create_dqc_network(
                                                             #max index
             link_2_qpus(network, node_1, node_2, 
                         want_classical_2way_link=want_classical_2way_link, 
+                        want_extra_classical_2way_link=want_entangling_link,
                         want_entangling_link=want_entangling_link)
     else:
         if quantum_topology is not None:
@@ -338,6 +359,7 @@ def create_dqc_network(
                 node_b = network.get_node(f"node_{indices[1]}")
                 link_2_qpus(network, node_a, node_b,
                             want_classical_2way_link=False,
+                            want_extra_classical_2way_link=False,
                             want_entangling_link=True)
         if classical_topology is not None: #if classical_topology is not None
             if (classical_topology[-1])[1] > (len(network.nodes)-1): 
@@ -357,6 +379,7 @@ def create_dqc_network(
                 node_b = network.get_node(f"node_{indices[1]}")
                 link_2_qpus(network, node_a, node_b,
                             want_classical_2way_link=True,
+                            want_extra_classical_2way_link=want_extra_classical_2way_link,
                             want_entangling_link=False)
     return network
 

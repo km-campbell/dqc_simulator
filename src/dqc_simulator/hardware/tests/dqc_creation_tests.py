@@ -92,6 +92,7 @@ class Test_link_2_qpus(unittest.TestCase):
     def test_can_create_only_entangling_link(self):
         link_2_qpus(self.network, self.qpu0, self.qpu1, 
                     want_classical_2way_link=False,
+                    want_extra_classical_2way_link=False,
                     want_entangling_link=True)  
         with self.subTest(msg="wrong number of entangling connections"):
             self.assertEqual(len(self.network.connections), 1)
@@ -102,6 +103,7 @@ class Test_link_2_qpus(unittest.TestCase):
     def test_can_create_only_classical_link(self):
         link_2_qpus(self.network, self.qpu0, self.qpu1, 
                     want_classical_2way_link=True,
+                    want_extra_classical_2way_link=False,
                     want_entangling_link=False)
         with self.subTest(msg="wrong number of entangling connections"):
             self.assertEqual(len(self.network.connections), 1)
@@ -112,6 +114,7 @@ class Test_link_2_qpus(unittest.TestCase):
     def test_can_create_classical_AND_entangling_link(self):
         link_2_qpus(self.network, self.qpu0, self.qpu1, 
                     want_classical_2way_link=True,
+                    want_extra_classical_2way_link=False,
                     want_entangling_link=True)
         self.assertEqual(len(self.network.connections), 2)
         
@@ -167,6 +170,7 @@ class Test_create_dqc_network(unittest.TestCase):
                                     quantum_topology = None, 
                                     classical_topology = None,
                                     want_classical_2way_link=True,
+                                    want_extra_classical_2way_link=False,
                                     want_entangling_link=True, 
                                     name="linear network") 
         with self.subTest(msg="wrong number of entangling connections"):
