@@ -41,7 +41,8 @@ from netsquid_physlayer.heralded_connection import MiddleHeraldedConnection
 #   real as they wish
 
 
-def create_classical_fibre_link(network, node_a, node_b, length):
+def create_classical_fibre_link(network, node_a, node_b, length, 
+                                label='classical'):
     """
     Setus up a classical fibre connection between two QPUs.
 
@@ -65,13 +66,13 @@ def create_classical_fibre_link(network, node_a, node_b, length):
     #generating names obeying netsquid naming conventions for port on QPUs that 
     #connect a Node to a connection but using the (unique) node name as the ID
     node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                   label="classical")
+                                                   label=label)
     node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                   label="classical")
+                                                   label=label)
     network.add_connection(node_a, node_b, connection=connection,
                            port_name_node1=node_a_port_name,
                            port_name_node2=node_b_port_name,
-                           label='classical')
+                           label=label)
 
 
 
