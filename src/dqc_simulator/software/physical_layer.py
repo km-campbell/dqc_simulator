@@ -270,7 +270,21 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
                             self.await_timer(wait_time))
             #note: timeout may occur if physical layers signalled at different 
             #times by their QpuOSProtocol
-            if evexpr.second_term.value:
+            if evexpr.first_term.value:
+                msg, = self.classical_conn_port.rx_input().items
+                if msg == self.handshake_not_ready_label:
+                    #resend handshake message
+                    self.classical_conn_port.tx_output(self.handshake_ready_label)
+                #checking that the correct message has been received and that 
+                #this message is not erroneously sent here from another 
+                #protocol:
+                elif msg != self.handshake_ready_label:
+                    raise ValueError('The message must be a str with value '
+                                     '"ENT_READY_LABEL" or '
+                                     '"ENT_NOT_READY_LABEL". The received '
+                                     'message has value {msg}, which does not '
+                                     'meet the criteria.')
+            elif evexpr.second_term.value:
             #if timeout occurred:
                 #resend handshake message
                 self.classical_conn_port.tx_output(self.handshake_ready_label)
