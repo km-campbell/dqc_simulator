@@ -234,6 +234,7 @@ class QpuOSProtocol(NodeProtocol):
             ma, = program.output["ma"]
             classical_comm_port.tx_output(ma)
             program = QuantumProgram() #resetting
+            print(f'finished _cat_entangle ')
             return program #note that this will only be 
                                                #be returned after all the 
                                                #EventExpressions from the prev.
@@ -263,7 +264,7 @@ class QpuOSProtocol(NodeProtocol):
                                                       other_node_name, 
                                                       [comm_qubit_index])
             del self.node.qmemory.comm_qubits_free[0]
-            #wait for measurement result
+            #wait for measurement result from _cat_entangle on the other node
             yield self.await_port_input(classical_comm_port)
             meas_result, = classical_comm_port.rx_input().items
             if meas_result == 1:
@@ -273,7 +274,7 @@ class QpuOSProtocol(NodeProtocol):
                                  f'value 0 or 1. The current value, '
                                  f'{meas_result}, does not meet this criteria.'
                                  )
-                
+        print('finished _cat_correct')
         return (comm_qubit_index, program) #note that this will only be 
                                            #be returned after all the 
                                            #EventExpressions from the prev.

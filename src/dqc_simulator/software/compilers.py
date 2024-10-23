@@ -138,6 +138,21 @@ class QpuOps():
             
     def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
                        node0_name, node1_name):
+# =============================================================================
+#         node0_op = [(qubit_index0, node1_name, "cat", "entangle")]
+#         node1_op = [(node0_name, "cat", "correct")]
+#         self.append_op2current_time_slice(node0_name, node0_op)
+#         self.append_op2current_time_slice(node1_name, node1_op)
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+#         node0_ops = [(qubit_index0, node1_name, "cat", "disentangle_end")]
+#         node1_ops = ([gate_instructions] + 
+#                     [(qubit_index1, node0_name, "cat", "disentangle_start")])
+#         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+#         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+# =============================================================================
         node0_ops = (
             [(qubit_index0, node1_name, "cat", "entangle")] + 
             [(qubit_index0, node1_name, "cat", "disentangle_end")])
@@ -148,6 +163,10 @@ class QpuOps():
               "cat", "disentangle_start")])
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+# =============================================================================
+#         self.add_time_slice(node0_name)
+#         self.add_time_slice(node1_name)
+# =============================================================================
 
     def tp_risky(self, gate_instructions, qubit_index0, node0_name, 
                  node1_name):

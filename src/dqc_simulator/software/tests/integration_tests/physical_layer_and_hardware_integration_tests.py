@@ -133,120 +133,115 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
         
-# =============================================================================
-#     def test_can_distribute_pair_of_entangled_qubits_with_node1_as_client(self):
-#         self.node1_superprotocol.role = 'client'
-#         self.node1_superprotocol.ready4ent = True
-#         self.node0_superprotocol.role = 'server'
-#         self.node0_superprotocol.ready4ent = True
-#         self.node0_protocol.start()
-#         self.node1_protocol.start()
-#         self.node0_superprotocol.start()
-#         self.node1_superprotocol.start()
-#         ns.sim_run(self.sim_runtime)
-#         qubit_node0, = self.node0.qmemory.pop(1)
-#         qubit_node1, = self.node1.qmemory.pop(1)
-#         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
-#         self.assertAlmostEqual(fidelity, 1.0, 5)
-#         
-#     def test_can_access_deterministic_property(self):
-#         with self.subTest(msg='deterministic property incorrect for node0'):
-#             self.assertEqual(self.node0_protocol.deterministic, True)
-#         with self.subTest(msg='deterministic property incorrect for node1'):
-#             self.assertEqual(self.node1_protocol.deterministic, True)
-#         
-#     def test_deterministic_property_is_read_only(self):
-#         def _write_deterministic_property(protocol):
-#             protocol.deterministic = False
-#             
-#         with self.subTest(msg='deterministic property writeable for node0'):
-#             self.assertRaises(TypeError, _write_deterministic_property,
-#                               self.node0_protocol)
-#         with self.subTest(msg='deterministic property writeabel for node1'):
-#             self.assertRaises(TypeError, _write_deterministic_property,
-#                               self.node1_protocol)
-# =============================================================================
+    def test_can_distribute_pair_of_entangled_qubits_with_node1_as_client(self):
+        self.node1_superprotocol.role = 'client'
+        self.node1_superprotocol.ready4ent = True
+        self.node0_superprotocol.role = 'server'
+        self.node0_superprotocol.ready4ent = True
+        self.node0_protocol.start()
+        self.node1_protocol.start()
+        self.node0_superprotocol.start()
+        self.node1_superprotocol.start()
+        ns.sim_run(self.sim_runtime)
+        qubit_node0, = self.node0.qmemory.pop(1)
+        qubit_node1, = self.node1.qmemory.pop(1)
+        fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
+        self.assertAlmostEqual(fidelity, 1.0, 5)
+        
+    def test_can_access_deterministic_property(self):
+        with self.subTest(msg='deterministic property incorrect for node0'):
+            self.assertEqual(self.node0_protocol.deterministic, True)
+        with self.subTest(msg='deterministic property incorrect for node1'):
+            self.assertEqual(self.node1_protocol.deterministic, True)
+        
+    def test_deterministic_property_is_read_only(self):
+        def _write_deterministic_property(protocol):
+            protocol.deterministic = False
+            
+        with self.subTest(msg='deterministic property writeable for node0'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node0_protocol)
+        with self.subTest(msg='deterministic property writeabel for node1'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node1_protocol)
 
-#TO DO: uncomment below when finished debugging
-# =============================================================================
-# class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
-#                                                         unittest.TestCase):
-#     def setUp(self):
-#         ns.sim_reset()
-#         self.node0 = Node("node0", 
-#                           qmemory=QuantumMemory("qmemory", num_positions=3))
-#         self.node1 = Node("node1",
-#                           qmemory=QuantumMemory("qmemory", num_positions=3))
-#         self.network = Network('network', nodes=[self.node0, self.node1])
-#         #The connection created by the following has no noise by default.
-#         create_midpoint_heralded_entangling_link(self.network, 
-#                                                  self.node0, 
-#                                                  self.node1)
-#         #establishing classical connection
-#         create_classical_fibre_link(self.network, self.node0, self.node1,
-#                                     length=2e-3)
-#         self.node0_superprotocol = _DummySuperprotocol(
-#                                         name='node0superprotocol',
-#                                         node=self.node0,
-#                                         role=None,
-#                                         other_node_name="node1",
-#                                         comm_qubit_indices=[1],
-#                                         ready4ent=None)
-#         self.node1_superprotocol = _DummySuperprotocol(
-#                                         name='node1superprotocol',
-#                                         node=self.node1,
-#                                         role=None,
-#                                         other_node_name="node0",
-#                                         comm_qubit_indices=[1],
-#                                         ready4ent=None)
-#         max_num_ent_attempts = 100
-#         self.node0_protocol = MidpointHeraldingProtocol(
-#                                     node=self.node0, 
-#                                     max_num_ent_attempts=max_num_ent_attempts)
-#         self.node1_protocol = MidpointHeraldingProtocol(
-#                                     node=self.node0, 
-#                                     max_num_ent_attempts=max_num_ent_attempts)
-#         #note in actual implementations, the following two lines would be done
-#         #inside higher-level protocols
-#         self.node0_protocol.superprotocol = self.node0_superprotocol
-#         self.node1_protocol.superprotocol = self.node1_superprotocol
-#         self.sim_runtime = 100
-# 
-#     def test_can_access_deterministic_property(self):
-#         with self.subTest(msg='deterministic property incorrect for node0'):
-#             self.assertEqual(self.node0_protocol.deterministic, False)
-#         with self.subTest(msg='deterministic property incorrect for node1'):
-#             self.assertEqual(self.node1_protocol.deterministic, False)
-#         
-#     def test_deterministic_property_is_read_only(self):
-#         def _write_deterministic_property(protocol):
-#             protocol.deterministic = True
-#             
-#         with self.subTest(msg='deterministic property writeable for node0'):
-#             self.assertRaises(TypeError, _write_deterministic_property,
-#                               self.node0_protocol)
-#         with self.subTest(msg='deterministic property writeabel for node1'):
-#             self.assertRaises(TypeError, _write_deterministic_property,
-#                               self.node1_protocol)
-#             
-#     def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
-#         #TO DO: get this test working (it isn't working because you have not 
-#         #finished implementing transduction yet)
-#         self.node0_superprotocol.role='client'
-#         self.node0_superprotocol.ready4ent=True
-#         self.node1_superprotocol.role='server'
-#         self.node1_superprotocol.ready4ent=True
-#         self.node0_protocol.start()
-#         self.node1_protocol.start()
-#         self.node0_superprotocol.start()
-#         self.node1_superprotocol.start()
-#         ns.sim_run(self.sim_runtime)
-#         #TO DO: think about what memory positions to sample from.
-#         qubit_node0, = self.node0.qmemory.pop(1)
-#         qubit_node1, = self.node1.qmemory.pop(1)
-#         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
-#         self.assertAlmostEqual(fidelity, 1.0, 5)
-# =============================================================================
+class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
+                                                        unittest.TestCase):
+    def setUp(self):
+        ns.sim_reset()
+        self.node0 = Node("node0", 
+                          qmemory=QuantumMemory("qmemory", num_positions=3))
+        self.node1 = Node("node1",
+                          qmemory=QuantumMemory("qmemory", num_positions=3))
+        self.network = Network('network', nodes=[self.node0, self.node1])
+        #The connection created by the following has no noise by default.
+        create_midpoint_heralded_entangling_link(self.network, 
+                                                 self.node0, 
+                                                 self.node1)
+        #establishing classical connection
+        create_classical_fibre_link(self.network, self.node0, self.node1,
+                                    length=2e-3)
+        self.node0_superprotocol = _DummySuperprotocol(
+                                        name='node0superprotocol',
+                                        node=self.node0,
+                                        role=None,
+                                        other_node_name="node1",
+                                        comm_qubit_indices=[1],
+                                        ready4ent=None)
+        self.node1_superprotocol = _DummySuperprotocol(
+                                        name='node1superprotocol',
+                                        node=self.node1,
+                                        role=None,
+                                        other_node_name="node0",
+                                        comm_qubit_indices=[1],
+                                        ready4ent=None)
+        max_num_ent_attempts = 100
+        self.node0_protocol = MidpointHeraldingProtocol(
+                                    node=self.node0, 
+                                    max_num_ent_attempts=max_num_ent_attempts)
+        self.node1_protocol = MidpointHeraldingProtocol(
+                                    node=self.node0, 
+                                    max_num_ent_attempts=max_num_ent_attempts)
+        #note in actual implementations, the following two lines would be done
+        #inside higher-level protocols
+        self.node0_protocol.superprotocol = self.node0_superprotocol
+        self.node1_protocol.superprotocol = self.node1_superprotocol
+        self.sim_runtime = 100
+
+    def test_can_access_deterministic_property(self):
+        with self.subTest(msg='deterministic property incorrect for node0'):
+            self.assertEqual(self.node0_protocol.deterministic, False)
+        with self.subTest(msg='deterministic property incorrect for node1'):
+            self.assertEqual(self.node1_protocol.deterministic, False)
+        
+    def test_deterministic_property_is_read_only(self):
+        def _write_deterministic_property(protocol):
+            protocol.deterministic = True
+            
+        with self.subTest(msg='deterministic property writeable for node0'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node0_protocol)
+        with self.subTest(msg='deterministic property writeabel for node1'):
+            self.assertRaises(TypeError, _write_deterministic_property,
+                              self.node1_protocol)
+            
+    def test_can_distribute_pair_of_entangled_qubits_with_node0_as_client(self):
+        #TO DO: get this test working (it isn't working because you have not 
+        #finished implementing transduction yet)
+        self.node0_superprotocol.role='client'
+        self.node0_superprotocol.ready4ent=True
+        self.node1_superprotocol.role='server'
+        self.node1_superprotocol.ready4ent=True
+        self.node0_protocol.start()
+        self.node1_protocol.start()
+        self.node0_superprotocol.start()
+        self.node1_superprotocol.start()
+        ns.sim_run(self.sim_runtime)
+        #TO DO: think about what memory positions to sample from.
+        qubit_node0, = self.node0.qmemory.pop(1)
+        qubit_node1, = self.node1.qmemory.pop(1)
+        fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
+        self.assertAlmostEqual(fidelity, 1.0, 5)
 
 if __name__ == '__main__':
     unittest.main()
