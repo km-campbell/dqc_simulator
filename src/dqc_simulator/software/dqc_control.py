@@ -268,6 +268,12 @@ class QpuOSProtocol(NodeProtocol):
             meas_result, = classical_comm_port.rx_input().items
             if meas_result == 1:
                 program.apply(instr.INSTR_X, comm_qubit_index)
+            elif meas_result != 0:
+                raise ValueError('Measurement result must be an integer with '
+                                 f'value 0 or 1. The current value, '
+                                 f'{meas_result}, does not meet this criteria.'
+                                 )
+                
         return (comm_qubit_index, program) #note that this will only be 
                                            #be returned after all the 
                                            #EventExpressions from the prev.
