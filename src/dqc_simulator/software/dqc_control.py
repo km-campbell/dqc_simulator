@@ -87,10 +87,12 @@ class QpuOSProtocol(NodeProtocol):
         self.ent_ready_label = "ENT_READY"
         self.ent_failed_label = "ENT_FAILED"
         self.start_time_slice_label = "START_TIME_SLICE"
+        self.finished_time_slice_label = "FINISHED_TIME_SLICE"
         self.add_signal(self.ent_request_label)
         self.add_signal(self.ent_ready_label)
         self.add_signal(self.ent_failed_label)
         self.add_signal(self.start_time_slice_label)
+        self.add_signal(self.finished_time_slice_label)
         
     def add_phys_layer(self, physical_layer_protocol):
         """
@@ -292,8 +294,7 @@ class QpuOSProtocol(NodeProtocol):
     
     def _cat_disentangle_end(self, program, classical_comm_port,
                              data_or_tele_qubit_index):
-        yield self.await_port_input(
-            classical_comm_port)
+        yield self.await_port_input(classical_comm_port)
         meas_result, = (
             classical_comm_port.rx_input().items)
         if meas_result == 1:
@@ -677,7 +678,7 @@ class QpuOSProtocol(NodeProtocol):
             #is finished to avoid waiting infinitely long if there is nothing 
             #left to execute
             yield self.node.qmemory.execute_program(program) 
-            self.send_signal(Signals.SUCCESS)
+            self.send_signal(self.finished_time_slice_label)
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
 
@@ -701,85 +702,6 @@ class QpuOSProtocol(NodeProtocol):
             gate_tuples4time_slice = self.gate_tuples[time_slice]
             yield from self._run_time_slice(gate_tuples4time_slice)
             time_slice = time_slice + 1
-# =============================================================================
-#         #intialising variables that should be overwritten later but are needed
-#         #as function arguments:
-#         program=QuantumProgram()
-#         comm_qubit_index = float("nan")
-#         while True:
-#          #TO DO: could potentially put another for loop here which cycles over
-#          #each row of gate_tuples outputted for this node by the scheduler
-#          #with some yield statement after each row of gate_tuples have been
-#          #evaluated to make it wait for next time slice. This would save
-#          #having to make many protocols
-#          
-#             for gate_tuple in self.gate_tuples:
-#                 gate_instr = gate_tuple[0] 
-#                 #handling gate types with associated parameters:
-#                 try: #if gate_instr is iterable:
-#                     gate_op = gate_instr[1]
-#                     gate_instr = gate_instr[0]
-#                 except TypeError: #elif gate_instr is not iterable
-#                     gate_op = None
-#                     
-#                 if len(gate_tuple) == 2: #if single-qubit gate
-#                     qubit_index = gate_tuple[1]
-#                     self._flexi_program_apply(program, gate_instr, qubit_index,
-#                                               gate_op)
-#                 elif type(gate_tuple[-1]) == str: #if primitive for remote gate
-#                     #The remote gates in this block will use different
-#                     #comm-qubits because logical gates using the same 
-#                     #comm-qubit will occur in different time slices or will
-#                     #have been converted to local gates once teleportation
-#                     #or cat-entanglement has already been done
-#                     while True:
-#                         if len(gate_tuple) == 4:
-#                             data_or_tele_qubit_index = gate_tuple[0]
-#                             other_node_name = gate_tuple[1]
-#                             scheme = gate_tuple[2]
-#                             role = gate_tuple[3]
-#                         elif len(gate_tuple) == 3:
-#                             data_or_tele_qubit_index = None
-#                             other_node_name = gate_tuple[0]
-#                             scheme = gate_tuple[1]
-#                             role = gate_tuple[2]
-#                         node_names = [self.node.name, other_node_name]
-#                         node_names.sort()
-#                         classical_comm_port = self.node.ports[
-#                             f"classical_connection_{self.node.name}->"
-#                             f"{other_node_name}"]
-#                         evexpr_or_variables = ( 
-#                             yield from self.protocol_subgenerators[scheme](
-#                                                     role,
-#                                                     program,
-#                                                     other_node_name,
-#                                                     data_or_tele_qubit_index,
-#                                                     classical_comm_port,
-#                                                     comm_qubit_index))
-#                         #past this point evexpr_or_variables will be the
-#                         #variables
-#                         comm_qubit_index = evexpr_or_variables[0]
-#                         program = evexpr_or_variables[1]
-#                         break #breaking inner while loop to allow next 
-#                               #gate_tuple to be evaluated.
-#                 elif type(gate_tuple[-1]) == int: #if local 2-qubit gate
-#                     qubit_index0 = gate_tuple[1]
-#                     qubit_index1 = gate_tuple[2]
-#                     if qubit_index0 == -1:
-#                         qubit_index0 = comm_qubit_index #defined in remote gate
-#                                                         #section above
-#                     self._flexi_program_apply(program, gate_instr,
-#                                               [qubit_index0, qubit_index1],
-#                                               gate_op)
-#             #executing any instructions that have not yet been executed. It is 
-#             #important that the quantum program is always reset after each node
-#             #to avoid waiting infinitely long if there is nothing left to
-#             #execute
-#             yield self.node.qmemory.execute_program(program) 
-#             self.send_signal(Signals.SUCCESS)
-#             break #breaking outermost while loop
-#             #TO DO: add entanglement swapping
-# =============================================================================
 
 class dqcMasterProtocol(Protocol):
     """ Protocol which executes a distributed quantum circuit. 
@@ -881,7 +803,9 @@ class dqcMasterProtocol(Protocol):
                  name=None):
         super().__init__(name)
         self.start_time_slice_label = "START_TIME_SLICE"
+        self.finished_time_slice_label = "FINISHED_TIME_SLICE"
         self.add_signal(self.start_time_slice_label)
+        self.add_signal(self.finished_time_slice_label)
         self.partitioned_gates = partitioned_gates
         self.network = network
         #TO DO: think about whether it would be better to instantiate default
@@ -959,7 +883,7 @@ class dqcMasterProtocol(Protocol):
                         #waiting on subprotocols to complete time slice
                         expr = expr & self.await_signal(
                                         self.subprotocols[f'{qpu_name}_OS'], 
-                                        Signals.SUCCESS)
+                                        self.finished_time_slice_label)
                 yield expr
                 #re-initialising
                 expr = evexpr_dummy 
