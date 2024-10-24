@@ -234,7 +234,6 @@ class QpuOSProtocol(NodeProtocol):
             ma, = program.output["ma"]
             classical_comm_port.tx_output(ma)
             program = QuantumProgram() #resetting
-            print(f'finished _cat_entangle ')
             return program #note that this will only be 
                                                #be returned after all the 
                                                #EventExpressions from the prev.
@@ -274,7 +273,6 @@ class QpuOSProtocol(NodeProtocol):
                                  f'value 0 or 1. The current value, '
                                  f'{meas_result}, does not meet this criteria.'
                                  )
-        print('finished _cat_correct')
         return (comm_qubit_index, program) #note that this will only be 
                                            #be returned after all the 
                                            #EventExpressions from the prev.
@@ -637,11 +635,7 @@ class QpuOSProtocol(NodeProtocol):
         #a while loop in the enclosing scope. One reason to keep it would be
         #to avoid overwriting the program and comm_qubit_index
         while True:
-            #REMOVE INDEX AND ENUMERATE when finished debugging
-            for ii, gate_tuple in enumerate(gate_tuples4time_slice):
-                print(f'gate_tuple is {gate_tuple}. There are '
-                      f'{len(gate_tuples4time_slice) - ii -1} gate tuples left'
-                      f' to evaluate on {self.node.name}')
+            for gate_tuple in gate_tuples4time_slice:
                 gate_instr = gate_tuple[0] 
                 #handling gate types with associated parameters:
                 try: #if gate_instr is iterable:

@@ -263,40 +263,51 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         -------
         None.
 
+        .. todo::
+            
+            Think more on an appropriate wait time.
         """
-        if self.role == 'client':
-            wait_time = 100 #ns
-            self.classical_conn_port.tx_output(self.handshake_ready_label)
-            #await response from server or timeout
-            evexpr = yield (self.await_port_input(self.classical_conn_port) | 
-                            self.await_timer(wait_time))
-            #note: timeout may occur if physical layers signalled at different 
-            #times by their QpuOSProtocol
-            if evexpr.first_term.value:
-                msg, = self.classical_conn_port.rx_input().items
-                if msg == self.handshake_not_ready_label:
+        while True: 
+            if self.role == 'client':
+                #TO DO: think more on an appropriate wait time. Right now I use
+                #the 2-qubit gate time for IonQ Aria (rather arbitrarily)
+                wait_time = 600 * 10**3 #ns
+                self.classical_conn_port.tx_output(self.handshake_ready_label)
+                #await response from server or timeout
+                evexpr = yield (self.await_port_input(self.classical_conn_port) | 
+                                self.await_timer(wait_time))
+                #note: timeout may occur if physical layers signalled at different 
+                #times by their QpuOSProtocol
+                if evexpr.first_term.value:
+                    msg, = self.classical_conn_port.rx_input().items
+                    if msg == self.handshake_not_ready_label:
+                        #resend handshake message
+                        self.classical_conn_port.tx_output(self.handshake_ready_label)
+                    #checking that the correct message has been received and that 
+                    #this message is not erroneously sent here from another 
+                    #protocol:
+                    elif msg == self.handshake_ready_label:
+                        break #break the handshake protocols while loop to 
+                              #allow us to finish handshake
+                    else:
+                        raise ValueError('The message must be a str with value '
+                                         '"ENT_READY_LABEL" or '
+                                         '"ENT_NOT_READY_LABEL". The received '
+                                         'message has value {msg}, which does not '
+                                         'meet the criteria.')
+                elif evexpr.second_term.value:
+                #if timeout occurred:
                     #resend handshake message
                     self.classical_conn_port.tx_output(self.handshake_ready_label)
-                #checking that the correct message has been received and that 
-                #this message is not erroneously sent here from another 
-                #protocol:
-                elif msg != self.handshake_ready_label:
-                    raise ValueError('The message must be a str with value '
-                                     '"ENT_READY_LABEL" or '
-                                     '"ENT_NOT_READY_LABEL". The received '
-                                     'message has value {msg}, which does not '
-                                     'meet the criteria.')
-            elif evexpr.second_term.value:
-            #if timeout occurred:
-                #resend handshake message
-                self.classical_conn_port.tx_output(self.handshake_ready_label)
-        elif self.role == 'server':
-            yield self.await_port_input(self.classical_conn_port)
-            #TO DO: get signal results here to bring in time?
-            if self.ready4ent:
-                self.classical_conn_port.tx_output(self.handshake_ready_label)
-            elif not self.ready4ent:
-                self.classical_con_port.tx_output(self.handshake_not_ready_label)
+            elif self.role == 'server':
+                yield self.await_port_input(self.classical_conn_port)
+                #TO DO: get signal results here to bring in time?
+                if self.ready4ent:
+                    self.classical_conn_port.tx_output(self.handshake_ready_label)
+                elif not self.ready4ent:
+                    self.classical_con_port.tx_output(self.handshake_not_ready_label)
+                break #break the handshake protocols while loop to allow
+                      #us to finish handshake
         #TO DO: add timed release functionality for synchronisation (which
         #is to be used if timed_release parameter is set to True). The time
         #should relate to the expected latency of the classical message. This 
@@ -393,22 +404,24 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         #defining value of read-only deterministic property (see base class)
         self._deterministic = True 
         
-    def one_way_handshake(self):
-        """
-        Implements a one-way version of the handshake protocol.
-        
-        This subgenerator assumes that entanglement is possible and time 
-        synchronisation is not necessary, which is useful for the 
-        detereministic entanglement distribution scheme here.
-        """
-        if self.role == 'client':
-            self.classical_conn_port.tx_output(self.handshake_ready_label)
 # =============================================================================
-#             #await response from server
+#     def one_way_handshake(self):
+#         """
+#         Implements a one-way version of the handshake protocol.
+#         
+#         This subgenerator assumes that entanglement is possible and time 
+#         synchronisation is not necessary, which is useful for the 
+#         detereministic entanglement distribution scheme here.
+#         """
+#         if self.role == 'client':
+#             self.classical_conn_port.tx_output(self.handshake_ready_label)
+# # =============================================================================
+# #             #await response from server
+# #             yield self.await_port_input(self.classical_conn_port)
+# # =============================================================================
+#         elif self.role == 'server':
 #             yield self.await_port_input(self.classical_conn_port)
 # =============================================================================
-        elif self.role == 'server':
-            yield self.await_port_input(self.classical_conn_port)
 
     def handle_quantum_input(self):
         """
