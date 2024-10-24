@@ -217,9 +217,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.comm_qubit_indices = signal_results[2]
         self.num_entanglements2generate = signal_results[3]
         self.entanglement_type2generate = signal_results[4]
+        #the following port is for an extra classical connection used only for 
+        #the handshake (to avoid messages ending up in wrong protocols)
         self.classical_connection_port_name = self.node.connection_port_name(
                                                         self.other_node_name,
-                                                        label="classical")
+                                                        label="extra_classical")
         self.classical_conn_port = self.node.ports[
                                        self.classical_connection_port_name]
         self.entangling_connection_port_name = self.node.connection_port_name(

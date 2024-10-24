@@ -140,6 +140,7 @@ class Test_create_dqc_network(unittest.TestCase):
                                     quantum_topology = None, 
                                     classical_topology = None,
                                     want_classical_2way_link=True,
+                                    want_extra_classical_2way_link=False,
                                     want_entangling_link=False, 
                                     name="linear network") 
         with self.subTest(msg="wrong number of entangling connections"):
@@ -163,7 +164,7 @@ class Test_create_dqc_network(unittest.TestCase):
             self.assertIsInstance(list(network.connections.values())[0],
                                   BlackBoxEntanglingQsourceConnection)
             
-    def test_can_create_entangling_AND_classical_link(self):
+    def test_can_create_entangling_AND_classical_links(self):
         network = create_dqc_network(state4distribution=ks.b00, 
                                      node_list=None, num_qpus=2,
                                     node_distance=2e-3,
@@ -173,7 +174,7 @@ class Test_create_dqc_network(unittest.TestCase):
                                     want_extra_classical_2way_link=False,
                                     want_entangling_link=True, 
                                     name="linear network") 
-        with self.subTest(msg="wrong number of entangling connections"):
+        with self.subTest(msg="wrong number of connections"):
             self.assertEqual(len(network.connections), 2)
         #TO DO: fix code to get this test working.
 

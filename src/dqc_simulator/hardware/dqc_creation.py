@@ -85,6 +85,8 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
     #default values can be accidentally changed by code outwith the function.
     #See https://stackoverflow.com/questions/10676729/why-does-using-arg-none-
     #fix-pythons-mutable-default-argument-issue
+    if want_extra_classical_2way_link is None:
+        want_extra_classical_2way_link = want_classical_2way_link
     if state4distribution is None:
         state4distribution = ks.b00
         
@@ -139,7 +141,7 @@ def create_dqc_network(
                 quantum_topology = None, 
                 classical_topology = None,
                 want_classical_2way_link=True,
-                want_extra_classical_2way_link=True,
+                want_extra_classical_2way_link=None,
                 want_entangling_link=True,
                 create_entangling_link=None,
                 custom_qpu_func=None,
@@ -312,7 +314,8 @@ def create_dqc_network(
             node_1 = network.get_node(f"node_{ii}")
             node_2 = network.get_node(f"node_{ii+1}")
             link_2_qpus(network, node_1, node_2, 
-                        want_classical_2way_link=want_classical_2way_link, 
+                        want_classical_2way_link=want_classical_2way_link,
+                        want_extra_classical_2way_link=want_extra_classical_2way_link,
                         want_entangling_link=want_entangling_link)
     
     network = Network(name)
