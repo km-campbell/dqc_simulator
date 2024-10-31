@@ -87,6 +87,7 @@ class QpuOSProtocol(NodeProtocol):
         #the next attribute is for storing gate tuples for local gates added to
         #a QuantumProgram but not yet evaluated
         self._local_gate_tuples_pending = [] 
+        self._max_num_time_slices = len(self.gate_tuples)
         #The following subgenerators are similar to subprotocols implemented
         #in functional form rather than as classes. Unlike subprotocols (as far
         #as I can tell), the protocol_subgenerators can yield variables
@@ -212,7 +213,9 @@ class QpuOSProtocol(NodeProtocol):
     def _cat_entangle(self, program, other_node_name,
                       data_or_tele_qubit_index, classical_comm_port):
         yield self.node.qmemory.execute_program(program)
-        self._gate_tuples_evaluated[-1].append(self._local_gate_tuples_pending)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
 
         program=QuantumProgram()
         if len(self.node.qmemory.comm_qubits_free) == 0: 
@@ -241,8 +244,10 @@ class QpuOSProtocol(NodeProtocol):
                           output_key="ma")
             #run program to this point
             yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].append(
+            self._gate_tuples_evaluated[-1].extend(
                                                self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
             #comm-qubit is immediately freed by
             #measurement so is not deleted from
             #comm_qubits_free here
@@ -257,7 +262,9 @@ class QpuOSProtocol(NodeProtocol):
         
     def _cat_correct(self, program, other_node_name, classical_comm_port):
         yield self.node.qmemory.execute_program(program)
-        self._gate_tuples_evaluated[-1].append(self._local_gate_tuples_pending)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
         program=QuantumProgram()
         if len(self.node.qmemory.comm_qubits_free) == 0: 
             #if there are NO comm_qubits free:
@@ -303,7 +310,9 @@ class QpuOSProtocol(NodeProtocol):
         program.apply(instr.INSTR_H, comm_qubit_index)
         program.apply(instr.INSTR_MEASURE, comm_qubit_index, output_key="mb")
         yield self.node.qmemory.execute_program(program)
-        self._gate_tuples_evaluated[-1].append(self._local_gate_tuples_pending)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
         meas_result, = program.output["mb"]  
         program = QuantumProgram() #re-initialising
         classical_comm_port.tx_output(meas_result)
@@ -324,8 +333,10 @@ class QpuOSProtocol(NodeProtocol):
             #cat-entanglement step
             program.apply(instr.INSTR_Z, [data_or_tele_qubit_index])
             yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].append(
+            self._gate_tuples_evaluated[-1].extend(
                                                self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
             program = QuantumProgram()
         elif meas_result != 0:
             raise ValueError('Measurement result must be an integer with value'
@@ -337,7 +348,9 @@ class QpuOSProtocol(NodeProtocol):
     def _bsm(self, program, data_or_tele_qubit_index, other_node_name,
              classical_comm_port):
         yield self.node.qmemory.execute_program(program)
-        self._gate_tuples_evaluated[-1].append(self._local_gate_tuples_pending)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
         program=QuantumProgram()
         if len(self.node.qmemory.comm_qubits_free) == 0 :
             #if there are no comm-qubits free:
@@ -381,8 +394,10 @@ class QpuOSProtocol(NodeProtocol):
             program.apply(instr.INSTR_MEASURE, [data_or_tele_qubit_index],
                           output_key = "m2")
             yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].append(
+            self._gate_tuples_evaluated[-1].extend(
                                                self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
             m1, = program.output["m1"]
             m2, = program.output["m2"]
             program = QuantumProgram()
@@ -394,8 +409,10 @@ class QpuOSProtocol(NodeProtocol):
             #measurement result.
             program.apply(instr.INSTR_INIT, data_or_tele_qubit_index)
             yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].append(
+            self._gate_tuples_evaluated[-1].extend(
                                                self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
             program = QuantumProgram()
             classical_comm_port.tx_output((m1, m2))
             if data_or_tele_qubit_index in self.node.qmemory.comm_qubit_positions:
@@ -461,7 +478,9 @@ class QpuOSProtocol(NodeProtocol):
 
         """
         yield self.node.qmemory.execute_program(program)
-        self._gate_tuples_evaluated[-1].append(self._local_gate_tuples_pending)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
         program=QuantumProgram()
         if len(self.node.qmemory.comm_qubits_free) == 0 :
             #if there are no comm-qubits free:
@@ -504,8 +523,10 @@ class QpuOSProtocol(NodeProtocol):
                                                      comm_qubit_index, 
                                                      program)
             yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].append(
+            self._gate_tuples_evaluated[-1].extend(
                                                self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
             program = QuantumProgram()
         return (comm_qubit_index, program)
     
@@ -732,8 +753,10 @@ class QpuOSProtocol(NodeProtocol):
             #is finished to avoid waiting infinitely long if there is nothing 
             #left to execute
             yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].append(
+            self._gate_tuples_evaluated[-1].extend(
                                                self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
             self.send_signal(self.finished_time_slice_label)
             break #breaking outermost while loop
             #TO DO: add entanglement swapping
@@ -755,7 +778,12 @@ class QpuOSProtocol(NodeProtocol):
                         "Evaluation stopped in time slice "
                         f"{index_of_last_time_slice_evaluated} out of "
                         f"{index_of_final_time_slice}. The last gate_tuple to "
-                        f"be evaluated was {last_gate_tuple_evaluated}.")
+                        f"be evaluated was {last_gate_tuple_evaluated}. "
+                        "Overall, the gate evaluated were "
+                        f"{self._gate_tuples_evaluated} and the gate tuples "
+                        f"that SHOULD have been evaluated were "
+                        f"{self.gate_tuples}")
+            
             
             
 
@@ -778,6 +806,11 @@ class QpuOSProtocol(NodeProtocol):
                                     signal_label=self.start_time_slice_label)
             gate_tuples4time_slice = self.gate_tuples[time_slice]
             yield from self._run_time_slice(gate_tuples4time_slice)
+            if time_slice < (self._max_num_time_slices - 1):
+                #synchronise number of time slices in 
+                #self._gate_tuples_evaluated with the number of time slices in 
+                #self._gate_tuples
+                self._gate_tuples_evaluated.append([])
             time_slice = time_slice + 1
 
 class dqcMasterProtocol(Protocol):

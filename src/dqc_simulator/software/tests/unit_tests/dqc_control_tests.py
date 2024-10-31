@@ -66,6 +66,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
         with self.subTest(msg='node_0 in incorrect state'):
@@ -84,6 +85,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
@@ -97,6 +99,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
@@ -113,6 +116,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
@@ -128,6 +132,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         protocol.start()
         ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
         qubit_node_0, = self.node_0.qmemory.pop(2)
         qubit_node_1, = self.node_1.qmemory.pop(2)
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
@@ -187,6 +192,8 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol.start()
         self.assertRaises(UnfinishedQuantumCircuitError, 
                           protocol.check_quantum_circuit_finished)
+        #TO DO: run some more tests on this method to protect against false 
+        #positives
         
         
 #Below is deprecated
