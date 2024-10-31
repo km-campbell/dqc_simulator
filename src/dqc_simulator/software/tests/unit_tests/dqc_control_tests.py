@@ -25,7 +25,8 @@ from dqc_simulator.hardware.quantum_processors import (
                                                 INSTR_ARB_GEN)
 from dqc_simulator.qlib.states import werner_state
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
-from dqc_simulator.software.dqc_control import dqcMasterProtocol
+from dqc_simulator.software.dqc_control import (
+    dqcMasterProtocol, UnfinishedQuantumCircuitError)
 from dqc_simulator.software.physical_layer import ( 
     AbstractCentralSourceEntangleProtocol)
 
@@ -132,7 +133,63 @@ class TestDqcMasterProtocol(unittest.TestCase):
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
                                  ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
-
+        
+    def test_check_quantum_circuit_finished(self):
+        class BrokenDqcMasterProtocolCopy(dqcMasterProtocol):
+            """
+            An exact copy of dqcMasterProtocol except that the run method is 
+            overridden to stop all of the time slices being evaluated. Ie, an 
+            artificial bug has been added.
+            """
+            def run(self):
+                for qpu_name in self.qpu_op_dict:
+                    self.subprotocols[f'{qpu_name}_OS'].start()
+                #initialising dummy event expression 
+                dummy_entity = pydynaa.Entity()
+                evtype_dummy = pydynaa.EventType("dummy_event", "dummy event")
+                evexpr_dummy = pydynaa.EventExpression(
+                    source=dummy_entity, event_type=evtype_dummy)
+                expr = evexpr_dummy
+                dummy_entity._schedule_now(evtype_dummy)
+                
+                #finding max length of dictionary entry
+                longest_list_in_qpu_op_dict = max(self.qpu_op_dict.values(), key=len)
+                #the artificial bug is added in the next line. We apply floor 
+                #division to halve the number of time slices
+                max_num_time_slices = len(longest_list_in_qpu_op_dict)//2
+                while True:
+                    for time_slice in range(max_num_time_slices):
+                        for qpu_name in self.qpu_op_dict:
+                            #if QPU still has instructions to carry out:
+                            if time_slice < len(self.qpu_op_dict[qpu_name]):
+                            #strictly less than because python indexes from 0
+                                #signalling subprotocols to start the next time slice
+                                self.send_signal(self.start_time_slice_label)
+                                #waiting on subprotocols to complete time slice
+                                expr = expr & self.await_signal(
+                                                self.subprotocols[f'{qpu_name}_OS'], 
+                                                self.finished_time_slice_label)
+                        yield expr
+                        #re-initialising
+                        expr = evexpr_dummy 
+                        dummy_entity._schedule_now(evtype_dummy)
+                    break #exiting outer while loop once for loops are done
+        #dummy class is now finished!
+        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+                       (instr.INSTR_INIT, 2, "node_1"),
+                       (instr.INSTR_H, 2, "node_0"),
+                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
+                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
+                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
+        #the above gate_tuples will be split into different time slices by the
+        #compiler, causing the artificial bug to become relevant
+        protocol = BrokenDqcMasterProtocolCopy(gate_tuples, self.network)
+        protocol.start()
+        self.assertRaises(UnfinishedQuantumCircuitError, 
+                          protocol.check_quantum_circuit_finished)
+        
+        
+#Below is deprecated
 # =============================================================================
 # class Test_entangling(unittest.TestCase):
 #     """ 
