@@ -316,7 +316,8 @@ def create_dqc_network(
             link_2_qpus(network, node_1, node_2, 
                         want_classical_2way_link=want_classical_2way_link,
                         want_extra_classical_2way_link=want_extra_classical_2way_link,
-                        want_entangling_link=want_entangling_link)
+                        want_entangling_link=want_entangling_link,
+                        **kwargs4create_entangling_link)
     
     network = Network(name)
 
@@ -342,7 +343,8 @@ def create_dqc_network(
             link_2_qpus(network, node_1, node_2, 
                         want_classical_2way_link=want_classical_2way_link, 
                         want_extra_classical_2way_link=want_entangling_link,
-                        want_entangling_link=want_entangling_link)
+                        want_entangling_link=want_entangling_link,
+                        **kwargs4create_entangling_link)
     else:
         if quantum_topology is not None:
             if (quantum_topology[-1])[1] > (len(network.nodes)-1): 
@@ -363,7 +365,8 @@ def create_dqc_network(
                 link_2_qpus(network, node_a, node_b,
                             want_classical_2way_link=False,
                             want_extra_classical_2way_link=False,
-                            want_entangling_link=True)
+                            want_entangling_link=True,
+                            **kwargs4create_entangling_link)
         if classical_topology is not None: #if classical_topology is not None
             if (classical_topology[-1])[1] > (len(network.nodes)-1): 
             #if index is too large for number of QPUs in network
@@ -383,7 +386,8 @@ def create_dqc_network(
                 link_2_qpus(network, node_a, node_b,
                             want_classical_2way_link=True,
                             want_extra_classical_2way_link=want_extra_classical_2way_link,
-                            want_entangling_link=False)
+                            want_entangling_link=False,
+                            **kwargs4create_entangling_link)
     return network
 
 
