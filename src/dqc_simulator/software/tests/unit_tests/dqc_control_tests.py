@@ -179,7 +179,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                         expr = evexpr_dummy 
                         dummy_entity._schedule_now(evtype_dummy)
                     break #exiting outer while loop once for loops are done
-        #dummy class is now finished!
+        #dummy class definition is now finished!
         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
                        (instr.INSTR_INIT, 2, "node_1"),
                        (instr.INSTR_H, 2, "node_0"),
