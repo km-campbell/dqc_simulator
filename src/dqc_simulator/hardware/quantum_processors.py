@@ -535,3 +535,36 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
                                           (instr.INSTR_CNOT, (0, 1))],
                                           topology=None)
     return qprocessor
+
+
+# =============================================================================
+# def create_qproc4oxford_dqc_proof_of_principle(
+#                                          p_depolar_error_cnot=0,
+#                                          comm_qubit_depolar_rate=0,
+#                                          proc_qubit_depolar_rate=0,
+#                                          single_qubit_gate_time=135 * 10**3,
+#                                          two_qubit_gate_time=600 * 10**3,
+#                                          measurement_time=600 * 10**4, 
+#                                          alpha=1, beta=0,
+#                                          num_positions=20,
+#                                          num_comm_qubits=2):
+#     """
+#     Creates a QPU designed to be compared to those in _[1].
+#     
+#     References
+#     ----------
+#     .. [1] D. Main, P. Drmota, D. P. Nadlinger, E. M. Ainley, A. Agrawal, 
+#         B. C. Nichol, et al., Distributed Quantum Computing across an Optical 
+#         Network Link, arXiv:2407.00835. 
+#     """
+#     cnot_depolar_model = AnalyticalDepolarisationModel(
+#                                 p_error=p_depolar_error_cnot,
+#                                 time_independent=True)
+#     comm_qubit_memory_depolar_model = DepolarNoiseModel(
+#                                          comm_qubit_depolar_rate,
+#                                          time_independent=False)
+#     processing_qubit_memory_depolar_model = DepolarNoiseModel(
+#                                                 proc_qubit_depolar_rate,
+#                                                 time_independent=False)
+#     physical_instructions = [] #FILL THIS LIST IN
+# =============================================================================
