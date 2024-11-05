@@ -222,6 +222,7 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.classical_connection_port_name = self.node.connection_port_name(
                                                         self.other_node_name,
                                                         label="extra_classical")
+        print(f'on {self.node.name} the ports are {self.node.ports}')
         self.classical_conn_port = self.node.ports[
                                        self.classical_connection_port_name]
         self.entangling_connection_port_name = self.node.connection_port_name(
@@ -656,8 +657,6 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
             #comm-qubits
             emit_program.apply(instr.INSTR_INIT, 
                                qubit_indices=self.comm_qubit_indices)
-            #TO DO: decide if photon_positions should be an attribute of the 
-            #qmemory or the node and add the attribute to whichever you decide on
             photon_index = self.node.qmemory.photon_positions[0]
             if len(self.comm_qubit_indices) == 1:
                 comm_qubit_index = self.comm_qubit_indices[0]
@@ -681,6 +680,7 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
     #                           qubit_indices=[comm_qubit_index, photon_index])
     # =============================================================================
             yield self.node.qmemory.excute_program(emit_program)
+            #wait on BSM outcome
             yield self.await_port_input(self.ent_conn_port)
             bsm_outcome, = self.ent_conn_port.rx_input().items
             program = QuantumProgram()
