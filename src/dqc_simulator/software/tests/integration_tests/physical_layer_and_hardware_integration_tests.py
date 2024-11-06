@@ -167,7 +167,7 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
             self.assertRaises(TypeError, _write_deterministic_property,
                               self.node1_protocol)
 
-#UNCOMMENT ABOVE when finished 
+
 class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
                                                         unittest.TestCase):
     def setUp(self):
@@ -263,6 +263,7 @@ class TestMiddleHeraldedConnectionAndMidpointHeraldingProtocol(
         qubit_node1, = self.node1.qmemory.pop(1)
         fidelity = qapi.fidelity([qubit_node0, qubit_node1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
+
 
 if __name__ == '__main__':
     unittest.main()
