@@ -779,7 +779,7 @@ class QpuOSProtocol(NodeProtocol):
                         f"{index_of_last_time_slice_evaluated} out of "
                         f"{index_of_final_time_slice}. The last gate_tuple to "
                         f"be evaluated was {last_gate_tuple_evaluated}. "
-                        "Overall, the gate evaluated were "
+                        "Overall, the gates evaluated were "
                         f"{self._gate_tuples_evaluated} and the gate tuples "
                         f"that SHOULD have been evaluated were "
                         f"{self.gate_tuples}")
