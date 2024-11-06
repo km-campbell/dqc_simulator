@@ -222,7 +222,6 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.classical_connection_port_name = self.node.connection_port_name(
                                                         self.other_node_name,
                                                         label="extra_classical")
-        print(f'on {self.node.name} the ports are {self.node.ports}')
         self.classical_conn_port = self.node.ports[
                                        self.classical_connection_port_name]
         self.entangling_connection_port_name = self.node.connection_port_name(
@@ -679,7 +678,7 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
     #             emit_program.apply(instr.INSTR_EMIT, 
     #                           qubit_indices=[comm_qubit_index, photon_index])
     # =============================================================================
-            yield self.node.qmemory.excute_program(emit_program)
+            yield self.node.qmemory.execute_program(emit_program)
             #wait on BSM outcome
             yield self.await_port_input(self.ent_conn_port)
             bsm_outcome, = self.ent_conn_port.rx_input().items
@@ -704,9 +703,10 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
                     yield self.node.qmemory.execute_program(program)
                     self.classical_conn_port.tx_output(self.ent_ready_label)
                     self.send_signal(self.ent_ready_label)
+                    break
                 elif self.role == 'client':
                     yield self.await_port_input(self.ent_conn_port)
-                    self.sent_signal(self.ent_ready_label)
+                    self.send_signal(self.ent_ready_label)
                     break #breaking the while loop at the start of this method
             else: #if bsm_outcome.success == False:
                 if self._ent_attempt_counter > (self.max_num_ent_attempts- 1):
