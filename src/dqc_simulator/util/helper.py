@@ -69,7 +69,7 @@ def filter_kwargs4internal_functions(funcs_with_kwargs, kwargs):
     funcs_with_kwargs : list or tuple of functions
         The internal functions needing keyword arguments
     kwargs : dict
-        The keyword argument.
+        The keyword arguments.
 
     Returns
     -------
