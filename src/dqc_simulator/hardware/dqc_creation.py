@@ -211,7 +211,7 @@ def create_dqc_network(
         :func: `create_black_box_central_source_entangling_link` is used.
     custom_qpu_func: function or None, optional
         Creates the quantum processor object to use on each node. It must
-        be able to run with no arguments. If unspecified then
+        be able to run with no positional arguments. If unspecified then
         a default noiseless processor will be used
     num_comm_qubits : int, optional
         The number of communication qubit positions on the QPU. Default is 2.  
