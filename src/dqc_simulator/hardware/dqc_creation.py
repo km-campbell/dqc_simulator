@@ -28,13 +28,17 @@ from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
                                        filter_kwargs4internal_functions)
 
 
-def link_2_qpus(network, node_a, node_b, state4distribution=None, 
-                 node_distance=2e-3, ent_dist_rate=0,
+def link_2_qpus(network, node_a, node_b,
+                 node_distance=2e-3,
                  want_classical_2way_link=True,
                  want_extra_classical_2way_link=None, #can make scheduling 
                                                       #easier
                  want_entangling_link=True,
                  create_entangling_link=None,
+                 #kwargs for default entangling link
+                 state4distribution=None, 
+                 ent_dist_rate=0,
+                 #kwargs for non-default entangling_link
                  **kwargs4create_entangling_link):
     """ 
     Sets up a link between two QPUs.
@@ -51,19 +55,11 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
     A network node
     node_b : object created using netsquid.nodes.Node class
     A network node
-    state4distribution : numpy.ndarray 
-        The entangled state distributed between nodes when
-        an EPR pair is requested. Default is |phi^+> Bell state (formalism not
-        fixed to ket)
     create_entangling_link : func, optional
         The function to use in order to create an entangling link. By default,
         :func: `create_black_box_central_source_entangling_link` is used.
     node_distance : float, optional
         Distance between adjacent nodes in km. Used by default value of 
-        `create_entangling_link`. May not be used, if a different
-        `create_entangling_link` function is used.
-    ent_dist_rate : float, optional
-        The rate of entanglement distribution [Hz]. Used by default value of
         `create_entangling_link`. May not be used, if a different
         `create_entangling_link` function is used.
     want_classical_2way_link : bool, optional
@@ -76,6 +72,18 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
         Whether a two-way quantum link should be created between all nodes
         (True) or not (False). Nodes can request entangled pairs using this
         link. 
+    state4distribution : numpy.ndarray 
+        The entangled state distributed between nodes when
+        an EPR pair is requested. Default is |phi^+> Bell state (formalism not
+        fixed to ket). `state4distribution` is used by the default 
+        `create_entangling_link` function and may be ignored if a different 
+        entangling link is used.
+    ent_dist_rate : float, optional
+        The rate of entanglement distribution [Hz]. Used by default value of
+        `create_entangling_link`. May not be used, if a different
+        `create_entangling_link` function is used. `ent_dist_rate` is used by 
+        the default `create_entangling_link` function and may be used be 
+        ignored if a different entangling link is used.
     kwargs4create_entangling_link
         The keyword arguments for the chosen `create_entangling_link` function.
     """
@@ -134,10 +142,7 @@ def link_2_qpus(network, node_a, node_b, state4distribution=None,
 
 def create_dqc_network(
                 *args4qproc,
-                state4distribution=None, #ks.b00 defined in function body
                 node_list=None,
-                num_qpus=2,
-                node_distance=2e-3, ent_dist_rate=0,
                 quantum_topology = None, 
                 classical_topology = None,
                 want_classical_2way_link=True,
@@ -145,11 +150,19 @@ def create_dqc_network(
                 want_entangling_link=True,
                 create_entangling_link=None,
                 custom_qpu_func=None,
+                num_qpus=2,
+                name="linear network",
+                #parameter for default classical AND entangling connection
+                node_distance=2e-3,
+                #parameters for default entangling connection
+                state4distribution=None, #ks.b00 defined in function body
+                ent_dist_rate=0,
+                #parameters for default quantum processor
                 num_comm_qubits=2,
                 p_depolar_error_cnot=0,
                 comm_qubit_depolar_rate=0,
                 proc_qubit_depolar_rate=0,
-                name="linear network",
+                #for any non-default entangling connection or quantum processor
                 **kwargs):
     """
     Creates a network suitable for distributed quantum computing
@@ -168,12 +181,6 @@ def create_dqc_network(
     *args4qproc : 
         The arguments for the custom_qpu_func specified. By default,
         there are none of these.
-    state4distribution : numpy.ndarray 
-        The entangled state distributed between nodes when
-        an EPR pair is requested. Default is |phi^+> Bell state (formalism not
-        fixed to ket). This argument is used by the default 
-        `create_entangling_link` function but may be ignored if another 
-         function is specified using `create_entangling_link`.
     node_list :  list of netsquid.components.nodes.Node objects, optional
         List of nodes to be included in network. Overrides num_qpus if
         specified.
@@ -213,6 +220,18 @@ def create_dqc_network(
         Creates the quantum processor object to use on each node. It must
         be able to run with no positional arguments. If unspecified then
         a default noiseless processor will be used
+    state4distribution : numpy.ndarray 
+        The entangled state distributed between nodes when
+        an EPR pair is requested. Default is |phi^+> Bell state (formalism not
+        fixed to ket). This argument is used by the default 
+        `create_entangling_link` function but may be ignored if another 
+         function is specified using `create_entangling_link`.
+    ent_dist_rate : float, optional
+        The rate of entanglement distribution [Hz]. Used by default value of
+        `create_entangling_link`. May not be used, if a different
+        `create_entangling_link` function is used. `ent_dist_rate` is used by 
+        the default `create_entangling_link` function and may be used be 
+        ignored if a different entangling link is used.
     num_comm_qubits : int, optional
         The number of communication qubit positions on the QPU. Default is 2.  
         This argument is used by the default custom_qpu_func but may be ignored  
