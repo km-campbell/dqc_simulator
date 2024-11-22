@@ -149,10 +149,10 @@ def create_dqc_network(
                 want_classical_2way_link=True,
                 want_extra_classical_2way_link=None,
                 want_entangling_link=True,
-                create_entangling_link=None,
-                custom_qpu_func=None,
                 num_qpus=2,
                 name="linear network",
+                create_entangling_link=None,
+                custom_qpu_func=None,
                 #parameter for default classical AND entangling connection
                 node_distance=2e-3,
                 #parameters for default entangling connection
