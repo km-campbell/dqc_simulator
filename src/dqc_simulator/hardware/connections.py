@@ -169,8 +169,7 @@ class BlackBoxEntanglingQsourceConnection(Connection):
 
 
 def create_black_box_central_source_entangling_link(network, node_a, node_b,
-                                                    state4distribution, 
-                                                    node_distance=2e-3, 
+                                                    state4distribution,
                                                     ent_dist_rate=0):
     """ 
     Sets up an abstract entangling link between QPUs. 
@@ -187,13 +186,8 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
         The entangled state distributed between nodes when
         an EPR pair is requested. Default is |phi^+> Bell state (formalism not
         fixed to ket)
-    node_distance : float, optional
-        Distance between adjacent nodes in km. Default is 2e-3, corresponding 
-        to 2m.
     ent_dist_rate : float, optional
-        The rate of entanglement distribution [Hz]. Default is 0, in which case
-        the node_ditance is used
-        
+        The rate of entanglement distribution [Hz]. The default is 0
     Notes 
     -----
     This abstracts from the details of photon generation by treating flying

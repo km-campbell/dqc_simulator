@@ -92,7 +92,7 @@ class TestAbstractEntanglingConnectionAndAbstractCentralSourceEntangleProtocol(
                                                 self.node0, 
                                                 self.node1,
                                                 state4distribution=ks.b00, 
-                                                node_distance=2e-3)
+                                                ent_dist_rate=182)
         #establishing classical connection
         create_classical_fibre_link(self.network, self.node0, self.node1,
                                     length=2e-3, label='extra_classical')

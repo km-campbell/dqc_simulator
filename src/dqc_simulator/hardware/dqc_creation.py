@@ -157,7 +157,7 @@ def create_dqc_network(
                 node_distance=2e-3,
                 #parameters for default entangling connection
                 state4distribution=None, #ks.b00 defined in function body
-                ent_dist_rate=0,
+                ent_dist_rate=182, #Hz
                 #parameters for default quantum processor
                 num_comm_qubits=2,
                 p_depolar_error_cnot=0,
