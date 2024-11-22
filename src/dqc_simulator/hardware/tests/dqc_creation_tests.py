@@ -531,7 +531,7 @@ class Test_create_dqc_network(unittest.TestCase):
 #                                   nodes_have_ebit_ready=False,
 #                                   node_comm_qubits_free=[0, 1],
 #                                   node_comm_qubit_positions=(0, 1),
-#                                   custom_qprocessor_func=create_noisy_processor,
+#                                   custom_qpu_func=create_noisy_processor,
 #                                   name="noisy_network")
 # =============================================================================
 

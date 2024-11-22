@@ -64,7 +64,7 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                         want_classical_2way_link=True,
                         want_entangling_link=True,
                         num_comm_qubits=2,
-                        custom_qprocessor_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
+                        custom_qpu_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
                         name="linear network")
         protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
                                     compiler_func=sort_greedily_by_node_and_time)
@@ -194,7 +194,7 @@ class Test_can_run_sim_from_qasm_file_with_noise(unittest.TestCase):
                         want_classical_2way_link=True,
                         want_entangling_link=True,
                         num_comm_qubits=2,
-                        custom_qprocessor_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
+                        custom_qpu_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
                         name="linear network")
         protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
                                     compiler_func=sort_greedily_by_node_and_time)

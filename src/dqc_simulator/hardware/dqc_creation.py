@@ -29,12 +29,13 @@ from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
 
 
 def link_2_qpus(network, node_a, node_b,
-                 node_distance=2e-3,
                  want_classical_2way_link=True,
                  want_extra_classical_2way_link=None, #can make scheduling 
                                                       #easier
                  want_entangling_link=True,
                  create_entangling_link=None,
+                 #kwargs for classical links and default entangling link
+                 node_distance=2e-3,
                  #kwargs for default entangling link
                  state4distribution=None, 
                  ent_dist_rate=0,
