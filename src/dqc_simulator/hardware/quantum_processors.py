@@ -108,7 +108,6 @@ class QPU(QuantumProcessor):
         #comm_qubit_positions rather than an alias for it.
         self.comm_qubits_free = list(self.comm_qubit_positions)
         self.ebit_ready = False
-        #TO DO: reimplement processor creation functions using this QPU class
             
     def get_positions_matching_type(self, pos_type):
         """
