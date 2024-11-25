@@ -110,7 +110,7 @@ def link_2_qpus(network, node_a, node_b,
             create_wrapper_with_some_args_fixed(
                 create_black_box_central_source_entangling_link,
                 args2fix,
-                node_distance=node_distance, ent_dist_rate=ent_dist_rate))
+                ent_dist_rate=ent_dist_rate))
     
     if want_classical_2way_link is False and want_entangling_link is False:
         raise ValueError("""At least one of want_classical_2way_link and
