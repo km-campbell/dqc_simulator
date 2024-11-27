@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Tools for partitioning a quantum circuit between QPUs.
+Tools for partitioning a monolithic quantum circuit between QPUs.
 """
 
 import abc
