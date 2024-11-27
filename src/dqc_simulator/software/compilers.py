@@ -557,7 +557,7 @@ def sort_greedily_by_node_and_time(partitioned_gates):
         1) single-qubit gate: (gate_instr, qubit, node_name)
         2) two-qubit gate: (list of instructions or gate_instruction or
                             instruction_tuple if local,
-                            qubit0, node0_name, qubit1, node1_name, scheme)
+                            qubit0, node0_name, qubit1, node1_name, scheme if remote)
                             #can later extend this to multi-qubit gates
                             #keeping scheme as last element
                             list of instructions: list
