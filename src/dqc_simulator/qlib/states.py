@@ -8,8 +8,29 @@
 Extendable library of useful quantum states.
 """
 
+import functools as ft
+
 import netsquid as ns
 from netsquid.qubits import ketstates as ks
+import numpy as np
+
+def get_ghz_state_ket(num_qubits):
+    """
+    Return a ket vector for the n-qubit generalised GHZ state
+
+    Parameters
+    ----------
+    num_qubits : int
+        The number of qubits, n, in the n-qubit generalised GHZ state.
+
+    Returns
+    -------
+    :class: `~numpy.ndarray`
+        The ket vector for an n-qubit genralised GHZ state.
+
+    """
+    return 1/np.sqrt(2) * (ft.reduce(np.kron, [ks.s0] * num_qubits) 
+                           + ft.reduce(np.kron, [ks.s0] * num_qubits))
 
 def werner_state(F):
     """
