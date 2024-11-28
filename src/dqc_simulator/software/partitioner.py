@@ -98,9 +98,13 @@ def first_come_first_served_qubits_to_qpus(gate_tuples, qpu_nodes):
 
     Returns
     -------
-    qpu_old_to_new_index_lookup : dict
+    old_to_new_lookup : dict
         Lookup table from the old qubit indices in the orignal monolithic 
         circuit to the index and QPU name that qubit is assigned to.
+    proc_qubit_allocation4each_qpu : dict
+        The processing qubits that need to be initialised on each QPU. The 
+        keys should be the name of the QPU node and the values should be 
+        lists of indices.
     """
     num_qpu_nodes = len(qpu_nodes)
     #assuming that first thing that is done is to initialise all data qubits
@@ -115,8 +119,9 @@ def first_come_first_served_qubits_to_qpus(gate_tuples, qpu_nodes):
     proc_qubits_per_qpu = total_num_proc_qubits//num_qpu_nodes
     remainder = len(original_qubit_indices) % num_qpu_nodes
     #initialising values to be filled in by loop
-    qpu_old_to_new_index_lookup = {}
+    old_to_new_lookup = {}
     starting_index = 0
+    proc_qubit_allocation4each_qpu = {}
     for qpu_node in qpu_nodes:
         end_index = starting_index + proc_qubits_per_qpu
         if remainder > 0: #if num_qubits/num_qpu has remainder not yet allocated:
@@ -132,9 +137,13 @@ def first_come_first_served_qubits_to_qpus(gate_tuples, qpu_nodes):
                    (qpu_node.qmemory.processing_qubit_positions[0] + ii, 
                     qpu_node.name)
                     for ii in range(end_index - starting_index)}
+        proc_qubit_allocation4each_qpu[qpu_node.name] = [
+            qpu_node.qmemory.processing_qubit_positions[0] + ii
+            for ii in range(end_index - starting_index)]
+        #TO DO: maybe combine above two lines into one for loop
         starting_index = end_index
-        qpu_old_to_new_index_lookup.update(old2new)
-    return qpu_old_to_new_index_lookup
+        old_to_new_lookup.update(old2new)
+    return old_to_new_lookup, proc_qubit_allocation4each_qpu
                 
 
 def network2qpu_nodes(network):
@@ -160,10 +169,11 @@ def network2qpu_nodes(network):
 
 
 #Can potentially convert the following to a function called partition gate 
-#tuples which accepts a function to create the old_to_new_index_lookup as an
+#tuples which accepts a function to create the old_to_new_lookup as an
 #input
 def partition_gate_tuples(gate_tuples, network, scheme, 
-                          qubit2qpu_allocator):
+                          old_to_new_lookup, 
+                          proc_qubit_allocation4each_qpu):
     """
     
 
@@ -180,12 +190,15 @@ def partition_gate_tuples(gate_tuples, network, scheme,
     scheme : str
         The scheme to use for remote gates. Allowed values are 'cat', '1tp',
         '2tp', and 'tp_safe'
-    qubit2qpu_allocator : func
-        A function that returns a lookup table (dict) with the keys being the 
+    old_to_new_lookup : dict of tuples
+        A lookup table with the keys being the 
         old indices from a monolithic quantum circuit and the values being 
         tuples containing the new index and QPU node name that the 
-        corresponding old index is assigned to. An example of such a function 
-        would be `first_come_first_served_qubits_to_qpus`
+        corresponding old index is assigned to.
+    proc_qubit_allocation4each_qpu : dict
+        The processing qubits that need to be initialised on each QPU. The 
+        keys should be the name of the QPU node and the values should be 
+        lists of indices.
 
     Returns
     -------
@@ -224,7 +237,8 @@ def partition_gate_tuples(gate_tuples, network, scheme,
                                     Only needed for remote gates
     """
     
-    def _split_up_initial_init_instruction(gate_tuples, old_to_new_lookup):
+    def _split_up_initial_init_instruction(gate_tuples,
+                                           proc_qubit_allocation4each_qpu):
         """
         Distributes an intialisation instruction at the start of a monolithic quantum
         circuit between differnet QPUs.
@@ -246,32 +260,24 @@ def partition_gate_tuples(gate_tuples, network, scheme,
         """
         if gate_tuples[0][0] is instr.INSTR_INIT and isinstance(gate_tuples[0][1],
                                                                 list):
-            old_indices = gate_tuples[0][1]
-            old_indices.sort()
-            qubits4qpu = {}
-            #get new indices for all processing qubits that need initialisation 
-            #on each QPU
-            for ii in old_indices:
-                new_info = old_to_new_lookup[ii]
-                qubit_index = new_info[0]
-                node_name = new_info[1]
-                if node_name not in qubits4qpu:
-                    qubits4qpu[node_name] = [qubit_index]
-                else:
-                    qubits4qpu[node_name].append(qubit_index)
             #split up the intialisation instruction into an instruction initialisng
             #the relevant qubits on each QPU.
             init_instructions = []
-            for node_name in qubits4qpu:
-                init_instructions.append((instr.INSTR_INIT, qubits4qpu[node_name],
+            for node_name in proc_qubit_allocation4each_qpu:
+                init_instructions.append((instr.INSTR_INIT,
+                                          proc_qubit_allocation4each_qpu[
+                                                                    node_name],
                                           node_name))
+        else:
+            raise ValueError('First gate must be an initialisation. The gate'
+                             f'{gate_tuples[0]} does not do this.')
         return init_instructions
     
     qpu_nodes = network2qpu_nodes(network)
-    old_to_new_lookup = qubit2qpu_allocator(gate_tuples, qpu_nodes)
+    #assuming that the first gate_tuples is an initialisation instruction
     partitioned_init_instructions = _split_up_initial_init_instruction(
                                                            gate_tuples,
-                                                           old_to_new_lookup)
+                                                           proc_qubit_allocation4each_qpu)
     partitioned_gate_tuples = []
     #assuming that the first gate_tuples is an initialisation instruction which
     #was dealt with above
