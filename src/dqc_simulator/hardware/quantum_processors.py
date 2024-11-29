@@ -323,6 +323,9 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
             PhysicalInstruction(instr.INSTR_CNOT, duration=two_qubit_gate_time,
                                 parallel=True, topology=None, 
                                 quantum_noise_model=cnot_depolar_model),
+            PhysicalInstruction(instr.INSTR_CZ, duration=two_qubit_gate_time,
+                                parallel=True, topology=None, 
+                                quantum_noise_model=cnot_depolar_model),
             PhysicalInstruction(INSTR_ARB_GEN(alpha, beta), 
                                 duration=3, parallel=True),
                                                 #duration deliberately negligible
