@@ -432,7 +432,8 @@ def shared_qubit(gate0, gate1):
 def find_consecutive_gate(partitioned_gates, gate, gate_position):
     """
     
-    Finds the next gate to the gate from gateNindex which has shared qubits.
+    Finds the next gate which has shared qubits with the specified `gate`.
+    
     Otherwise, the next gate in partitioned gates may be completely unrelated
     to the gate of interest with no need to maintain their ordering. They 
     may even occur on completely different nodes or pairs of nodes.
@@ -449,9 +450,7 @@ def find_consecutive_gate(partitioned_gates, gate, gate_position):
     Returns
     -------
     nxt_gate : tuple
-        The gate consecutive to the gate of interest (inputted as part of
-        gateNindex)
-
+        The gate consecutive to `gate`.
     """
     #TO DO: replace following with generator for memory efficiency to avoid
     #storing whole sublist
