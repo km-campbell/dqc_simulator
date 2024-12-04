@@ -49,6 +49,12 @@ class QpuOps():
     ops : dict
         The operations to carry out on each QPU in a DQC.
         
+    Notes
+    -----
+    The definitions of cat-comm and TP-comm subroutines work less well for 
+    many QPU systems (rather than 2 QPU systems) and so this is best used for 
+    compiling 2-QPU systems
+        
     """
     
     def __init__(self):
@@ -257,7 +263,6 @@ class QpuOps():
                             
         comm_schemes[scheme]()
         
-
 
 #helper functions:
     
@@ -582,6 +587,11 @@ def sort_greedily_by_node_and_time(partitioned_gates):
                             scheme: str, optional 
                                 Only needed for remote gates
 
+    Notes
+    -----
+    The scheduling here works less well for more than two QPUs and may lead to 
+    errors.
+
     Returns
     -------
     dict 
@@ -633,6 +643,110 @@ def sort_greedily_by_node_and_time(partitioned_gates):
     return qpu_ops.ops
 
 
+def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
+    """
+    Distributes the circuit between QPU nodes and splits into explicit time-slices
+    (rows in output array). Initialisation of qubits must be specified as 
+    an instruction in the partitioned_gates input. Unlike 
+    `sort_greedily_by_node_and_time`, this QPU is designed to avoid 
+    scheduling conflicts when more than 2 QPUs are used. The drawback is that 
+    the latency will be higher because a new time slice is created every time 
+    a remote gate occurs.
+    
+    Parameters
+    ----------
+    partitioned_gates:  list of tuples
+        The gates in the entire circuit. The tuples should be of the form:
+        1) single-qubit gate: (gate_instr, qubit, node_name)
+        2) two-qubit gate: (list of instructions or gate_instruction or
+                            instruction_tuple if local,
+                            qubit0, node0_name, qubit1, node1_name, scheme if remote)
+                            #can later extend this to multi-qubit gates
+                            #keeping scheme as last element
+                            list of instructions: list
+                                list of same form as partitioned_gates containing
+                                the local gates to be conducted as part of the
+                                remote gate. Ie, for remote-cnot this would
+                                contain the cnot (but not the gates used for
+                                 bsm or correction).Note if this is given as
+                                empty list and scheme = "tp" then it will
+                                just do a teleportation
+                            gate_instruction : :class: `~netsquid.components.instructions.Instruction`
+                                The gate instruction for the target gate
+                            instruction_tuple : tuple 
+                                Tuple of form (gate_instruction, op), where
+                                op is the operatution used to perform the 
+                                gate. This form is useful if you want to give
+                                several gates the same
+                                `netsquid.components.qprocessor.PhysicalInstruction`
+                            qubit{ii}: int
+                                The qubit index
+                            node_name: str
+                            The name of the relevant node
+                            scheme: str, optional 
+                                Only needed for remote gates
+
+    Returns
+    -------
+    dict 
+        Dictionary with term for each node which is an list of different 
+        time slices (each time slice is a list within the list)
+    """
+    def _find_all_nodes(partitioned_gates):
+        qpu_node_names = []
+        for gate_tuple in partitioned_gates:
+            for node_name in gate_tuple[2::2]:
+                if node_name not in qpu_node_names:
+                    qpu_node_names.append(node_name)
+        qpu_node_names.sort()
+        return qpu_node_names
+    
+    qpu_ops = QpuOps()
+    qpu_node_names = _find_all_nodes(partitioned_gates)
+
+    for gate_tuple in partitioned_gates:
+        if len(gate_tuple) == 3: #if single-qubit gate:
+            gate_instr = gate_tuple[0]
+            qubit_index = gate_tuple[1]
+            node_name = gate_tuple[2]
+            op = (gate_instr, qubit_index)
+            qpu_ops.add_op(node_name, op)
+        elif len(gate_tuple) > 3: #if multi-qubit gate:
+            qubit_index0 = gate_tuple[1]
+            node0_name = gate_tuple[2]
+            qubit_index1 = gate_tuple[3]
+            node1_name = gate_tuple[4]
+            if node0_name == node1_name: #if local:
+                gate_instr = gate_tuple[0]
+                node_name = node0_name
+                op = (gate_instr, qubit_index0, qubit_index1)
+                qpu_ops.add_op(node_name, op)
+            else: #if remote gate:
+                scheme = gate_tuple[-1]
+                gate_instructions = gate_tuple[0]
+                if (isinstance(gate_instructions, 
+                               ns.components.instructions.IGate)
+                    or isinstance(gate_instructions, tuple)):
+                    #putting into correct form to use the comm-qubit index
+                    #as the control (defers exact index choice to 
+                    #QpuOSProtocol in
+                    #dqc_simulator.software.dqc_control.py):
+                    gate_instructions = [(gate_instructions, -1, qubit_index1)]
+                if node0_name not in qpu_ops.ops: 
+                    qpu_ops.add_empty_node_entry(node0_name)
+                if node1_name not in qpu_ops.ops: 
+                    qpu_ops.add_empty_node_entry(node1_name)
+                    
+                qpu_ops.make_num_time_slices_match(node0_name, node1_name)
+                qpu_ops.apply_remote_gate(scheme, gate_instructions, 
+                                           qubit_index0, qubit_index1, 
+                                           node0_name, node1_name)
+                #the next two lines are the only difference from 
+                #sort_greedily_by_node_and_time.
+                for node_name in qpu_node_names:
+                    qpu_ops.add_time_slice(node_name)
+    qpu_ops.remove_empty_trailing_time_slices()
+    return qpu_ops.ops
 
 
 #I think rather than compiling dqc_circuit you need to pre-process once more 
