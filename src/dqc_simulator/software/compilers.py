@@ -76,11 +76,9 @@ class QpuOps():
         self.ops[node_name][-1] = self.ops[node_name][-1] + ops
 
     def add_op(self, node_name, op):
-        if node_name in self.ops:
-            self.append_op2current_time_slice(node_name, op)
-        else:
+        if node_name not in self.ops:
             self.add_empty_node_entry(node_name)
-            self.append_op2current_time_slice(node_name, op)
+        self.append_op2current_time_slice(node_name, op)
             
     def add_time_slice(self, node_name):
         self.ops[node_name].append([])
