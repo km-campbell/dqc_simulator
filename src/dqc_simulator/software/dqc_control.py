@@ -692,7 +692,7 @@ class QpuOSProtocol(NodeProtocol):
                     #self._gate_tuples_evaluated whenever a program is run,
                     #allowing us to raise error if not all gate tuples are 
                     #evaluated at the end of the sim run.
-                elif type(gate_tuple[-1]) == str: #if primitive for remote gate
+                elif isinstance(gate_tuple[-1], str): #if primitive for remote gate
                     #The remote gates in this block will use different
                     #comm-qubits because logical gates using the same 
                     #comm-qubit will occur in different time slices or will
@@ -734,7 +734,7 @@ class QpuOSProtocol(NodeProtocol):
                         self._gate_tuples_evaluated[-1].append(gate_tuple)
                         break #breaking inner while loop to allow next 
                               #gate_tuple to be evaluated.
-                elif type(gate_tuple[-1]) == int: #if local 2-qubit gate
+                elif isinstance(gate_tuple[-1], int): #if local 2-qubit gate
                     qubit_index0 = gate_tuple[1]
                     qubit_index1 = gate_tuple[2]
                     if qubit_index0 == -1:
