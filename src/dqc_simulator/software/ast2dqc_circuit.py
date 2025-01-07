@@ -42,7 +42,7 @@ from dqc_simulator.software.dqc_circuit import DqcCircuit
 from dqc_simulator.software.qasm2ast import (ASTType, 
                                              QasmParsingElement)
 from dqc_simulator.qlib import gates
-from dqc_simulator.qlib import circuit_identities as macros
+from dqc_simulator.qlib import macros4parsing as macros
 
 
     
