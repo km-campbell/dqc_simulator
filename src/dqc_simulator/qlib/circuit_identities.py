@@ -79,5 +79,50 @@ def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1,
                 sub_ops[ii] = (*element, scheme)
     return sub_ops
 
+#stabiliser circuits
+#-------------------
 
+def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
+    """
+    Specifies circuit for single stabiliser measurement using one ancilla 
+    qubit.
+
+    Parameters
+    ----------
+    qubits2check : list or tuple of int
+        The qubits (specified by their indices_ to apply the (non-destructive) 
+        stabiliser measurement to. 
+    ancilla_to_use : int
+        The qubit (index) to use as an ancilla.
+    stabiliser_type : str
+        Whether to apply an 'x' or a 'z' stabiliser measurement. Allowed values
+        are 'x' or 'X' and 'z' or 'Z'
+
+    Returns
+    -------
+    gate_tuples : list of tuples
+        The circuit specification for the stabiliser measurement.
+    """
+    #in next line 'mono_qc' is placeholder for a node name and can be replaced
+    #later
+    cnots = [(instr.INSTR_CNOT, qubit_index, 'mono_qc', ancilla_to_use, 
+              'mono_qc') for qubit_index in qubits2check]
+    if (stabiliser_type == 'x') or (stabiliser_type == 'X'):
+        #TO DO: decide whether to use hadamard then z measurement or 
+        #INSTR_MEASURE_X in the following. Both are equivalent but when declaring
+        #physical errors in the quantum processor you need to ensure that the 
+        #instruction is defined. You also don't want to have the duration of a 
+        #physical hadamard gate if such a gate is not done.
+# =============================================================================
+#         measurement = [(instr.INSTR_MEASURE_X, ancilla_to_use, 'mono_qc')]
+# =============================================================================
+        measurement = [(instr.INSTR_H, ancilla_to_use, 'mono_qc'),
+                       (instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc')]
+    elif (stabiliser_type == 'z') or (stabiliser_type == 'Z'):
+        measurement = [(instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc')]
+    else:
+        raise ValueError(f'{stabiliser_type} is not an allowed value of '
+                         'stabiliser_type. Allowed values are: "x", "X", "z", '
+                         'or "Z". ')
+    return cnots + measurement 
 
