@@ -107,6 +107,8 @@ def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
     #later
     cnots = [(instr.INSTR_CNOT, qubit_index, 'mono_qc', ancilla_to_use, 
               'mono_qc') for qubit_index in qubits2check]
+    #TO DO: replace measurements in the following with a special measurement 
+    #whose output is saved in a data collector.
     if (stabiliser_type == 'x') or (stabiliser_type == 'X'):
         #TO DO: decide whether to use hadamard then z measurement or 
         #INSTR_MEASURE_X in the following. Both are equivalent but when declaring
