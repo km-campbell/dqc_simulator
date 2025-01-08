@@ -272,4 +272,5 @@ def get_data_collector_for_mid_sim_instr_output():
         return {'result' : result}
     
     dc = DataCollector(collect_instruction_output)
-    dc.collect_on(pydynaa.EventExpression(event_type=QDCSignals.RESULT_PRODUCED))
+    dc.collect_on(pydynaa.EventExpression(event_type=QDCSignals.RESULT_PRODUCED.value))
+    return dc
