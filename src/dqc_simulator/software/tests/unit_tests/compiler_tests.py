@@ -80,6 +80,13 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
                                        (instr.INSTR_CNOT, -1, 4)]]}
         self.assertEqual(updated_node_op_dict, expected_output)
         
+    def test_can_handle_single_qubit_subroutine(self):
+        partitioned_gates = [(instr.INSTR_INIT, 2, 'node_0'),
+                             (instr.INSTR_MEASURE, 2, 'node_0', 'logging')]
+        updated_node_op_dict = self.compiler(partitioned_gates)
+        expected_output = {'node_0' : [[(instr.INSTR_INIT, 2),
+                                        (instr.INSTR_MEASURE, 2, 'logging')]]}
+        self.assertEqual(updated_node_op_dict, expected_output)
     
 # =============================================================================
 #     def test_can_add_tp_safe_cx(self):
