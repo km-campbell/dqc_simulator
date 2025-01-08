@@ -240,14 +240,14 @@ def get_data_collector4dm(master_protocol, qubit_indices_2b_checked,
     return dc
 
 
-class UsefulEventTypes(Enum):
+class UsefulEventTypes():
     #TO DO: consider removing this class and replacing with QDCSignals
     RESULT_PRODUCED = pydynaa.EventType('result_produced',
                                         'result of instruction '
                                         'produced and ready to be '
                                         'logged.')
 
-class UsefulEventExpressions(Enum):
+class UsefulEventExpressions():
     #creating pydynaa.core.EventExpression that will trigger data 
     #collection for the results of an instruction.
     RESULT_PRODUCED = pydynaa.EventExpression(
@@ -278,12 +278,10 @@ def get_data_collector_for_mid_sim_instr_output():
         measurement result from a measurement instruction).
     """
     def collect_instruction_output(evexpr):
+        #TO DO: change the following to be useful to me.
         protocol = evexpr.triggered_events[-1].source
-        mem_pos = protocol.get_signal_result(Signals.SUCCESS)
-        qubit, = protocol.node.qmemory.pop(mem_pos)
-        fidelity = qapi.fidelity(qubit, ns.y0, squared=True)
-        qapi.discard(qubit)
-        return {"fidelity": fidelity}
+        result = protocol.get_signal_result(QDCSignals.RESULT_PRODUCED)
+        return result
     
     dc = DataCollector(collect_instruction_output)
     dc.collect_on(UsefulEventExpressions.RESULT_PRODUCED)
