@@ -544,9 +544,22 @@ def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
 # #TO DO (longer term): generalise aggregate_comms to work with node-node pairs as well
 # =============================================================================
 
-#compilers
+def _find_all_nodes(partitioned_gates):
+    qpu_node_names = []
+    for gate_tuple in partitioned_gates:
+        for node_name in gate_tuple[2::2]:
+            if node_name not in qpu_node_names:
+                qpu_node_names.append(node_name)
+    qpu_node_names.sort()
+    return qpu_node_names
 
-def sort_greedily_by_node_and_time(partitioned_gates):
+
+#compilers
+#---------
+
+
+def sort_greedily_by_node_and_time(partitioned_gates, 
+                                   new_time_slice4each_remote_gate=False):
     """
     Distributes the circuit between nodes and splits into explicit time-slices
     (rows in output array). Initialisation of qubits must be specified as 
@@ -605,7 +618,9 @@ def sort_greedily_by_node_and_time(partitioned_gates):
             node_name = gate_tuple[2]
             op = (gate_instr, qubit_index)
             qpu_ops.add_op(node_name, op)
-        elif len(gate_tuple) == 4: #if single-qubit_subroutine:
+        elif len(gate_tuple) == 4: #if single-qubit_subroutine (gate with some 
+                                   #additional behaviour, eg measurement with
+                                   #result saved):
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
@@ -643,7 +658,12 @@ def sort_greedily_by_node_and_time(partitioned_gates):
                                            qubit_index0, qubit_index1, 
                                            node0_name, node1_name)
                 #Time slices are added in the above line as part of the QpuOps
-                #methods corresponding to specific remote gate schemes
+                #methods corresponding to specific remote gate schemes.
+                
+                if new_time_slice4each_remote_gate:
+                    qpu_node_names = _find_all_nodes(partitioned_gates)
+                    for node_name in qpu_node_names:
+                        qpu_ops.add_time_slice(node_name)
     qpu_ops.remove_empty_trailing_time_slices()
     return qpu_ops.ops
 
@@ -716,14 +736,14 @@ def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
             node_name = gate_tuple[2]
             op = (gate_instr, qubit_index)
             qpu_ops.add_op(node_name, op)
-        elif len(gate_tuple) == 4: #if single-qubit subroutine (gate with some 
-                                   #additional behaviour, eg logging result of 
-                                   #measurement):
+        elif len(gate_tuple) == 4: #if single-qubit_subroutine (gate with some 
+                                   #additional behaviour, eg measurement with
+                                   #result saved):
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
-            additional_behaviour = gate_tuple[3]
-            op = (gate_instr, qubit_index, additional_behaviour)
+            subroutine_type = gate_tuple[3]
+            op = (gate_instr, qubit_index, subroutine_type)
             qpu_ops.add_op(node_name, op)
         elif len(gate_tuple) > 4: #if multi-qubit gate:
             qubit_index0 = gate_tuple[1]
