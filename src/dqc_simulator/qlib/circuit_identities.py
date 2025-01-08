@@ -107,8 +107,6 @@ def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
     #later
     cnots = [(instr.INSTR_CNOT, qubit_index, 'mono_qc', ancilla_to_use, 
               'mono_qc') for qubit_index in qubits2check]
-    #TO DO: replace measurements in the following with a special measurement 
-    #whose output is saved in a data collector.
     if (stabiliser_type == 'x') or (stabiliser_type == 'X'):
         #TO DO: decide whether to use hadamard then z measurement or 
         #INSTR_MEASURE_X in the following. Both are equivalent but when declaring
@@ -119,12 +117,14 @@ def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
 #         measurement = [(instr.INSTR_MEASURE_X, ancilla_to_use, 'mono_qc')]
 # =============================================================================
         measurement = [(instr.INSTR_H, ancilla_to_use, 'mono_qc'),
-                       (instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc')]
+                       (instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc',
+                        'logging')]
     elif (stabiliser_type == 'z') or (stabiliser_type == 'Z'):
-        measurement = [(instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc')]
+        measurement = [(instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc',
+                        'logging')]
     else:
         raise ValueError(f'{stabiliser_type} is not an allowed value of '
                          'stabiliser_type. Allowed values are: "x", "X", "z", '
                          'or "Z". ')
     return cnots + measurement 
-
+    #TO DO: make sure that logging command works in other parts of sim.
