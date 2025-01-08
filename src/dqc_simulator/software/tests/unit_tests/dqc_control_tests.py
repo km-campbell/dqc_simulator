@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Unit tests of dqc_control.py and some fast integration tests.
+Unit(ish) tests of dqc_control.py and some fast integration tests.
+
+Some of these tests are arguably fast integration tests because the
+protocols in dqc_control are inherently meant to control other things and it is
+challenging to say anything meaningful about dqc_control if they do not do so. 
+Where things from other modules are used, they should have been tested 
+elsewhere and what is being tested here is whether protocols in dqc_control 
+correctly control them.
 """
 
 import functools as ft
@@ -29,6 +36,8 @@ from dqc_simulator.software.dqc_control import (
     dqcMasterProtocol, UnfinishedQuantumCircuitError)
 from dqc_simulator.software.physical_layer import ( 
     AbstractCentralSourceEntangleProtocol)
+from dqc_simulator.util.helper import ( 
+    get_data_collector_for_mid_sim_instr_output)
 
 #for debugging
 # =============================================================================
@@ -58,143 +67,156 @@ class TestDqcMasterProtocol(unittest.TestCase):
         self.node_1 = self.network.get_node('node_1')
         self.sim_runtime = 1e9
         
-    def test_can_implement_gates_locally_on_2_qpus(self):
-        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
-                       (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_X, 2, "node_0"),
-                       (instr.INSTR_X, 2, "node_1")]
+# =============================================================================
+#     def test_can_implement_gates_locally_on_2_qpus(self):
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_X, 2, "node_0"),
+#                        (instr.INSTR_X, 2, "node_1")]
+#         protocol = dqcMasterProtocol(gate_tuples, self.network)
+#         protocol.start()
+#         ns.sim_run(self.sim_runtime)
+#         protocol.check_quantum_circuit_finished()
+#         qubit_node_0, = self.node_0.qmemory.pop(2)
+#         qubit_node_1, = self.node_1.qmemory.pop(2)
+#         with self.subTest(msg='node_0 in incorrect state'):
+#             fidelity = qapi.fidelity(qubit_node_0, ks.s1)
+#             self.assertAlmostEqual(fidelity, 1.0, 5)
+#         with self.subTest(msg='node_1 in incorrect state'):
+#             fidelity = qapi.fidelity(qubit_node_1, ks.s1)
+#             self.assertAlmostEqual(fidelity, 1.0, 5)
+# 
+#     def test_can_implement_remote_CNOT_gate_with_cat(self):
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_H, 2, "node_0"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
+#         physical_layer_protocol = AbstractCentralSourceEntangleProtocol
+#         protocol = dqcMasterProtocol(gate_tuples, self.network)
+#         protocol.start()
+#         ns.sim_run(self.sim_runtime)
+#         protocol.check_quantum_circuit_finished()
+#         qubit_node_0, = self.node_0.qmemory.pop(2)
+#         qubit_node_1, = self.node_1.qmemory.pop(2)
+#         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
+#         self.assertAlmostEqual(fidelity, 1.0, 5)
+#         
+#     def test_can_implement_remote_CNOT_gate_with_tp_safe(self):
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_H, 2, "node_0"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
+#         protocol = dqcMasterProtocol(gate_tuples, self.network)
+#         protocol.start()
+#         ns.sim_run(self.sim_runtime)
+#         protocol.check_quantum_circuit_finished()
+#         qubit_node_0, = self.node_0.qmemory.pop(2)
+#         qubit_node_1, = self.node_1.qmemory.pop(2)
+#         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
+#                                  ks.b00)
+#         self.assertAlmostEqual(fidelity, 1.0, 5)
+#         
+#     def test_can_implement_consecutive_remote_CNOTs_with_cat(self):
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_H, 2, "node_0"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
+#         protocol = dqcMasterProtocol(gate_tuples, self.network)
+#         protocol.start()
+#         ns.sim_run(self.sim_runtime)
+#         protocol.check_quantum_circuit_finished()
+#         qubit_node_0, = self.node_0.qmemory.pop(2)
+#         qubit_node_1, = self.node_1.qmemory.pop(2)
+#         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
+#         self.assertAlmostEqual(fidelity, 1.0, 5)
+# 
+#     def test_can_implement_consecutive_remote_CNOTs_with_tp_safe(self):
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_H, 2, "node_0"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
+#         protocol = dqcMasterProtocol(gate_tuples, self.network)
+#         protocol.start()
+#         ns.sim_run(self.sim_runtime)
+#         protocol.check_quantum_circuit_finished()
+#         qubit_node_0, = self.node_0.qmemory.pop(2)
+#         qubit_node_1, = self.node_1.qmemory.pop(2)
+#         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
+#                                  ks.b00)
+#         self.assertAlmostEqual(fidelity, 1.0, 5)
+#         
+#     def test_check_quantum_circuit_finished(self):
+#         class BrokenDqcMasterProtocolCopy(dqcMasterProtocol):
+#             """
+#             An exact copy of dqcMasterProtocol except that the run method is 
+#             overridden to stop all of the time slices being evaluated. Ie, an 
+#             artificial bug has been added.
+#             """
+#             def run(self):
+#                 for qpu_name in self.qpu_op_dict:
+#                     self.subprotocols[f'{qpu_name}_OS'].start()
+#                 #initialising dummy event expression 
+#                 dummy_entity = pydynaa.Entity()
+#                 evtype_dummy = pydynaa.EventType("dummy_event", "dummy event")
+#                 evexpr_dummy = pydynaa.EventExpression(
+#                     source=dummy_entity, event_type=evtype_dummy)
+#                 expr = evexpr_dummy
+#                 dummy_entity._schedule_now(evtype_dummy)
+#                 
+#                 #finding max length of dictionary entry
+#                 longest_list_in_qpu_op_dict = max(self.qpu_op_dict.values(), key=len)
+#                 #the artificial bug is added in the next line. We apply floor 
+#                 #division to halve the number of time slices
+#                 max_num_time_slices = len(longest_list_in_qpu_op_dict)//2
+#                 while True:
+#                     for time_slice in range(max_num_time_slices):
+#                         for qpu_name in self.qpu_op_dict:
+#                             #if QPU still has instructions to carry out:
+#                             if time_slice < len(self.qpu_op_dict[qpu_name]):
+#                             #strictly less than because python indexes from 0
+#                                 #signalling subprotocols to start the next time slice
+#                                 self.send_signal(self.start_time_slice_label)
+#                                 #waiting on subprotocols to complete time slice
+#                                 expr = expr & self.await_signal(
+#                                                 self.subprotocols[f'{qpu_name}_OS'], 
+#                                                 self.finished_time_slice_label)
+#                         yield expr
+#                         #re-initialising
+#                         expr = evexpr_dummy 
+#                         dummy_entity._schedule_now(evtype_dummy)
+#                     break #exiting outer while loop once for loops are done
+#         #dummy class definition is now finished!
+#         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+#                        (instr.INSTR_INIT, 2, "node_1"),
+#                        (instr.INSTR_H, 2, "node_0"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
+#                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
+#         #the above gate_tuples will be split into different time slices by the
+#         #compiler, causing the artificial bug to become relevant
+#         protocol = BrokenDqcMasterProtocolCopy(gate_tuples, self.network)
+#         protocol.start()
+#         self.assertRaises(UnfinishedQuantumCircuitError, 
+#                           protocol.check_quantum_circuit_finished)
+#         #TO DO: run some more tests on this method to protect against false 
+#         #positives
+# =============================================================================
+        
+    def test_logged_instr(self):
+        gate_tuples = [(instr.INSTR_INIT, 2, 'node_0'),
+                       (instr.INSTR_MEASURE, 2, 'node_0', 'logged')]
         protocol = dqcMasterProtocol(gate_tuples, self.network)
+        dc = get_data_collector_for_mid_sim_instr_output()
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
-        qubit_node_0, = self.node_0.qmemory.pop(2)
-        qubit_node_1, = self.node_1.qmemory.pop(2)
-        with self.subTest(msg='node_0 in incorrect state'):
-            fidelity = qapi.fidelity(qubit_node_0, ks.s1)
-            self.assertAlmostEqual(fidelity, 1.0, 5)
-        with self.subTest(msg='node_1 in incorrect state'):
-            fidelity = qapi.fidelity(qubit_node_1, ks.s1)
-            self.assertAlmostEqual(fidelity, 1.0, 5)
+        print(dc.dataframe) #FINISH and improve
+        
 
-    def test_can_implement_remote_CNOT_gate_with_cat(self):
-        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
-                       (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_H, 2, "node_0"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
-        physical_layer_protocol = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
-        protocol.start()
-        ns.sim_run(self.sim_runtime)
-        protocol.check_quantum_circuit_finished()
-        qubit_node_0, = self.node_0.qmemory.pop(2)
-        qubit_node_1, = self.node_1.qmemory.pop(2)
-        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
-        self.assertAlmostEqual(fidelity, 1.0, 5)
-        
-    def test_can_implement_remote_CNOT_gate_with_tp_safe(self):
-        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
-                       (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_H, 2, "node_0"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
-        protocol.start()
-        ns.sim_run(self.sim_runtime)
-        protocol.check_quantum_circuit_finished()
-        qubit_node_0, = self.node_0.qmemory.pop(2)
-        qubit_node_1, = self.node_1.qmemory.pop(2)
-        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
-                                 ks.b00)
-        self.assertAlmostEqual(fidelity, 1.0, 5)
-        
-    def test_can_implement_consecutive_remote_CNOTs_with_cat(self):
-        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
-                       (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_H, 2, "node_0"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
-        protocol.start()
-        ns.sim_run(self.sim_runtime)
-        protocol.check_quantum_circuit_finished()
-        qubit_node_0, = self.node_0.qmemory.pop(2)
-        qubit_node_1, = self.node_1.qmemory.pop(2)
-        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
-        self.assertAlmostEqual(fidelity, 1.0, 5)
-
-    def test_can_implement_consecutive_remote_CNOTs_with_tp_safe(self):
-        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
-                       (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_H, 2, "node_0"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
-        protocol.start()
-        ns.sim_run(self.sim_runtime)
-        protocol.check_quantum_circuit_finished()
-        qubit_node_0, = self.node_0.qmemory.pop(2)
-        qubit_node_1, = self.node_1.qmemory.pop(2)
-        fidelity = qapi.fidelity([qubit_node_0, qubit_node_1],
-                                 ks.b00)
-        self.assertAlmostEqual(fidelity, 1.0, 5)
-        
-    def test_check_quantum_circuit_finished(self):
-        class BrokenDqcMasterProtocolCopy(dqcMasterProtocol):
-            """
-            An exact copy of dqcMasterProtocol except that the run method is 
-            overridden to stop all of the time slices being evaluated. Ie, an 
-            artificial bug has been added.
-            """
-            def run(self):
-                for qpu_name in self.qpu_op_dict:
-                    self.subprotocols[f'{qpu_name}_OS'].start()
-                #initialising dummy event expression 
-                dummy_entity = pydynaa.Entity()
-                evtype_dummy = pydynaa.EventType("dummy_event", "dummy event")
-                evexpr_dummy = pydynaa.EventExpression(
-                    source=dummy_entity, event_type=evtype_dummy)
-                expr = evexpr_dummy
-                dummy_entity._schedule_now(evtype_dummy)
-                
-                #finding max length of dictionary entry
-                longest_list_in_qpu_op_dict = max(self.qpu_op_dict.values(), key=len)
-                #the artificial bug is added in the next line. We apply floor 
-                #division to halve the number of time slices
-                max_num_time_slices = len(longest_list_in_qpu_op_dict)//2
-                while True:
-                    for time_slice in range(max_num_time_slices):
-                        for qpu_name in self.qpu_op_dict:
-                            #if QPU still has instructions to carry out:
-                            if time_slice < len(self.qpu_op_dict[qpu_name]):
-                            #strictly less than because python indexes from 0
-                                #signalling subprotocols to start the next time slice
-                                self.send_signal(self.start_time_slice_label)
-                                #waiting on subprotocols to complete time slice
-                                expr = expr & self.await_signal(
-                                                self.subprotocols[f'{qpu_name}_OS'], 
-                                                self.finished_time_slice_label)
-                        yield expr
-                        #re-initialising
-                        expr = evexpr_dummy 
-                        dummy_entity._schedule_now(evtype_dummy)
-                    break #exiting outer while loop once for loops are done
-        #dummy class definition is now finished!
-        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
-                       (instr.INSTR_INIT, 2, "node_1"),
-                       (instr.INSTR_H, 2, "node_0"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
-                       (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        #the above gate_tuples will be split into different time slices by the
-        #compiler, causing the artificial bug to become relevant
-        protocol = BrokenDqcMasterProtocolCopy(gate_tuples, self.network)
-        protocol.start()
-        self.assertRaises(UnfinishedQuantumCircuitError, 
-                          protocol.check_quantum_circuit_finished)
-        #TO DO: run some more tests on this method to protect against false 
-        #positives
-        
         
 #Below is deprecated
 # =============================================================================

@@ -18,7 +18,7 @@ from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.physical_layer import (
                                     Base4PhysicalLayerProtocol, 
                                     AbstractCentralSourceEntangleProtocol)
-from dqc_simulator.util.helper import UsefulEventExpressions
+from dqc_simulator.util.helper import QDCSignals
 
 
 class UnfinishedQuantumCircuitError(Exception):
@@ -106,6 +106,7 @@ class QpuOSProtocol(NodeProtocol):
         self.add_signal(self.ent_failed_label)
         self.add_signal(self.start_time_slice_label)
         self.add_signal(self.finished_time_slice_label)
+        self.add_signal(QDCSignals.RESULT_PRODUCED)
         
     def add_phys_layer(self, physical_layer_protocol):
         """
@@ -670,7 +671,7 @@ class QpuOSProtocol(NodeProtocol):
                 " role")
         return (comm_qubit_index, program)
     
-    def _logged_instr(self, program, gate_instr, qubit_index):
+    def _logged_instr(self, program, gate_instr, qubit_index, gate_op):
         """
         Subgenerator that carries out a single-qubit subroutine in which a 
         single-qubit gate is conducted and the result logged.
@@ -692,6 +693,7 @@ class QpuOSProtocol(NodeProtocol):
             These allow the sim to wait on Events to happen.
         
         """
+        print('entered logged instruction')
         yield self.node.qmemory.execute_program(program)
         self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
         #re-initialising self._local_gate_tuples_pending
@@ -701,21 +703,7 @@ class QpuOSProtocol(NodeProtocol):
                                   output_key='result')
         yield self.node.qmemory.execute_program(program)
         result, = program.output['result']
-        #TO DO: convert the following to be in terms of signals or something 
-        #more future proofed. _schedule_now is not intended to be used by a 
-        #user. Should ideally use methods of Protocol or NodeProtocol
-        dummy_entity = pydynaa.Entity()
-        dummy_entity._schedule_now(UsefulEventTypes.RESULT_PRODUCED)
-# =============================================================================
-#         #creating pydynaa.core.EventExpression that will trigger data 
-#         #collection for the results of an instruction.
-#         result_produced_event = pydynaa.EventType('result_produced',
-#                                                   'result of instruction '
-#                                                   'produced and ready to be '
-#                                                   'logged.')
-#         result_produced_evexpr = pydynaa.EventExpression(
-#                                      event_type=result_produced_event)
-# =============================================================================
+        self.send_signal(QDCSignals.RESULT_PRODUCED, result=result)
 
     def _run_time_slice(self, gate_tuples4time_slice):
         #intialising variables that should be overwritten later but are needed
@@ -752,18 +740,24 @@ class QpuOSProtocol(NodeProtocol):
                     #have been converted to local gates once teleportation
                     #or cat-entanglement has already been done
                     while True:
+                        print(gate_tuple)
                         if len(gate_tuple) == 4:
                             data_or_tele_qubit_index = gate_tuple[0]
                             other_node_name = gate_tuple[1]
                             scheme = gate_tuple[2]
                             role = gate_tuple[3]
+                        #TO DO: fix the following to handle typos in the 
+                        #string much better. Right now a typo allows the 
+                        #gate tuple to enter the wrong if statement and 
+                        #crashes the kernel.
                         elif (gate_tuple[-1] == 'logged' and
                               len(gate_tuple) == 3):
-                        #if logged instruction (most likely measurement):
-                            #TO DO: FINISH THIS BLOCK
-                            
-                            yield from self._logged_instr(gate_instr,
-                                                          #FINISH)
+                        #if logged instruction (most likely measurement whose 
+                        #result needs saved):
+                            yield from self._logged_instr(program,
+                                                          gate_instr,
+                                                          qubit_index,
+                                                          gate_op)
                             #keeping track of what gate tuples have been evaluated 
                             #to raise error if not all evaluated at end of sim
                             self._gate_tuples_evaluated[-1].append(gate_tuple)
