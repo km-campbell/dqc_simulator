@@ -709,7 +709,16 @@ def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
             node_name = gate_tuple[2]
             op = (gate_instr, qubit_index)
             qpu_ops.add_op(node_name, op)
-        elif len(gate_tuple) > 3: #if multi-qubit gate:
+        elif len(gate_tuple) == 4: #if single-qubit subroutine (gate with some 
+                                   #additional behaviour, eg logging result of 
+                                   #measurement):
+            gate_instr = gate_tuple[0]
+            qubit_index = gate_tuple[1]
+            node_name = gate_tuple[2]
+            additional_behaviour = gate_tuple[3]
+            op = (gate_instr, qubit_index, additional_behaviour)
+            qpu_ops.add_op(node_name, op)
+        elif len(gate_tuple) > 4: #if multi-qubit gate:
             qubit_index0 = gate_tuple[1]
             node0_name = gate_tuple[2]
             qubit_index1 = gate_tuple[3]
