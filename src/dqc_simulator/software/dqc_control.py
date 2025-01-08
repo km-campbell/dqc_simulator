@@ -18,6 +18,7 @@ from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
 from dqc_simulator.software.physical_layer import (
                                     Base4PhysicalLayerProtocol, 
                                     AbstractCentralSourceEntangleProtocol)
+from dqc_simulator.util.helper import UsefulEventExpressions
 
 
 class UnfinishedQuantumCircuitError(Exception):
@@ -120,7 +121,7 @@ class QpuOSProtocol(NodeProtocol):
                              name='physical_layer_protocol')
 
     def _flexi_program_apply(self, qprogram, gate_instr, qubit_indices, 
-                             gate_op):
+                             gate_op, output_key='last'):
         """
         Handles the possibility gate_op is not defined in the gate instruction.
 
@@ -144,6 +145,9 @@ class QpuOSProtocol(NodeProtocol):
             The indices of the qubits to act the instruction on.
         gate_op : instance of netsquid.qubits.operators.Operator
             The operator used to apply the quantum gate.
+        output_key : str, optional
+            Dictionary key to store instruction output with. Default
+            is to store all output using the key last.
             
         .. todo::
             
@@ -151,9 +155,10 @@ class QpuOSProtocol(NodeProtocol):
             successful in _request_entanglement method (see comment there)
         """
         if gate_op is None:
-            qprogram.apply(gate_instr, qubit_indices)
+            qprogram.apply(gate_instr, qubit_indices, output_key=output_key)
         else:
-            qprogram.apply(gate_instr, qubit_indices, operator=gate_op)
+            qprogram.apply(gate_instr, qubit_indices, operator=gate_op,
+                           output_key=output_key)
             
     def _request_entanglement(self, role, other_node_name, comm_qubit_indices,
                               num_entanglements2generate=1,
@@ -664,6 +669,53 @@ class QpuOSProtocol(NodeProtocol):
                 "final element of gate_tuple is not valid"
                 " role")
         return (comm_qubit_index, program)
+    
+    def _logged_instr(self, program, gate_instr, qubit_index):
+        """
+        Subgenerator that carries out a single-qubit subroutine in which a 
+        single-qubit gate is conducted and the result logged.
+        
+        This is most likely to be used for a measurements of some type (ie, the
+        single-qubit gate is a measurement in some basis).
+
+        Parameters
+        ----------
+        gate_instr : `~netsquid.components.instructions.Instruction`
+            The single-qubit gate to carry out a logged version of. In most 
+            cases this will be measurement in some basis.
+        qubit_index : int
+            The qubit to act on.
+        
+        Yields
+        -------
+        `~pydynaa.core.EventExpression`
+            These allow the sim to wait on Events to happen.
+        
+        """
+        yield self.node.qmemory.execute_program(program)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
+        program=QuantumProgram()
+        self._flexi_program_apply(program, gate_instr, qubit_index, gate_op,
+                                  output_key='result')
+        yield self.node.qmemory.execute_program(program)
+        result, = program.output['result']
+        #TO DO: convert the following to be in terms of signals or something 
+        #more future proofed. _schedule_now is not intended to be used by a 
+        #user. Should ideally use methods of Protocol or NodeProtocol
+        dummy_entity = pydynaa.Entity()
+        dummy_entity._schedule_now(UsefulEventTypes.RESULT_PRODUCED)
+# =============================================================================
+#         #creating pydynaa.core.EventExpression that will trigger data 
+#         #collection for the results of an instruction.
+#         result_produced_event = pydynaa.EventType('result_produced',
+#                                                   'result of instruction '
+#                                                   'produced and ready to be '
+#                                                   'logged.')
+#         result_produced_evexpr = pydynaa.EventExpression(
+#                                      event_type=result_produced_event)
+# =============================================================================
 
     def _run_time_slice(self, gate_tuples4time_slice):
         #intialising variables that should be overwritten later but are needed
@@ -692,7 +744,8 @@ class QpuOSProtocol(NodeProtocol):
                     #self._gate_tuples_evaluated whenever a program is run,
                     #allowing us to raise error if not all gate tuples are 
                     #evaluated at the end of the sim run.
-                elif isinstance(gate_tuple[-1], str): #if primitive for remote gate
+                elif isinstance(gate_tuple[-1], str): #if primitive for remote
+                                                      #gate or logged measurement
                     #The remote gates in this block will use different
                     #comm-qubits because logical gates using the same 
                     #comm-qubit will occur in different time slices or will
@@ -704,6 +757,18 @@ class QpuOSProtocol(NodeProtocol):
                             other_node_name = gate_tuple[1]
                             scheme = gate_tuple[2]
                             role = gate_tuple[3]
+                        elif (gate_tuple[-1] == 'logged' and
+                              len(gate_tuple) == 3):
+                        #if logged instruction (most likely measurement):
+                            #TO DO: FINISH THIS BLOCK
+                            
+                            yield from self._logged_instr(gate_instr,
+                                                          #FINISH)
+                            #keeping track of what gate tuples have been evaluated 
+                            #to raise error if not all evaluated at end of sim
+                            self._gate_tuples_evaluated[-1].append(gate_tuple)
+                            break #breaking inner while loop to allow next 
+                                  #gate_tuple to be evaluated.
                         elif len(gate_tuple) == 3:
                             data_or_tele_qubit_index = None
                             other_node_name = gate_tuple[0]
