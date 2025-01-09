@@ -693,7 +693,6 @@ class QpuOSProtocol(NodeProtocol):
             These allow the sim to wait on Events to happen.
         
         """
-        print('entered logged instruction')
         yield self.node.qmemory.execute_program(program)
         self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
         #re-initialising self._local_gate_tuples_pending
@@ -704,7 +703,6 @@ class QpuOSProtocol(NodeProtocol):
         yield self.node.qmemory.execute_program(program)
         result, = program.output['result']
         self.send_signal(QDCSignals.RESULT_PRODUCED, result=result)
-        print('sent signal')
 
     def _run_time_slice(self, gate_tuples4time_slice):
         #intialising variables that should be overwritten later but are needed
@@ -741,7 +739,6 @@ class QpuOSProtocol(NodeProtocol):
                     #have been converted to local gates once teleportation
                     #or cat-entanglement has already been done
                     while True:
-                        print(gate_tuple)
                         if len(gate_tuple) == 4:
                             data_or_tele_qubit_index = gate_tuple[0]
                             other_node_name = gate_tuple[1]

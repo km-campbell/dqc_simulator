@@ -266,7 +266,6 @@ def get_data_collector_for_mid_sim_instr_output():
         measurement result from a measurement instruction).
     """
     def collect_instruction_output(evexpr):
-        print('entered callback function')
         protocol = evexpr.triggered_events[-1].source
         result = protocol.get_signal_result(QDCSignals.RESULT_PRODUCED)
         return {'result' : result}
