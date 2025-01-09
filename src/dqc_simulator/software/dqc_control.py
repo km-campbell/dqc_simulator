@@ -704,6 +704,7 @@ class QpuOSProtocol(NodeProtocol):
         yield self.node.qmemory.execute_program(program)
         result, = program.output['result']
         self.send_signal(QDCSignals.RESULT_PRODUCED, result=result)
+        print('sent signal')
 
     def _run_time_slice(self, gate_tuples4time_slice):
         #intialising variables that should be overwritten later but are needed

@@ -7,9 +7,26 @@
 
 import unittest
 
-from dqc_simulator.util.helper import (create_wrapper_with_some_args_fixed,
-                                       filter_kwargs4internal_functions)
+import netsquid as ns
+from netsquid.protocols import Protocol
+import pydynaa
 
+from dqc_simulator.util.helper import (
+    create_wrapper_with_some_args_fixed,
+    filter_kwargs4internal_functions,
+    get_data_collector_for_mid_sim_instr_output,
+    QDCSignals)
+
+#for debugging
+# =============================================================================
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# # =============================================================================
+# # loggers['netsquid'].setLevel(logging.WARNING)
+# # =============================================================================
+# =============================================================================
 
 class TestCreateWrapper(unittest.TestCase):
     """
@@ -40,7 +57,6 @@ class TestCreateWrapper(unittest.TestCase):
                          {"a" : 1, "b" : -3, "c": 2, "d" : 4, "e" : 5})
 
 class Test_filter_kwargs4internal_functions(unittest.TestCase):
-    
     def child_func1(self, a, b=2, c=3):
         return {'a' : a, 'b' : b, 'c' : c}
     
@@ -60,7 +76,38 @@ class Test_filter_kwargs4internal_functions(unittest.TestCase):
         self.assertEqual(actual_output, expected_output)
         
 
-
+class Test_get_data_collector_for_mid_sim_instr_output(unittest.TestCase):
+    class DummyProtocol(Protocol):
+        def __init__(self, name):
+            super().__init__(name)
+            self.add_signal(QDCSignals.RESULT_PRODUCED)
+        
+        def run(self):
+            while True:
+                self.send_signal(QDCSignals.RESULT_PRODUCED, 
+                                result='some_result')
+# =============================================================================
+#                 #for DEBUG ONLY
+#                 dummy_entity = pydynaa.Entity()
+#                 dummy_entity._schedule_now(QDCSignals.RESULT_PRODUCED.value)
+# =============================================================================
+                break
+                
+    def test_signal_detected_from_DummyProtocol(self):
+        ns.sim_reset()
+        protocol = self.DummyProtocol('dummy_protocol')
+        dc = get_data_collector_for_mid_sim_instr_output()
+        protocol.start()
+        ns.sim_run(1e9)
+        #checking DataFrame is not empty
+        with self.subTest('DataFrame is empty'):
+            self.assertFalse(dc.dataframe.empty, msg='DataFrame is empty')
+        #checking correct result is received
+        with self.subTest('Result is wrong'):
+            self.assertEqual(dc.dataframe['result'][0], 'some_result')
+            
+        #TO DO: write subtest to check signal is correct (has value 'some_result')
+        
 
 
 

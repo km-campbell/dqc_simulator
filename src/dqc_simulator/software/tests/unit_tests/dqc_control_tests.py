@@ -206,6 +206,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
 #         #positives
 # =============================================================================
         
+    #TO DO: uncomment above when finished debugging test below
     def test_logged_instr(self):
         gate_tuples = [(instr.INSTR_INIT, 2, 'node_0'),
                        (instr.INSTR_MEASURE, 2, 'node_0', 'logged')]
@@ -214,7 +215,13 @@ class TestDqcMasterProtocol(unittest.TestCase):
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
-        print(dc.dataframe) #FINISH and improve
+        #checking DataFrame is not empty
+        with self.subTest('DataFrame is empty'):
+            self.assertFalse(dc.dataframe.empty, msg='DataFrame is empty')
+        #checking result is correct
+        with self.subTest('Result is wrong'):
+            self.assertEqual(dc.dataframe['result'][0], 0) 
+        
         
 
         

@@ -240,7 +240,6 @@ def get_data_collector4dm(master_protocol, qubit_indices_2b_checked,
     return dc
 
 
-
 class QDCSignals(Enum):
     """
     Specialist signals for use in a quantum data centre (QDC).
@@ -249,6 +248,7 @@ class QDCSignals(Enum):
                                         'result of instruction '
                                         'produced and ready to be '
                                         'logged.')
+    
 
 def get_data_collector_for_mid_sim_instr_output():
     """
@@ -272,5 +272,5 @@ def get_data_collector_for_mid_sim_instr_output():
         return {'result' : result}
     
     dc = DataCollector(collect_instruction_output)
-    dc.collect_on(pydynaa.EventExpression(event_type=QDCSignals.RESULT_PRODUCED.value))
+    dc.collect_on([pydynaa.EventExpression(event_type=QDCSignals.RESULT_PRODUCED.value)])
     return dc
