@@ -81,6 +81,7 @@ class QpuOSProtocol(NodeProtocol):
     def __init__(self, superprotocol, gate_tuples, 
                  node=None, name=None):
         super().__init__(node, name)
+        self.single_qubit_subroutines = ('logged',)
         self.superprotocol = superprotocol
         self.gate_tuples = gate_tuples
         #adding attributes for tracking what gates have evaluated
@@ -671,7 +672,9 @@ class QpuOSProtocol(NodeProtocol):
                 " role")
         return (comm_qubit_index, program)
     
-    def _logged_instr(self, program, gate_instr, qubit_index, gate_op):
+    #SHOULD the following be implemented as a protocol in its own right along 
+    #with all primitives?
+    def _logged_instr(self, program, gate_tuple):
         """
         Subgenerator that carries out a single-qubit subroutine in which a 
         single-qubit gate is conducted and the result logged.
@@ -693,17 +696,106 @@ class QpuOSProtocol(NodeProtocol):
             These allow the sim to wait on Events to happen.
         
         """
-        yield self.node.qmemory.execute_program(program)
-        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
-        #re-initialising self._local_gate_tuples_pending
-        self._local_gate_tuples_pending = []
-        program=QuantumProgram()
-        self._flexi_program_apply(program, gate_instr, qubit_index, gate_op,
-                                  output_key='result')
-        yield self.node.qmemory.execute_program(program)
-        result, = program.output['result']
-        self.send_signal(QDCSignals.RESULT_PRODUCED, result=result)
-
+        while True:
+            gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
+            qubit_index = gate_tuple[1]
+            yield self.node.qmemory.execute_program(program)
+            self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+            #re-initialising self._local_gate_tuples_pending
+            self._local_gate_tuples_pending = []
+            program=QuantumProgram()
+            self._flexi_program_apply(program, gate_instr, qubit_index, gate_op,
+                                      output_key='result')
+            yield self.node.qmemory.execute_program(program)
+            result, = program.output['result']
+            self.send_signal(QDCSignals.RESULT_PRODUCED, result=result)
+            self._gate_tuples_evaluated[-1].append(gate_tuple)
+            break
+        
+    def _get_gate_instruction_and_op(self, gate_tuple):
+        gate_instr = gate_tuple[0] 
+        #handling gate types with associated parameters:
+        try: #if gate_instr is iterable:
+            gate_op = gate_instr[1]
+            gate_instr = gate_instr[0]
+        except TypeError: #elif gate_instr is not iterable
+            gate_op = None
+        return gate_instr, gate_op
+        
+    def _handle_single_qubit_gate(self, program, gate_tuple):
+        gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
+        qubit_index = gate_tuple[1]
+        self._flexi_program_apply(program, gate_instr, qubit_index,
+                                  gate_op)
+        self._local_gate_tuples_pending.append(gate_tuple)
+        #self._local_gate_tuples_pending will be added to 
+        #self._gate_tuples_evaluated whenever a program is run,
+        #allowing us to raise error if not all gate tuples are 
+        #evaluated at the end of the sim run.
+        
+    #TO DO: remove the following if you can't get it to work.
+    def _handle_remote_gate_primitive(self, program, gate_tuple, 
+                                      comm_qubit_index):
+        #The remote gates in this block will use different
+        #comm-qubits because logical gates using the same 
+        #comm-qubit will occur in different time slices or will
+        #have been converted to local gates once teleportation
+        #or cat-entanglement has already been done
+        while True:
+            if len(gate_tuple) == 4:
+                data_or_tele_qubit_index = gate_tuple[0]
+                other_node_name = gate_tuple[1]
+                scheme = gate_tuple[2]
+                role = gate_tuple[3]
+            elif len(gate_tuple) == 3:
+                data_or_tele_qubit_index = None
+                other_node_name = gate_tuple[0]
+                scheme = gate_tuple[1]
+                role = gate_tuple[2]
+            node_names = [self.node.name, other_node_name]
+            node_names.sort()
+            classical_connection_port_name = ( 
+                self.node.connection_port_name(
+                                                other_node_name,
+                                                label="classical"))
+            classical_conn_port = self.node.ports[
+                                     classical_connection_port_name]
+            evexpr_or_variables = ( 
+                yield from self.protocol_subgenerators[scheme](
+                                        role,
+                                        program,
+                                        other_node_name,
+                                        data_or_tele_qubit_index,
+                                        classical_conn_port,
+                                        comm_qubit_index))
+            #past this point evexpr_or_variables will be the
+            #variables
+            comm_qubit_index = evexpr_or_variables[0]
+            program = evexpr_or_variables[1]
+            #keeping track of what gate tuples have been evaluated 
+            #to raise error if not all evaluated at end of sim
+            self._gate_tuples_evaluated[-1].append(gate_tuple)
+            break #breaking inner while loop to allow next 
+                  #gate_tuple to be evaluated.
+        return comm_qubit_index
+    
+    def _handle_local_two_qubit_gate(self, program, gate_tuple, 
+                                     comm_qubit_index):
+        gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
+        qubit_index0 = gate_tuple[1]
+        qubit_index1 = gate_tuple[2]
+        if qubit_index0 == -1:
+            qubit_index0 = comm_qubit_index #defined in remote gate
+                                            #section above
+        self._flexi_program_apply(program, gate_instr,
+                                  [qubit_index0, qubit_index1],
+                                  gate_op)
+        self._local_gate_tuples_pending.append(gate_tuple)
+        #self._local_gate_tuples_pending will be added to 
+        #self._gate_tuples_evaluated whenever a program is run,
+        #allowing an error to be raised if not all gate tuples are 
+        #evaluated at the end of the sim run.
+        
     def _run_time_slice(self, gate_tuples4time_slice):
         #intialising variables that should be overwritten later but are needed
         #as function arguments:
@@ -714,25 +806,15 @@ class QpuOSProtocol(NodeProtocol):
         #to avoid overwriting the program and comm_qubit_index
         while True:
             for gate_tuple in gate_tuples4time_slice:
-                gate_instr = gate_tuple[0] 
-                #handling gate types with associated parameters:
-                try: #if gate_instr is iterable:
-                    gate_op = gate_instr[1]
-                    gate_instr = gate_instr[0]
-                except TypeError: #elif gate_instr is not iterable
-                    gate_op = None
-                    
-                if len(gate_tuple) == 2: #if single-qubit gate
-                    qubit_index = gate_tuple[1]
-                    self._flexi_program_apply(program, gate_instr, qubit_index,
-                                              gate_op)
-                    self._local_gate_tuples_pending.append(gate_tuple)
-                    #self._local_gate_tuples_pending will be added to 
-                    #self._gate_tuples_evaluated whenever a program is run,
-                    #allowing us to raise error if not all gate tuples are 
-                    #evaluated at the end of the sim run.
-                elif isinstance(gate_tuple[-1], str): #if primitive for remote
-                                                      #gate or logged measurement
+                    #TO DO: remove next line once finished refactor
+                gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
+                if len(gate_tuple) == 2: #if single-qubit gate:
+                    self._handle_single_qubit_gate(program, gate_tuple)
+                elif gate_tuple[-1] in self.single_qubit_subroutines: 
+                    yield from self._logged_instr(program, gate_tuple)
+                elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
+                      self.protocol_subgenerators): #if primitive for remote
+                                                    #gate or logged measurement:
                     #The remote gates in this block will use different
                     #comm-qubits because logical gates using the same 
                     #comm-qubit will occur in different time slices or will
@@ -744,23 +826,6 @@ class QpuOSProtocol(NodeProtocol):
                             other_node_name = gate_tuple[1]
                             scheme = gate_tuple[2]
                             role = gate_tuple[3]
-                        #TO DO: fix the following to handle typos in the 
-                        #string much better. Right now a typo allows the 
-                        #gate tuple to enter the wrong if statement and 
-                        #crashes the kernel.
-                        elif (gate_tuple[-1] == 'logged' and
-                              len(gate_tuple) == 3):
-                        #if logged instruction (most likely measurement whose 
-                        #result needs saved):
-                            yield from self._logged_instr(program,
-                                                          gate_instr,
-                                                          qubit_index,
-                                                          gate_op)
-                            #keeping track of what gate tuples have been evaluated 
-                            #to raise error if not all evaluated at end of sim
-                            self._gate_tuples_evaluated[-1].append(gate_tuple)
-                            break #breaking inner while loop to allow next 
-                                  #gate_tuple to be evaluated.
                         elif len(gate_tuple) == 3:
                             data_or_tele_qubit_index = None
                             other_node_name = gate_tuple[0]
@@ -791,20 +856,13 @@ class QpuOSProtocol(NodeProtocol):
                         self._gate_tuples_evaluated[-1].append(gate_tuple)
                         break #breaking inner while loop to allow next 
                               #gate_tuple to be evaluated.
+                #strictly speaking the following will allow any local 
+                #multi-qubit gate. You need to decide whether you want to allow
+                #for this or not (if you want arbitrary multi-qubit then need
+                #to change compiler)
                 elif isinstance(gate_tuple[-1], int): #if local 2-qubit gate
-                    qubit_index0 = gate_tuple[1]
-                    qubit_index1 = gate_tuple[2]
-                    if qubit_index0 == -1:
-                        qubit_index0 = comm_qubit_index #defined in remote gate
-                                                        #section above
-                    self._flexi_program_apply(program, gate_instr,
-                                              [qubit_index0, qubit_index1],
-                                              gate_op)
-                    self._local_gate_tuples_pending.append(gate_tuple)
-                    #self._local_gate_tuples_pending will be added to 
-                    #self._gate_tuples_evaluated whenever a program is run,
-                    #allowing an erorr to be raised if not all gate tuples are 
-                    #evaluated at the end of the sim run.
+                    self._handle_local_two_qubit_gate(program, gate_tuple,
+                                                      comm_qubit_index)
             #executing any instructions that have not yet been executed. It is 
             #important that the quantum program is always reset after each node
             #is finished to avoid waiting infinitely long if there is nothing 
@@ -840,9 +898,6 @@ class QpuOSProtocol(NodeProtocol):
                         f"{self._gate_tuples_evaluated} and the gate tuples "
                         f"that SHOULD have been evaluated were "
                         f"{self.gate_tuples}")
-            
-            
-            
 
     def run(self):
         if 'physical_layer_protocol' not in self.subprotocols or not \
