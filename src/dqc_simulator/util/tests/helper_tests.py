@@ -85,7 +85,7 @@ class Test_get_data_collector_for_mid_sim_instr_output(unittest.TestCase):
         def run(self):
             while True:
                 self.send_signal(QDCSignals.RESULT_PRODUCED, 
-                                result='some_result')
+                                result=('some_result', 'ancilla_qubit_index'))
 # =============================================================================
 #                 #for DEBUG ONLY
 #                 dummy_entity = pydynaa.Entity()
@@ -105,8 +105,12 @@ class Test_get_data_collector_for_mid_sim_instr_output(unittest.TestCase):
         #checking correct result is received
         with self.subTest('Result is wrong'):
             self.assertEqual(dc.dataframe['result'][0], 'some_result')
+        #checking a proxy for the ancilla qubit index is received
+        with self.subTest('Proxy for ancilla qubit index not received'):
+            self.assertEqual(dc.dataframe['ancilla_qubit_index'][0],
+                             'ancilla_qubit_index')
             
-        #TO DO: write subtest to check signal is correct (has value 'some_result')
+      
         
 
 

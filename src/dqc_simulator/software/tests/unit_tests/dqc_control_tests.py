@@ -205,8 +205,10 @@ class TestDqcMasterProtocol(unittest.TestCase):
         #positives
         
     def test_logged_instr(self):
-        gate_tuples = [(instr.INSTR_INIT, 2, 'node_0'),
-                       (instr.INSTR_MEASURE, 2, 'node_0', 'logged')]
+        ancilla_qubit_index = 2
+        gate_tuples = [(instr.INSTR_INIT, ancilla_qubit_index, 'node_0'),
+                       (instr.INSTR_MEASURE, ancilla_qubit_index, 'node_0', 
+                        'logged')]
         protocol = dqcMasterProtocol(gate_tuples, self.network)
         dc = get_data_collector_for_mid_sim_instr_output()
         protocol.start()
@@ -218,8 +220,34 @@ class TestDqcMasterProtocol(unittest.TestCase):
         #checking result is correct
         with self.subTest('Result is wrong'):
             self.assertEqual(dc.dataframe['result'][0], 0) 
+        #checking index of ancilla qubit measured is correct
+        with self.subTest('Ancilla qubit index is wrong'):
+            self.assertEqual(dc.dataframe['ancilla_qubit_index'][0],
+                             ancilla_qubit_index)
         
-        
+    def test_multiple_logged_measurements(self):
+        gate_tuples = [(instr.INSTR_INIT, 2, 'node_0'),
+                       (instr.INSTR_X, 2, 'node_0'),
+                       (instr.INSTR_MEASURE, 2, 'node_0', 'logged'),
+                       (instr.INSTR_X, 2, 'node_0'),
+                       (instr.INSTR_MEASURE, 2, 'node_0', 'logged'),
+                       (instr.INSTR_X, 2, 'node_0'),
+                       (instr.INSTR_MEASURE, 2, 'node_0', 'logged')]
+        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        dc = get_data_collector_for_mid_sim_instr_output()
+        protocol.start()
+        ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
+        #checking DataFrame is not empty
+        with self.subTest('DataFrame is empty'):
+            self.assertFalse(dc.dataframe.empty, msg='DataFrame is empty')
+        #checking result is correct
+        with self.subTest('Result is wrong'):
+            self.assertEqual(list(dc.dataframe['result'])[0:3], [1, 0, 1]) 
+        #checking index of ancilla qubit measured is correct
+        with self.subTest('Ancilla qubit index is wrong'):
+            self.assertEqual(list(dc.dataframe['ancilla_qubit_index'])[0:3],
+                             [2, 2, 2])
 
         
 #Below is deprecated

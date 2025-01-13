@@ -698,17 +698,19 @@ class QpuOSProtocol(NodeProtocol):
         """
         while True:
             gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
-            qubit_index = gate_tuple[1]
+            ancilla_qubit_index = gate_tuple[1]
             yield self.node.qmemory.execute_program(program)
             self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
             #re-initialising self._local_gate_tuples_pending
             self._local_gate_tuples_pending = []
             program=QuantumProgram()
-            self._flexi_program_apply(program, gate_instr, qubit_index, gate_op,
+            self._flexi_program_apply(program, gate_instr, ancilla_qubit_index, 
+                                      gate_op,
                                       output_key='result')
             yield self.node.qmemory.execute_program(program)
             result, = program.output['result']
-            self.send_signal(QDCSignals.RESULT_PRODUCED, result=result)
+            self.send_signal(QDCSignals.RESULT_PRODUCED, 
+                             result=(result, ancilla_qubit_index))
             self._gate_tuples_evaluated[-1].append(gate_tuple)
             break
         

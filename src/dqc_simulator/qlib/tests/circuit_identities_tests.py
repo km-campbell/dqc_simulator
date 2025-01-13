@@ -20,14 +20,19 @@ from dqc_simulator.hardware.dqc_creation import create_dqc_network
 from dqc_simulator.software.dqc_control import (
     dqcMasterProtocol, sort_greedily_by_node_and_time)
 from dqc_simulator.qlib.circuit_identities import ( 
-    two_control_ibm_toffoli_decomp)
+    two_control_ibm_toffoli_decomp,
+    stabiliser_measurement)
 
 #For debugging
-from netsquid.util import simlog
-import logging
-loggers = simlog.get_loggers()
-loggers['netsquid'].setLevel(logging.DEBUG)
-loggers['netsquid'].setLevel(logging.WARNING)
+# =============================================================================
+# from netsquid.util import simlog
+# import logging
+# loggers = simlog.get_loggers()
+# loggers['netsquid'].setLevel(logging.DEBUG)
+# # =============================================================================
+# # loggers['netsquid'].setLevel(logging.WARNING)
+# # =============================================================================
+# =============================================================================
 
 class TestToffoliDecomp(unittest.TestCase):
     def setUp(self):
@@ -597,6 +602,43 @@ class TestToffoliDecomp(unittest.TestCase):
 #                                  desired_state_ket)
 #         self.assertAlmostEqual(fidelity, 1.000, 3)
 # =============================================================================
+
+
+class TestStabiliserCircuits(unittest.TestCase):
+    def test_z_stabiliser_measurement_with_one_measured_qubit(self):
+        qubits2check = [2]
+        ancilla_to_use = 3
+        stabiliser_type = 'z'
+        gate_tuples = stabiliser_measurement(qubits2check, ancilla_to_use, 
+                                             stabiliser_type)
+        desired_output = [(instr.INSTR_CNOT, 2, 'mono_qc', 3, 'mono_qc'),
+                           (instr.INSTR_MEASURE, 3, 'mono_qc', 'logging')]
+        self.assertEqual(gate_tuples, desired_output)
+
+    def test_x_stabiliser_measurement_with_one_measured_qubit(self):
+        qubits2check = [2]
+        ancilla_to_use = 3
+        stabiliser_type = 'x'
+        gate_tuples = stabiliser_measurement(qubits2check, ancilla_to_use, 
+                                             stabiliser_type)
+        desired_output = [(instr.INSTR_CNOT, 2, 'mono_qc', 3, 'mono_qc'),
+                          (instr.INSTR_H, 3, 'mono_qc'),
+                          (instr.INSTR_MEASURE, 3, 'mono_qc', 'logging')]
+        self.assertEqual(gate_tuples, desired_output)
+
+    def test_3_qubit_z_stabiliser_measurement(self):
+        qubits2check = [2, 3, 4]
+        ancilla_to_use = 5
+        stabiliser_type = 'z'
+        gate_tuples = stabiliser_measurement(qubits2check, ancilla_to_use, 
+                                             stabiliser_type)
+        desired_output = [(instr.INSTR_CNOT, 2, 'mono_qc', 5, 'mono_qc'),
+                          (instr.INSTR_CNOT, 3, 'mono_qc', 5, 'mono_qc'),
+                          (instr.INSTR_CNOT, 4, 'mono_qc', 5, 'mono_qc'),
+                          (instr.INSTR_MEASURE, 5, 'mono_qc', 'logging')]
+        self.assertEqual(gate_tuples, desired_output)
+        
+
 
 #running all class derived from the unittest.TestCase parent class
 if __name__ == '__main__':

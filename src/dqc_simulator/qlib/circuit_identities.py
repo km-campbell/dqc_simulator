@@ -127,4 +127,8 @@ def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
                          'stabiliser_type. Allowed values are: "x", "X", "z", '
                          'or "Z". ')
     return cnots + measurement 
-    #TO DO: make sure that logging command works in other parts of sim.
+
+# =============================================================================
+# def steane_code_stabiliser_measurement(
+# =============================================================================
+    

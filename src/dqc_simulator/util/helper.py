@@ -267,8 +267,11 @@ def get_data_collector_for_mid_sim_instr_output():
     """
     def collect_instruction_output(evexpr):
         protocol = evexpr.triggered_events[-1].source
-        result = protocol.get_signal_result(QDCSignals.RESULT_PRODUCED)
-        return {'result' : result}
+        result_and_index = protocol.get_signal_result(
+                                QDCSignals.RESULT_PRODUCED)
+        result = result_and_index[0]
+        ancilla_qubit_index = result_and_index[1]
+        return {'result' : result, 'ancilla_qubit_index' : ancilla_qubit_index}
     
     dc = DataCollector(collect_instruction_output)
     dc.collect_on([pydynaa.EventExpression(event_type=QDCSignals.RESULT_PRODUCED.value)])
