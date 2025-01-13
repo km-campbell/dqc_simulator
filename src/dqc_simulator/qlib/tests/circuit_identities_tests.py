@@ -621,9 +621,12 @@ class TestStabiliserCircuits(unittest.TestCase):
         stabiliser_type = 'x'
         gate_tuples = stabiliser_measurement(qubits2check, ancilla_to_use, 
                                              stabiliser_type)
-        desired_output = [(instr.INSTR_CNOT, 2, 'mono_qc', 3, 'mono_qc'),
-                          (instr.INSTR_H, 3, 'mono_qc'),
-                          (instr.INSTR_MEASURE, 3, 'mono_qc', 'logging')]
+        desired_output = [(instr.INSTR_H, qubits2check[0], 'mono_qc'),
+                          (instr.INSTR_CNOT, qubits2check[0], 'mono_qc', 
+                          ancilla_to_use, 'mono_qc'),
+                          (instr.INSTR_H, qubits2check[0], 'mono_qc'),
+                          (instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc', 
+                           'logging')]
         self.assertEqual(gate_tuples, desired_output)
 
     def test_3_qubit_z_stabiliser_measurement(self):

@@ -82,6 +82,7 @@ def two_control_ibm_toffoli_decomp(ctrl_qubit1_index, ctrl_node_name1,
 #stabiliser circuits
 #-------------------
 
+
 def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
     """
     Specifies circuit for single stabiliser measurement using one ancilla 
@@ -102,33 +103,51 @@ def stabiliser_measurement(qubits2check, ancilla_to_use, stabiliser_type):
     -------
     gate_tuples : list of tuples
         The circuit specification for the stabiliser measurement.
+        
+    Notes
+    -----
+    This method is based on a general one for measuring an operator and is 
+    discussed in page 473 of Nielsen and Chuang's textbook. [1]_
+    
+    This method of stabiliser measurement is somewhat naive and lacks 
+    fault-tolerance for errors in the measurements themselves.
+    
+    References
+    ----------
+    .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum Information, 10th ed. (Cambridge University Press, 2010).
     """
     #in next line 'mono_qc' is placeholder for a node name and can be replaced
     #later
-    cnots = [(instr.INSTR_CNOT, qubit_index, 'mono_qc', ancilla_to_use, 
-              'mono_qc') for qubit_index in qubits2check]
     if (stabiliser_type == 'x') or (stabiliser_type == 'X'):
-        #TO DO: decide whether to use hadamard then z measurement or 
-        #INSTR_MEASURE_X in the following. Both are equivalent but when declaring
-        #physical errors in the quantum processor you need to ensure that the 
-        #instruction is defined. You also don't want to have the duration of a 
-        #physical hadamard gate if such a gate is not done.
-# =============================================================================
-#         measurement = [(instr.INSTR_MEASURE_X, ancilla_to_use, 'mono_qc')]
-# =============================================================================
-        measurement = [(instr.INSTR_H, ancilla_to_use, 'mono_qc'),
-                       (instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc',
-                        'logging')]
+        entangling = []
+        for qubit_index in qubits2check:
+            gates2add = [(instr.INSTR_H, qubit_index, 'mono_qc'),
+                        (instr.INSTR_CNOT, qubit_index, 'mono_qc', 
+                         ancilla_to_use, 'mono_qc'),
+                        (instr.INSTR_H, qubit_index, 'mono_qc')] 
+            entangling = entangling + gates2add
     elif (stabiliser_type == 'z') or (stabiliser_type == 'Z'):
-        measurement = [(instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc',
-                        'logging')]
+        entangling = [(instr.INSTR_CNOT, qubit_index, 'mono_qc', ancilla_to_use, 
+                       'mono_qc') for qubit_index in qubits2check]
     else:
         raise ValueError(f'{stabiliser_type} is not an allowed value of '
                          'stabiliser_type. Allowed values are: "x", "X", "z", '
                          'or "Z". ')
-    return cnots + measurement 
+    measurement = [(instr.INSTR_MEASURE, ancilla_to_use, 'mono_qc',
+                    'logging')]
+    return entangling + measurement 
 
 # =============================================================================
-# def steane_code_stabiliser_measurement(
+# def steane_code_stabiliser_measurement():
+#     """
+#     Generate gate tuples for Steane code on a monolithic quantum processor.
+# 
+#     Returns
+#     -------
+#     None.
+# 
+#     """
+#     data_qubit_indices = [ii for ii in range(7)]
+#     ancilla_qubit_indices = [ii for ii in range(7, )]
 # =============================================================================
     
