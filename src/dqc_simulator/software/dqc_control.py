@@ -69,6 +69,20 @@ class QpuOSProtocol(NodeProtocol):
         set later before starting this protocol.
     name : str or None, optional
         Name of protocol. If None, the name of the class is used.
+        
+    Notes
+    -----
+    The implementation of this `NodeProtocol` extends beyond typical purview of
+    Netsquid `Prototol`s. In particular, instead of using subprotocols, 
+    the idea of subprotocols is generalised to a more general (sub)generator 
+    object, with the crucial difference being that these subgenerators can 
+    yield things that are not EventExpressions. That is not the case for 
+    Protocols (or at least is not their intended use).
+    
+    This generalisation is 
+    a less clean construction than that used by native Netsquid, however it 
+    allows variables to be more easily passed between subprotocols acting on 
+    the same QPU. 
     """
     #The core idea of what follows is to add instructions to a QuantumProgram
     #until remote gates occur, at which point the program will be run to that 
@@ -94,7 +108,8 @@ class QpuOSProtocol(NodeProtocol):
         #in functional form rather than as classes. Unlike subprotocols (as far
         #as I can tell), the protocol_subgenerators can yield variables
         #needed for subsequent processes as well as event expressions used to 
-        #evolve the simulation in time.
+        #evolve the simulation in time (the latter part the subprotocols can
+        #do).
         self.protocol_subgenerators = {"cat" : self._cat_subgenerator,
                                        "tp" : self._tp_subgenerator}
         self.ent_request_label = "ENT_REQUEST"
