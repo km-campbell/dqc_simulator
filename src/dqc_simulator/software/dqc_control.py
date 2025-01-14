@@ -816,7 +816,7 @@ class QpuOSProtocol(NodeProtocol):
                     yield from self._logged_instr(program, gate_tuple)
                 elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
                       self.protocol_subgenerators): #if primitive for remote
-                                                    #gate or logged measurement:
+                                                    #gate:
                     #The remote gates in this block will use different
                     #comm-qubits because logical gates using the same 
                     #comm-qubit will occur in different time slices or will
