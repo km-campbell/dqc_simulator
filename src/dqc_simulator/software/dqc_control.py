@@ -69,6 +69,33 @@ class QpuOSProtocol(NodeProtocol):
         set later before starting this protocol.
     name : str or None, optional
         Name of protocol. If None, the name of the class is used.
+        
+    Notes
+    -----
+    The logic used in the _run_time_slice and, by extension, run methods of 
+    this protocol is a generalisation of the use of subprotocols in NetSquid
+    `~netsquid.protocols.protocol.Protocol`s. Subprotocols are 
+    `~netsquid.protocols.protocol.Protocol`s and so their run method can only 
+    yield `~pydynaa.core.EventExpression`s. This is clean because it is easy to 
+    understand what is being yielded. However, here it was convenient to 
+    make use of the fact that `Protocol` run methods are merely a specific 
+    type of the more general python generator object. Generators can yield 
+    anything and so rather than using `Protocol`s, whose run methods can yield
+    only `EventExpressions`, I instead use generators that yield 
+    `EventExpression`s, to indicate that something has happened in the sim, 
+    AND variables that can be used by subsequent generators. 
+    
+    If subprotocols had been used it would have been necessary to send 
+    variables, such as recently allocated comm-qubit indices and the 
+    `QuantumProgram` being modified, as signals between the different 
+    subprotocols. It becomes very complicated to make sure that subprotocols 
+    which implement later instructions are actually started before the 
+    subprotocols implementing earlier instructions so that the latter 
+    subprotocols can wait on signals from the former. Ie, things like the 
+    last used comm-qubit index become very hard to track. This is particularly 
+    challenging to implement inside a simple if elif control flow. By contrast,
+    with subgenerators, the relevant variables are returned after all 
+    `EventExpression`s have been yielded, making the logic simpler.
     """
     #The core idea of what follows is to add instructions to a QuantumProgram
     #until remote gates occur, at which point the program will be run to that 
@@ -770,7 +797,6 @@ class QpuOSProtocol(NodeProtocol):
                                         data_or_tele_qubit_index,
                                         classical_conn_port,
                                         comm_qubit_index))
-            print(f'inside subgenerator {evexpr_or_variables}')
             #past this point evexpr_or_variables will be the
             #variables
             variables4subsequent_local_gates = evexpr_or_variables
@@ -779,7 +805,6 @@ class QpuOSProtocol(NodeProtocol):
             self._gate_tuples_evaluated[-1].append(gate_tuple)
             break #breaking inner while loop to allow next 
                   #gate_tuple to be evaluated.
-            print('reached break')
         return variables4subsequent_local_gates
     
     def _handle_local_two_qubit_gate(self, program, gate_tuple, 
@@ -821,53 +846,6 @@ class QpuOSProtocol(NodeProtocol):
                     #comm-qubit will occur in different time slices or will
                     #have been converted to local gates once teleportation
                     #or cat-entanglement has already been done
-# =============================================================================
-#                     while True:
-#                         if len(gate_tuple) == 4:
-#                             data_or_tele_qubit_index = gate_tuple[0]
-#                             other_node_name = gate_tuple[1]
-#                             scheme = gate_tuple[2]
-#                             role = gate_tuple[3]
-#                         elif len(gate_tuple) == 3:
-#                             data_or_tele_qubit_index = None
-#                             other_node_name = gate_tuple[0]
-#                             scheme = gate_tuple[1]
-#                             role = gate_tuple[2]
-#                         node_names = [self.node.name, other_node_name]
-#                         node_names.sort()
-#                         classical_connection_port_name = ( 
-#                             self.node.connection_port_name(
-#                                                             other_node_name,
-#                                                             label="classical"))
-#                         classical_conn_port = self.node.ports[
-#                                                  classical_connection_port_name]
-#                         evexpr_or_variables = ( 
-#                             yield from self.protocol_subgenerators[scheme](
-#                                                     role,
-#                                                     program,
-#                                                     other_node_name,
-#                                                     data_or_tele_qubit_index,
-#                                                     classical_conn_port,
-#                                                     comm_qubit_index))
-#                         print(evexpr_or_variables)
-#                         #past this point evexpr_or_variables will be the
-#                         #variables
-#                         comm_qubit_index = evexpr_or_variables[0]
-#                         program = evexpr_or_variables[1]
-#                         #keeping track of what gate tuples have been evaluated 
-#                         #to raise error if not all evaluated at end of sim
-#                         self._gate_tuples_evaluated[-1].append(gate_tuple)
-#                         break #breaking inner while loop to allow next 
-#                               #gate_tuple to be evaluated.
-# =============================================================================
-# =============================================================================
-#                     evexpr_or_index = yield from self._handle_remote_gate_primitive( 
-#                                                       program, gate_tuple, 
-#                                                       comm_qubit_index)
-#                     print(evexpr_or_index)
-#                     #after returning from self._handle_remote_gate_primitive
-#                     comm_qubit_index = evexpr_or_index
-# =============================================================================
                     evexpr_or_variables = yield from self._handle_remote_gate_primitive(
                                                         program, gate_tuple, 
                                                         comm_qubit_index)
