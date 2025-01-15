@@ -108,7 +108,12 @@ class QpuOSProtocol(NodeProtocol):
     def __init__(self, superprotocol, gate_tuples, 
                  node=None, name=None):
         super().__init__(node, name)
+        #the allowed subgenerators (similar to subprotocols, see Notes section 
+        #above):
         self.single_qubit_subroutines = ('logged',)
+        self.remote_gate_variants = {"cat" : self._cat_subgenerator,
+                                     "tp" : self._tp_subgenerator}
+        #other import attributes
         self.superprotocol = superprotocol
         self.gate_tuples = gate_tuples
         #adding attributes for tracking what gates have evaluated
@@ -117,14 +122,6 @@ class QpuOSProtocol(NodeProtocol):
         #a QuantumProgram but not yet evaluated
         self._local_gate_tuples_pending = [] 
         self._max_num_time_slices = len(self.gate_tuples)
-        #The following subgenerators are similar to subprotocols implemented
-        #in functional form rather than as classes. Unlike subprotocols (as far
-        #as I can tell), the protocol_subgenerators can yield variables
-        #needed for subsequent processes as well as event expressions used to 
-        #evolve the simulation in time (the latter part the subprotocols can
-        #do).
-        self.protocol_subgenerators = {"cat" : self._cat_subgenerator,
-                                       "tp" : self._tp_subgenerator}
         self.ent_request_label = "ENT_REQUEST"
         self.ent_ready_label = "ENT_READY"
         self.ent_failed_label = "ENT_FAILED"
@@ -791,7 +788,7 @@ class QpuOSProtocol(NodeProtocol):
             classical_conn_port = self.node.ports[
                                      classical_connection_port_name]
             evexpr_or_variables = ( 
-                yield from self.protocol_subgenerators[scheme](
+                yield from self.remote_gate_variants[scheme](
                                         role,
                                         program,
                                         other_node_name,
@@ -830,9 +827,6 @@ class QpuOSProtocol(NodeProtocol):
         #as function arguments:
         program=QuantumProgram()
         comm_qubit_index = float("nan")
-        #TO DO: think about whether this while loop is needed because there is 
-        #a while loop in the enclosing scope. One reason to keep it would be
-        #to avoid overwriting the program and comm_qubit_index
         while True:
             for gate_tuple in gate_tuples4time_slice:
                 if len(gate_tuple) == 2: #if single-qubit gate:
@@ -840,7 +834,7 @@ class QpuOSProtocol(NodeProtocol):
                 elif gate_tuple[-1] in self.single_qubit_subroutines: 
                     yield from self._logged_instr(program, gate_tuple)
                 elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
-                      self.protocol_subgenerators): #if primitive for remote
+                      self.remote_gate_variants): #if primitive for remote
                                                     #gate:
                     #The remote gates in this block will use different
                     #comm-qubits because logical gates using the same 
@@ -851,13 +845,13 @@ class QpuOSProtocol(NodeProtocol):
                                                         program, gate_tuple, 
                                                         comm_qubit_index)
                     #past this point evexpr_or_variables will be the
-                    #variables for use in subsequent remote gates. The program
-                    #needs spelled out here and not in other subgenerators 
-                    #because of the additional nesting of 
+                    #variables for use in subsequent remote gates.
+                    comm_qubit_index = evexpr_or_variables[0]
+                    #The program needs explicitly returned here and not in 
+                    #other subgenerators because of the additional nesting of 
                     #self._flexi_program_apply inside _cat_subgenerators or 
                     #_tp_subgenerators which are in turn inside of 
-                    #_handle_remote_gate_primitive
-                    comm_qubit_index = evexpr_or_variables[0]
+                    #_handle_remote_gate_primitive.
                     program = evexpr_or_variables[1]
                 #strictly speaking the following will allow any local 
                 #multi-qubit gate. You need to decide whether you want to allow
