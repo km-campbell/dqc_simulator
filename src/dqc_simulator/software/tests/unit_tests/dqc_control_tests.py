@@ -72,7 +72,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_INIT, 2, "node_1"),
                        (instr.INSTR_X, 2, "node_0"),
                        (instr.INSTR_X, 2, "node_1")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes)
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
@@ -91,7 +91,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_H, 2, "node_0"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
         physical_layer_protocol = AbstractCentralSourceEntangleProtocol
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
@@ -105,7 +105,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_INIT, 2, "node_1"),
                        (instr.INSTR_H, 2, "node_0"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
@@ -122,7 +122,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "cat")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
@@ -138,7 +138,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe"),
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
         protocol.start()
         ns.sim_run(self.sim_runtime)
         protocol.check_quantum_circuit_finished()
@@ -197,7 +197,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_CNOT, 2, "node_0", 2, "node_1", "tp_safe")]
         #the above gate_tuples will be split into different time slices by the
         #compiler, causing the artificial bug to become relevant
-        protocol = BrokenDqcMasterProtocolCopy(gate_tuples, self.network)
+        protocol = BrokenDqcMasterProtocolCopy(gate_tuples, self.network.nodes)
         protocol.start()
         self.assertRaises(UnfinishedQuantumCircuitError, 
                           protocol.check_quantum_circuit_finished)
@@ -209,7 +209,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
         gate_tuples = [(instr.INSTR_INIT, ancilla_qubit_index, 'node_0'),
                        (instr.INSTR_MEASURE, ancilla_qubit_index, 'node_0', 
                         'logged')]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
         dc = get_data_collector_for_mid_sim_instr_output()
         protocol.start()
         ns.sim_run(self.sim_runtime)
@@ -233,7 +233,7 @@ class TestDqcMasterProtocol(unittest.TestCase):
                        (instr.INSTR_MEASURE, 2, 'node_0', 'logged'),
                        (instr.INSTR_X, 2, 'node_0'),
                        (instr.INSTR_MEASURE, 2, 'node_0', 'logged')]
-        protocol = dqcMasterProtocol(gate_tuples, self.network)
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
         dc = get_data_collector_for_mid_sim_instr_output()
         protocol.start()
         ns.sim_run(self.sim_runtime)

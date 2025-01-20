@@ -227,7 +227,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
 #                        *two_control_ibm_toffoli_decomp(6, alice.name,
 #                                                        3, alice.name, 
 #                                                        0, alice.name)] 
-#         master_protocol = dqcMasterProtocol(gate_tuples, network)
+#         master_protocol = dqcMasterProtocol(gate_tuples, nodes=network.nodes)
 #         master_protocol.start()
 #         ns.sim_run(10 * 10**9) #running for 10s
 #         error_corrected_qubit, = alice.qmemory.pop(0)

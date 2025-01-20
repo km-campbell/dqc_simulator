@@ -70,7 +70,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                      ctrl_node_name2, 
                                                      target_qubit_index,
                                                      target_node_name)]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run()
@@ -99,7 +99,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                      ctrl_node_name2, 
                                                      target_qubit_index,
                                                      target_node_name)]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run()
@@ -128,7 +128,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                      ctrl_node_name2, 
                                                      target_qubit_index,
                                                      target_node_name)]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run()
@@ -156,7 +156,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                      ctrl_node_name2, 
                                                      target_qubit_index,
                                                      target_node_name)]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run()
@@ -188,7 +188,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                      target_qubit_index,
                                                      target_node_name,
                                                      scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -222,7 +222,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                      target_qubit_index,
                                                      target_node_name,
                                                      scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -243,7 +243,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                        q5, self.node_a.name,
                                                        q4, self.node_a.name,
                                                        scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -265,7 +265,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                        q5, self.node_a.name,
                                                        q4, self.node_a.name,
                                                        scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -287,7 +287,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                        q5, self.node_a.name,
                                                        q4, self.node_a.name,
                                                        scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -310,7 +310,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                        q5, self.node_a.name,
                                                        q4, self.node_a.name,
                                                        scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -339,7 +339,7 @@ class TestToffoliDecomp(unittest.TestCase):
 #                                                        scheme="cat")]
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
-#         master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+#         master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
 #                                             compiler_func=sort_greedily_by_node_and_time)
 #         master_protocol.start()
 #         ns.sim_run(self.cycle_runtime)
@@ -412,7 +412,7 @@ class TestToffoliDecomp(unittest.TestCase):
 #                                                        scheme="cat")]
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
-#         master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+#         master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
 #                                             compiler_func=sort_greedily_by_node_and_time)
 #         master_protocol.start()
 #         ns.sim_run(self.cycle_runtime)
@@ -484,7 +484,7 @@ class TestToffoliDecomp(unittest.TestCase):
                                                        q5, self.node_a.name,
                                                        q4, self.node_a.name,
                                                        scheme="cat")]
-        master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+        master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
                                             compiler_func=sort_greedily_by_node_and_time)
         master_protocol.start()
         ns.sim_run(self.cycle_runtime)
@@ -551,7 +551,7 @@ class TestToffoliDecomp(unittest.TestCase):
 #                        (instr.INSTR_CNOT, q2, self.node_b.name, q4, self.node_b.name)]
 #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 #         print(f"node_op_dict is {node_op_dict}")
-#         master_protocol = dqcMasterProtocol(gate_tuples, self.network, 
+#         master_protocol = dqcMasterProtocol(gate_tuples, nodes=self.network.nodes, 
 #                                             compiler_func=sort_greedily_by_node_and_time)
 #         master_protocol.start()
 #         ns.sim_run(self.cycle_runtime)

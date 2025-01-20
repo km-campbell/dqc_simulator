@@ -66,7 +66,7 @@ class Test_can_run_sim_from_qasm_file(unittest.TestCase):
                         num_comm_qubits=2,
                         custom_qpu_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
                         name="linear network")
-        protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
+        protocol = dqcMasterProtocol(dqc_circuit.ops, nodes=network.nodes, 
                                     compiler_func=sort_greedily_by_node_and_time)
         protocol.start()
         ns.sim_run()
@@ -196,7 +196,7 @@ class Test_can_run_sim_from_qasm_file_with_noise(unittest.TestCase):
                         num_comm_qubits=2,
                         custom_qpu_func=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
                         name="linear network")
-        protocol = dqcMasterProtocol(dqc_circuit.ops, network, 
+        protocol = dqcMasterProtocol(dqc_circuit.ops, nodes=network.nodes, 
                                     compiler_func=sort_greedily_by_node_and_time)
         protocol.start()
         ns.sim_run()

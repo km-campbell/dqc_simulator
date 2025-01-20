@@ -11,7 +11,7 @@ from netsquid.components import instructions as instr
 from netsquid.components.qprogram import QuantumProgram
 from netsquid.nodes.node import Node
 from netsquid.protocols.protocol import Signals, Protocol
-from netsquid.protocols.nodeprotocols import NodeProtocol
+from netsquid.protocols.nodeprotocols import NodeProtocol, LocalProtocol
 
 from dqc_simulator.hardware.quantum_processors import QPU
 from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
@@ -913,7 +913,7 @@ class QpuOSProtocol(NodeProtocol):
                 #self._gate_tuples
                 self._gate_tuples_evaluated.append([])
 
-class dqcMasterProtocol(Protocol):
+class dqcMasterProtocol(LocalProtocol):
     """ Protocol which executes a distributed quantum circuit. 
     
     Parameters
@@ -937,8 +937,6 @@ class dqcMasterProtocol(Protocol):
                                 Note if this is given as empty list and 
                                 scheme = "tp" then it will just do a
                                 teleportation
-    network : :class: `~netsquid.nodes.network.Network`
-        Wraps all simulated hardware.
     physical_layer_protocol_class: class or None
         The class of the physical layer protocol. The choice must be callable
         with no explicit arguments. If None, 
@@ -1005,19 +1003,19 @@ class dqcMasterProtocol(Protocol):
         Decide whether to use *args4physical_layer, **kwargs for physical layer
         to allow the physical layer protocol to be called with arguments
     """
-    def __init__(self, partitioned_gates, network,
+    def __init__(self, partitioned_gates, nodes=None,
                  physical_layer_protocol_class=None,
                  background_protocol_lookup=None,
                  compiler_func=None,
                  num_entanglement_attempts=None,
-                 name=None):
-        super().__init__(name)
+                 name=None,
+                 max_nodes=-1):
+        super().__init__(nodes, name, max_nodes)
         self.start_time_slice_label = "START_TIME_SLICE"
         self.finished_time_slice_label = "FINISHED_TIME_SLICE"
         self.add_signal(self.start_time_slice_label)
         self.add_signal(self.finished_time_slice_label)
         self.partitioned_gates = partitioned_gates
-        self.network = network
         #TO DO: think about whether it would be better to instantiate default
         #arguments using the setter of a property
         
@@ -1036,7 +1034,7 @@ class dqcMasterProtocol(Protocol):
         self.background_protocol_lookup = background_protocol_lookup
             
         self.qpu_op_dict = self.compiler_func(self.partitioned_gates)
-        all_nodes = self.network.nodes
+        all_nodes = self.nodes
         for node_name in self.qpu_op_dict:
         #I use qpu_op_dict rather than network.nodes here to avoid any
         #situations in which a QPU node has not been added to the network but 
