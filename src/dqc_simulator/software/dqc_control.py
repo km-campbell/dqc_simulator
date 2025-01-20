@@ -1117,6 +1117,8 @@ class dqcMasterProtocol(Protocol):
                 expr = evexpr_dummy 
                 dummy_entity._schedule_now(evtype_dummy)
             break #exiting outer while loop once for loops are done
+            
+        self.check_quantum_circuit_finished()
 
 # =============================================================================
 # class MultiCircuitDQCProtocol(Protocol):
