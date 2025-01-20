@@ -721,23 +721,21 @@ class QpuOSProtocol(NodeProtocol):
             These allow the sim to wait on Events to happen.
         
         """
-        while True:
-            gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
-            ancilla_qubit_index = gate_tuple[1]
-            yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
-            #re-initialising self._local_gate_tuples_pending
-            self._local_gate_tuples_pending = []
-            program=QuantumProgram()
-            self._flexi_program_apply(program, gate_instr, ancilla_qubit_index, 
-                                      gate_op,
-                                      output_key='result')
-            yield self.node.qmemory.execute_program(program)
-            result, = program.output['result']
-            self.send_signal(QDCSignals.RESULT_PRODUCED, 
-                             result=(result, ancilla_qubit_index))
-            self._gate_tuples_evaluated[-1].append(gate_tuple)
-            break
+        gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
+        ancilla_qubit_index = gate_tuple[1]
+        yield self.node.qmemory.execute_program(program)
+        self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
+        program=QuantumProgram()
+        self._flexi_program_apply(program, gate_instr, ancilla_qubit_index, 
+                                  gate_op,
+                                  output_key='result')
+        yield self.node.qmemory.execute_program(program)
+        result, = program.output['result']
+        self.send_signal(QDCSignals.RESULT_PRODUCED, 
+                         result=(result, ancilla_qubit_index))
+        self._gate_tuples_evaluated[-1].append(gate_tuple)
         
     def _get_gate_instruction_and_op(self, gate_tuple):
         gate_instr = gate_tuple[0] 
@@ -827,9 +825,6 @@ class QpuOSProtocol(NodeProtocol):
         #as function arguments:
         program=QuantumProgram()
         comm_qubit_index = float("nan")
-# =============================================================================
-#         while True:
-# =============================================================================
         for gate_tuple in gate_tuples4time_slice:
             if len(gate_tuple) == 2: #if single-qubit gate:
                 self._handle_single_qubit_gate(program, gate_tuple)
@@ -872,10 +867,8 @@ class QpuOSProtocol(NodeProtocol):
         #re-initialising self._local_gate_tuples_pending
         self._local_gate_tuples_pending = []
         self.send_signal(self.finished_time_slice_label)
-# =============================================================================
-#             break #breaking outermost while loop
-# =============================================================================
-            #TO DO: add entanglement swapping
+
+        #TO DO: add entanglement swapping
             
     def raise_error_if_not_all_gates_executed(self):
         """
