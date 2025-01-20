@@ -901,11 +901,8 @@ class QpuOSProtocol(NodeProtocol):
                              'add_phys_layer method')
         
         self.subprotocols['physical_layer_protocol'].start()
-        #this protocol will be made a subprotocol of another and so will 
-        #automatically stop when the parent protocol does. This avoids the 
-        #infinite loop that would otherwise occur from the following.
-        time_slice=0
-        while True:
+        
+        for time_slice in range(self._max_num_time_slices):
             yield self.await_signal(self.superprotocol, 
                                     signal_label=self.start_time_slice_label)
             gate_tuples4time_slice = self.gate_tuples[time_slice]
@@ -915,7 +912,6 @@ class QpuOSProtocol(NodeProtocol):
                 #self._gate_tuples_evaluated with the number of time slices in 
                 #self._gate_tuples
                 self._gate_tuples_evaluated.append([])
-            time_slice = time_slice + 1
 
 class dqcMasterProtocol(Protocol):
     """ Protocol which executes a distributed quantum circuit. 
