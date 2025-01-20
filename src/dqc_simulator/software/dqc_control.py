@@ -766,41 +766,39 @@ class QpuOSProtocol(NodeProtocol):
         #comm-qubit will occur in different time slices or will
         #have been converted to local gates once teleportation
         #or cat-entanglement has already been done
-        while True:
-            if len(gate_tuple) == 4:
-                data_or_tele_qubit_index = gate_tuple[0]
-                other_node_name = gate_tuple[1]
-                scheme = gate_tuple[2]
-                role = gate_tuple[3]
-            elif len(gate_tuple) == 3:
-                data_or_tele_qubit_index = None
-                other_node_name = gate_tuple[0]
-                scheme = gate_tuple[1]
-                role = gate_tuple[2]
-            node_names = [self.node.name, other_node_name]
-            node_names.sort()
-            classical_connection_port_name = ( 
-                self.node.connection_port_name(
-                                                other_node_name,
-                                                label="classical"))
-            classical_conn_port = self.node.ports[
-                                     classical_connection_port_name]
-            evexpr_or_variables = ( 
-                yield from self.remote_gate_variants[scheme](
-                                        role,
-                                        program,
-                                        other_node_name,
-                                        data_or_tele_qubit_index,
-                                        classical_conn_port,
-                                        comm_qubit_index))
-            #past this point evexpr_or_variables will be the
-            #variables
-            variables4subsequent_local_gates = evexpr_or_variables
-            #keeping track of what gate tuples have been evaluated 
-            #to raise error if not all evaluated at end of sim
-            self._gate_tuples_evaluated[-1].append(gate_tuple)
-            break #breaking inner while loop to allow next 
-                  #gate_tuple to be evaluated.
+
+        if len(gate_tuple) == 4:
+            data_or_tele_qubit_index = gate_tuple[0]
+            other_node_name = gate_tuple[1]
+            scheme = gate_tuple[2]
+            role = gate_tuple[3]
+        elif len(gate_tuple) == 3:
+            data_or_tele_qubit_index = None
+            other_node_name = gate_tuple[0]
+            scheme = gate_tuple[1]
+            role = gate_tuple[2]
+        node_names = [self.node.name, other_node_name]
+        node_names.sort()
+        classical_connection_port_name = ( 
+            self.node.connection_port_name(
+                                            other_node_name,
+                                            label="classical"))
+        classical_conn_port = self.node.ports[
+                                 classical_connection_port_name]
+        evexpr_or_variables = ( 
+            yield from self.remote_gate_variants[scheme](
+                                    role,
+                                    program,
+                                    other_node_name,
+                                    data_or_tele_qubit_index,
+                                    classical_conn_port,
+                                    comm_qubit_index))
+        #past this point evexpr_or_variables will be the
+        #variables
+        variables4subsequent_local_gates = evexpr_or_variables
+        #keeping track of what gate tuples have been evaluated 
+        #to raise error if not all evaluated at end of sim
+        self._gate_tuples_evaluated[-1].append(gate_tuple)
         return variables4subsequent_local_gates
     
     def _handle_local_two_qubit_gate(self, program, gate_tuple, 
@@ -1097,23 +1095,21 @@ class dqcMasterProtocol(Protocol):
         #finding max length of dictionary entry
         longest_list_in_qpu_op_dict = max(self.qpu_op_dict.values(), key=len)
         max_num_time_slices = len(longest_list_in_qpu_op_dict)
-        while True:
-            for time_slice in range(max_num_time_slices):
-                for qpu_name in self.qpu_op_dict:
-                    #if QPU still has instructions to carry out:
-                    if time_slice < len(self.qpu_op_dict[qpu_name]):
-                    #strictly less than because python indexes from 0
-                        #signalling subprotocols to start the next time slice
-                        self.send_signal(self.start_time_slice_label)
-                        #waiting on subprotocols to complete time slice
-                        expr = expr & self.await_signal(
-                                        self.subprotocols[f'{qpu_name}_OS'], 
-                                        self.finished_time_slice_label)
-                yield expr
-                #re-initialising
-                expr = evexpr_dummy 
-                dummy_entity._schedule_now(evtype_dummy)
-            break #exiting outer while loop once for loops are done
+        for time_slice in range(max_num_time_slices):
+            for qpu_name in self.qpu_op_dict:
+                #if QPU still has instructions to carry out:
+                if time_slice < len(self.qpu_op_dict[qpu_name]):
+                #strictly less than because python indexes from 0
+                    #signalling subprotocols to start the next time slice
+                    self.send_signal(self.start_time_slice_label)
+                    #waiting on subprotocols to complete time slice
+                    expr = expr & self.await_signal(
+                                    self.subprotocols[f'{qpu_name}_OS'], 
+                                    self.finished_time_slice_label)
+            yield expr
+            #re-initialising
+            expr = evexpr_dummy 
+            dummy_entity._schedule_now(evtype_dummy)
             
         self.check_quantum_circuit_finished()
 
