@@ -827,50 +827,54 @@ class QpuOSProtocol(NodeProtocol):
         #as function arguments:
         program=QuantumProgram()
         comm_qubit_index = float("nan")
-        while True:
-            for gate_tuple in gate_tuples4time_slice:
-                if len(gate_tuple) == 2: #if single-qubit gate:
-                    self._handle_single_qubit_gate(program, gate_tuple)
-                elif gate_tuple[-1] in self.single_qubit_subroutines: 
-                    yield from self._logged_instr(program, gate_tuple)
-                elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
-                      self.remote_gate_variants): #if primitive for remote
-                                                    #gate:
-                    #The remote gates in this block will use different
-                    #comm-qubits because logical gates using the same 
-                    #comm-qubit will occur in different time slices or will
-                    #have been converted to local gates once teleportation
-                    #or cat-entanglement has already been done
-                    evexpr_or_variables = yield from self._handle_remote_gate_primitive(
-                                                        program, gate_tuple, 
-                                                        comm_qubit_index)
-                    #past this point evexpr_or_variables will be the
-                    #variables for use in subsequent remote gates.
-                    comm_qubit_index = evexpr_or_variables[0]
-                    #The program needs explicitly returned here and not in 
-                    #other subgenerators because of the additional nesting of 
-                    #self._flexi_program_apply inside _cat_subgenerators or 
-                    #_tp_subgenerators which are in turn inside of 
-                    #_handle_remote_gate_primitive.
-                    program = evexpr_or_variables[1]
-                #strictly speaking the following will allow any local 
-                #multi-qubit gate. You need to decide whether you want to allow
-                #for this or not (if you want arbitrary multi-qubit then need
-                #to change compiler)
-                elif isinstance(gate_tuple[-1], int): #if local 2-qubit gate
-                    self._handle_local_two_qubit_gate(program, gate_tuple,
-                                                      comm_qubit_index)
-            #executing any instructions that have not yet been executed. It is 
-            #important that the quantum program is always reset after each node
-            #is finished to avoid waiting infinitely long if there is nothing 
-            #left to execute
-            yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].extend(
-                                               self._local_gate_tuples_pending)
-            #re-initialising self._local_gate_tuples_pending
-            self._local_gate_tuples_pending = []
-            self.send_signal(self.finished_time_slice_label)
-            break #breaking outermost while loop
+# =============================================================================
+#         while True:
+# =============================================================================
+        for gate_tuple in gate_tuples4time_slice:
+            if len(gate_tuple) == 2: #if single-qubit gate:
+                self._handle_single_qubit_gate(program, gate_tuple)
+            elif gate_tuple[-1] in self.single_qubit_subroutines: 
+                yield from self._logged_instr(program, gate_tuple)
+            elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
+                  self.remote_gate_variants): #if primitive for remote
+                                                #gate:
+                #The remote gates in this block will use different
+                #comm-qubits because logical gates using the same 
+                #comm-qubit will occur in different time slices or will
+                #have been converted to local gates once teleportation
+                #or cat-entanglement has already been done
+                evexpr_or_variables = yield from self._handle_remote_gate_primitive(
+                                                    program, gate_tuple, 
+                                                    comm_qubit_index)
+                #past this point evexpr_or_variables will be the
+                #variables for use in subsequent remote gates.
+                comm_qubit_index = evexpr_or_variables[0]
+                #The program needs explicitly returned here and not in 
+                #other subgenerators because of the additional nesting of 
+                #self._flexi_program_apply inside _cat_subgenerators or 
+                #_tp_subgenerators which are in turn inside of 
+                #_handle_remote_gate_primitive.
+                program = evexpr_or_variables[1]
+            #strictly speaking the following will allow any local 
+            #multi-qubit gate. You need to decide whether you want to allow
+            #for this or not (if you want arbitrary multi-qubit then need
+            #to change compiler)
+            elif isinstance(gate_tuple[-1], int): #if local 2-qubit gate
+                self._handle_local_two_qubit_gate(program, gate_tuple,
+                                                  comm_qubit_index)
+        #executing any instructions that have not yet been executed. It is 
+        #important that the quantum program is always reset after each node
+        #is finished to avoid waiting infinitely long if there is nothing 
+        #left to execute
+        yield self.node.qmemory.execute_program(program)
+        self._gate_tuples_evaluated[-1].extend(
+                                           self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
+        self.send_signal(self.finished_time_slice_label)
+# =============================================================================
+#             break #breaking outermost while loop
+# =============================================================================
             #TO DO: add entanglement swapping
             
     def raise_error_if_not_all_gates_executed(self):
