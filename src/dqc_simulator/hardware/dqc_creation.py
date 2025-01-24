@@ -98,8 +98,8 @@ def link_2_qpus(network, node_a, node_b,
         want_extra_classical_2way_link = want_classical_2way_link
     if state4distribution is None:
         state4distribution = ks.b00
-        
-    if create_entangling_link is None:
+    if (create_entangling_link is None or 
+        create_entangling_link==create_black_box_central_source_entangling_link):
         #The default value (create_black_box_central_source_entangling_link) is
         #wrapped, so that in later code, there is no need to state argument, 
         #which is not required by many connections. This keeps the variable
@@ -337,6 +337,7 @@ def create_dqc_network(
                         want_classical_2way_link=want_classical_2way_link,
                         want_extra_classical_2way_link=want_extra_classical_2way_link,
                         want_entangling_link=want_entangling_link,
+                        create_entangling_link=create_entangling_link,
                         **kwargs4create_entangling_link)
     
     network = Network(name)
@@ -364,6 +365,7 @@ def create_dqc_network(
                         want_classical_2way_link=want_classical_2way_link, 
                         want_extra_classical_2way_link=want_entangling_link,
                         want_entangling_link=want_entangling_link,
+                        create_entangling_link=create_entangling_link,
                         **kwargs4create_entangling_link)
     else:
         if quantum_topology is not None:
@@ -386,6 +388,7 @@ def create_dqc_network(
                             want_classical_2way_link=False,
                             want_extra_classical_2way_link=False,
                             want_entangling_link=True,
+                            create_entangling_link=create_entangling_link,
                             **kwargs4create_entangling_link)
         if classical_topology is not None: #if classical_topology is not None
             if (classical_topology[-1])[1] > (len(network.nodes)-1): 
@@ -407,6 +410,7 @@ def create_dqc_network(
                             want_classical_2way_link=True,
                             want_extra_classical_2way_link=want_extra_classical_2way_link,
                             want_entangling_link=False,
+                            create_entangling_link=create_entangling_link,
                             **kwargs4create_entangling_link)
     return network
 

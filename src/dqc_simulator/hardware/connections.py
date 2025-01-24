@@ -166,6 +166,92 @@ class BlackBoxEntanglingQsourceConnection(Connection):
                                     cchannelA2qsource_trigger.ports["recv"])
         qsource.ports["extra_trigger"].connect(
                                     cchannelB2qsource_trigger.ports["recv"])
+        
+class ProbabilisticQSourceConnection(Connection):
+    """
+    Intended to connnect source of entangled photons and 2 QPUs.
+    
+    Generates a pair of entangled qubits sharing a particular state without 
+    regard for how that state was generated. 
+    
+    The black box :class: `~netsquid.components.qsource.QSource` is triggered
+    via the sending of a classical trigger message from either QPU. It is 
+    assumed that both QPUs are ready to receive an entangled qubit when the 
+    trigger message is sent, which will need to be enforced using the 
+    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol`(s) used to send 
+    the trigger message. Only one trigger message should be sent per 
+    entanglement distribution desired to avoid unintended behaviour (ie, a 
+    trigger message should not be sent by both QPUs requesting the same 
+    entangled pair).
+
+    Parameters
+    ----------
+    delay : float
+        The time for entanglement distribution to occur
+        [ns].
+    states4distribution : list of tuples (state, float)
+        Where state is `~netsquid.qubits.qrepr.QRepr` or `numpy.ndarray`.
+        Quantum state representations to distribute. Quantum state
+        representations and the
+        probability of being in that state
+    name : str, optional
+        Name of this connection. Default is
+        "BlackBoxEntanglingQsourceConnection".
+    """
+    def __init__(self, delay,
+                 states4distribution,
+                 name="ProbabilisticQsourceConnection"):
+        super().__init__(name=name)
+        qchannel_qsource2A = QuantumChannel("qchannel_qsource2A",
+                                            delay=delay)
+        qchannel_qsource2B = QuantumChannel("qchannel_qsource2B", 
+                                            delay=delay)
+        cchannelA2qsource_trigger = ClassicalChannel("cchannel_A2qsource_trigger",
+                                                     delay=0) 
+                                                     #the classical delay is
+                                                     #implicitly included in
+                                                     #delay of quantum 
+                                                     #channels here to model
+                                                     #the total entanglment
+                                                     #distribution time.
+                                                     #TO DO: revisit this
+        cchannelB2qsource_trigger = ClassicalChannel("cchannel_B2qsource_trigger",
+                                                     delay=0)
+                                                    #TO DO: revisit delay
+                                                    #as commented above
+        qsource = QSource("qsource", 
+                          StateSampler([state[0] for state in states4distribution], 
+                                       [state[1] for state in states4distribution]),
+                          num_ports=2,
+                          status=SourceStatus.EXTERNAL) 
+        #adding extra trigger port and then forwareding that to the trigger so
+        #that two classical connections can be connected to the trigger.
+        qsource.add_ports(["extra_trigger"])
+        qsource.ports["extra_trigger"].forward_input(qsource.ports["trigger"])
+        #TO DO: tinker with qsource to see if it can be made to emit 
+        #multiple pairs of entangled photons
+        #Adding channels and forwarding to and from the connection's 
+        #"A" and "B" ports to the input ("send") and ouput ("recv")
+        #ports of the channel. An input to the channel's "send" port then 
+        #forwards to the 
+        #"recv" port in the channel behind the scenes, after some delay 
+        self.add_subcomponent(qchannel_qsource2A,
+                              forward_output=[("A", "recv")])
+        self.add_subcomponent(qchannel_qsource2B, 
+                              forward_output=[("B", "recv")])
+        self.add_subcomponent(cchannelA2qsource_trigger,
+                              forward_input=[("A", "send")])
+        self.add_subcomponent(cchannelB2qsource_trigger,
+                              forward_input=[("B", "send")])
+        self.add_subcomponent(qsource)
+        #adding the remaining connections between components within the 
+        #overall Connection
+        qsource.ports["qout0"].connect(qchannel_qsource2A.ports["send"])
+        qsource.ports["qout1"].connect(qchannel_qsource2B.ports["send"])
+        qsource.ports["trigger"].connect(
+                                    cchannelA2qsource_trigger.ports["recv"])
+        qsource.ports["extra_trigger"].connect(
+                                    cchannelB2qsource_trigger.ports["recv"])
 
 
 def create_black_box_central_source_entangling_link(network, node_a, node_b,
@@ -208,6 +294,57 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
     connection = BlackBoxEntanglingQsourceConnection(
                     delay=ent_dist_time,
                     state4distribution=state4distribution)
+    #generating names obeying netsquid naming conventions for port on QPUs that 
+    #connect a Node to a connection but using the (unique) node name as the ID
+    node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                   label="entangling")
+    node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                   label="entangling")
+    network.add_connection(node_a, node_b, connection=connection,
+                           port_name_node1=node_a_port_name,
+                           port_name_node2=node_b_port_name,
+                           label='entangling')
+    
+    
+def create_probabilistic_qsource_connection(network, node_a, node_b,
+                                            states4distribution,
+                                            ent_dist_rate=0):
+    """ 
+    Sets up an abstract entangling link between QPUs. 
+    
+    Adds BlackBoxEntanglingQsourceConnection between two QPUs.
+    
+    Parameters
+    ----------
+    network : :class: `~netsquid.nodes.network.Network`
+        The entire network.
+    node_a, node_b : :class: `~netsquid.nodes.Node`
+        A network node.
+    states4distribution : dict
+        Keys are quantum state representations `~netsquid.qubits.qrepr.QRepr`, 
+        values are probability of being in that state.
+    ent_dist_rate : float
+        The rate of entanglement distribution [Hz].
+    Notes 
+    -----
+    This abstracts from the details of photon generation by treating flying
+    and communication qubits as the same thing. Restraints on the number of 
+    communication qubits can be enforced at the QPU nodes but entangled 
+    communication qubits are generated at a central quantum source and sent
+    to the QPUs. In this way, we can model error and loss but needn't simulate
+    the details of entanglement between static communication qubits and photons.
+    """
+    if ent_dist_rate > 0 :
+        ent_dist_time = 1e9/ent_dist_rate
+    elif ent_dist_rate == 0.:
+        ent_dist_time = 0
+    else:
+        raise ValueError(f"{ent_dist_rate} is not a valid entanglement "
+                         f"distribution rate. The rate must be >= 0")
+    #commented out block below is for after refactor
+    connection = ProbabilisticQSourceConnection(
+                    delay=ent_dist_time,
+                    states4distribution=states4distribution)
     #generating names obeying netsquid naming conventions for port on QPUs that 
     #connect a Node to a connection but using the (unique) node name as the ID
     node_a_port_name = node_a.connection_port_name(node_b.name, 
