@@ -59,11 +59,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
     `run_link_layer` subgenerator method. This method should be called in the 
     run method of all physical layer protocols, typically prior to anything 
     else other than the beginning of the while loop needed for all of the 
-    :class: `~pydynaa.core.EventExpression` subgenerators.
+    :class:`~pydynaa.core.EventExpression` subgenerators.
     
     Parameters
     ----------
-    node : :class: `~netsquid.nodes.node.Node` or None, optional
+    node : :class:`~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
     name : str or None, optional
@@ -84,7 +84,7 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
 
     Attributes
     ----------
-    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+    superprotocol : :class:`netsquid.protocols.nodeprotocols.NodeProtocol`
         The superprotocol for this protocol. This protocol will be 
         executed as a subprotocol of the superprotocol. The value of this 
         attribute should be overwritten by the superprotocol.
@@ -111,11 +111,11 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         
     References
     ----------
-    The parameters in which Ref. [1]_ was cited were inherited from 
-    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
-    used for those parameters was taken from the NetSquid documentation [1]_
+    The parameters in which Ref. [3]_ was cited were inherited from 
+    :class:`~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation [3]_
     
-    .. [1] https://netsquid.org/
+    .. [3] https://netsquid.org/
     
     .. todo::
         
@@ -192,15 +192,15 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         Handles entanglement requests from higher-level protocols.
         
         This is a subgenerator, allowing the run method to call it and wait on
-        :class: `~pydynaa.core.EventExpression`s that this subgenerator waits 
+        :class:`~pydynaa.core.EventExpression`s that this subgenerator waits 
         on. It waits on a signal from higher-level protocols and changes this 
         protocol's instance attributes to reflect information in that signal. 
         It must be prepended by `yield from` when calling.
         
         Yields
         ------
-        :class: `~pydynaa.core.EventExpression`
-            Sends :class: `~pydynaa.core.EventExpression`s to the run method, 
+        :class:`~pydynaa.core.EventExpression`
+            Sends :class:`~pydynaa.core.EventExpression`s to the run method, 
             causing it to wait on signals.
         """
         yield self.await_signal(self.superprotocol, 
@@ -325,7 +325,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     """ Abstract protocol for generating entanglement.
     
     An abstract way of generating ebits designed to act on QPUs connected by
-    a :class: `~dqc_simulator.hardware.connections.BlackBoxEntanglingQsourceConnection`.
+    a :class:`~dqc_simulator.hardware.connections.BlackBoxEntanglingQsourceConnection`.
     Details of the ebit generation are ignored, with the state specified 
     analytically. The state definition can be used to specify the
     noise on the entangled photons if desired. In this way, the need for 
@@ -334,7 +334,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     
     Parameters
     ----------
-    node : :class: `~netsquid.nodes.node.Node` or None, optional
+    node : :class:`~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
     name : str or None, optional
@@ -359,7 +359,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
 
     Attributes
     ----------
-    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+    superprotocol : :class:`netsquid.protocols.nodeprotocols.NodeProtocol`
         The superprotocol for this protocol. This protocol will be 
         executed as a subprotocol of the superprotocol. The value of this 
         attribute should be overwritten by the superprotocol.
@@ -385,11 +385,9 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
     
     References
     ----------
-    The parameters in which Ref. [1]_ was cited were inherited from 
-    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
-    used for those parameters was taken from the NetSquid documentation [1]_
-    
-    .. [1] https://netsquid.org/
+    The parameters in which Ref. [3]_ was cited were inherited from 
+    :class:`~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation [3]_
     """
     
     def __init__(self, node=None, name=None, role=None,
@@ -431,8 +429,8 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         Modifies a quantum message inputted to a port, with metadata that puts 
         qubits in the correct memory positions and forwards the altered message
         to the qin port of a 
-        :class: `~netsquid.components.qmemory.QuantumMemory` or 
-        :class: `~netsquid.components.qprocessor.QuantumProcessor`
+        :class:`~netsquid.components.qmemory.QuantumMemory` or 
+        :class:`~netsquid.components.qprocessor.QuantumProcessor`
         """
         #TO THINK about whether to move this to an abstract base class
         #for protocols expecting a quantum input or the more general 
@@ -481,7 +479,7 @@ class ProbabilisticEntanglingProtocol(Base4PhysicalLayerProtocol):
     
     Parameters
     ----------
-    node : :class: `~netsquid.nodes.node.Node` or None, optional
+    node : :class:`~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
     name : str or None, optional
@@ -505,7 +503,7 @@ class ProbabilisticEntanglingProtocol(Base4PhysicalLayerProtocol):
 
     Attributes
     ----------
-    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+    superprotocol : :class:`netsquid.protocols.nodeprotocols.NodeProtocol`
         The superprotocol for this protocol. This protocol will be 
         executed as a subprotocol of the superprotocol. The value of this 
         attribute should be overwritten by the superprotocol.
@@ -532,11 +530,9 @@ class ProbabilisticEntanglingProtocol(Base4PhysicalLayerProtocol):
         
     References
     ----------
-    The parameters in which Ref. [1]_ was cited were inherited from 
-    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
-    used for those parameters was taken from the NetSquid documentation [1]_
-    
-    .. [1] https://netsquid.org/
+    The parameters in which Ref. [3]_ was cited were inherited from 
+    :class:`~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+    used for those parameters was taken from the NetSquid documentation. [3]_
     
     .. todo::
         
@@ -569,7 +565,7 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
     
     Parameters
     ----------
-    node : :class: `~netsquid.nodes.node.Node` or None, optional
+    node : :class:`~netsquid.nodes.node.Node` or None, optional
         Node this protocol runs on. If None, a node should be set later before 
         starting this protocol. [1]_
     name : str or None, optional
@@ -597,7 +593,7 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
 
     Attributes
     ----------
-    superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+    superprotocol : :class:`netsquid.protocols.nodeprotocols.NodeProtocol`
         The superprotocol for this protocol. This protocol will be 
         executed as a subprotocol of the superprotocol. The value of this 
         attribute should be overwritten by the superprotocol.
@@ -615,16 +611,6 @@ class MidpointHeraldingProtocol(ProbabilisticEntanglingProtocol):
     Notes 
     -----
     Similar idea to the Wehner stack [1]_, [2]_.
-    
-    References
-    ----------
-    .. [1] A. Dahlberg, et al., A link layer protocol for quantum networks, in: 
-           Proceedings of the ACM Special Interest Group on Data Communication,
-           ACM (2019)
-
-    .. [2] M. Pompili, et al., Experimental demonstration of entanglement 
-           delivery using a quantum network stack, npj Quantum Information, 8 
-           (2022)
     """
     def __init__(self, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None, 

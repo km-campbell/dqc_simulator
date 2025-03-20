@@ -44,7 +44,7 @@ def link_2_qpus(network, node_a, node_b,
     """ 
     Sets up a link between two QPUs.
     
-    Adds a :class: `~netsquid.netsquid.nodes.connections.Connection` between
+    Adds a :class:`~netsquid.netsquid.nodes.connections.Connection` between
     two QPUs and sets up input forwarding between ports on the QPUs so that
     qubits are sent to the right places.
     
@@ -264,7 +264,7 @@ def create_dqc_network(
 
     Returns
     -------
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The simulated hardware for a distributed quantum computer.
     """
     

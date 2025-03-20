@@ -18,7 +18,7 @@ def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
     Converts an openQASM 2.0 file into a bipartioned compileable format.
     
     Converts an openQASM 2.0 file describing a monolithic quantum circuit 
-    into a :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` describing
+    into a :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit` describing
     a bipartitioned (right down the middle) quantum circuit.
 
     Parameters
@@ -34,7 +34,7 @@ def preprocess_qasm_to_compilable_bipartitioned(filepath, scheme,
 
     Returns
     -------
-    dqc_circuit : :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+    dqc_circuit : :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
         A biparitioned distributed quantum circuit.
     """
     
@@ -56,7 +56,7 @@ def preprocess_qasm_to_compilable_monolithic(filepath, include_path='.'):
     Converts an openQASM 2.0 file into an easier to use format.
     
     Converts an openQASM 2.0 file representing a monolithic quantum circuit
-    into :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` describing
+    into :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit` describing
     the same thing.
 
     Parameters
@@ -69,7 +69,7 @@ def preprocess_qasm_to_compilable_monolithic(filepath, include_path='.'):
 
     Returns
     -------
-    dqc_circuit : :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+    dqc_circuit : :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
         A monolithic quantum circuit.
 
     """

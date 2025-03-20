@@ -45,7 +45,7 @@ from dqc_simulator.software.physical_layer import (
 class _DummySuperprotocol(NodeProtocol):
     """
     Filling in for 
-    :class: `dqc_simulator.software.dqc_control.QpuOSProtocol`.
+    :class:`dqc_simulator.software.dqc_control.QpuOSProtocol`.
     """
     def __init__(self, node=None, name=None, role=None,
                  other_node_name=None, comm_qubit_indices=None,

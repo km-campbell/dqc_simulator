@@ -64,7 +64,8 @@ html_static_path = ['_static']
 # -- Options for intersphinx extension ---------------------------------------
 
 #Refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {'https://docs.python.org/': None,
+                       'https://user:password@docs.netsquid.org/latest-release/' : None}
 
 # -- Options for napoleon extension ---------------------------------------
 napoleon_google_docstring=False 

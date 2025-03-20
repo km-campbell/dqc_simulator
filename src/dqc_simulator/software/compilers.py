@@ -583,7 +583,7 @@ def sort_greedily_by_node_and_time(partitioned_gates,
                                  bsm or correction).Note if this is given as
                                 empty list and scheme = "tp" then it will
                                 just do a teleportation
-                            gate_instruction : :class: `~netsquid.components.instructions.Instruction`
+                            gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                 The gate instruction for the target gate
                             instruction_tuple : tuple 
                                 Tuple of form (gate_instruction, op), where
@@ -700,7 +700,7 @@ def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
                                  bsm or correction).Note if this is given as
                                 empty list and scheme = "tp" then it will
                                 just do a teleportation
-                            gate_instruction : :class: `~netsquid.components.instructions.Instruction`
+                            gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                 The gate instruction for the target gate
                             instruction_tuple : tuple 
                                 Tuple of form (gate_instruction, op), where

@@ -37,7 +37,7 @@ class QpuOSProtocol(NodeProtocol):
     
     Parameters
     ----------
-    superprotocol : :class: `~netsquid.protocols.protocol.Protocol`
+    superprotocol : :class:`~netsquid.protocols.protocol.Protocol`
         The protocol that this will be a subprotocol of.
     gate_tuples : list of lists of tuples 
         The gates and primitives (blocks of gates and operations that are part 
@@ -64,7 +64,7 @@ class QpuOSProtocol(NodeProtocol):
             where othernode_name is the name attribute of a
             netsquid.nodes.Node object, and gate_type is an
             instruction from netsquid.components.instructions
-    node : :class: `netsquid.nodes.node.Node`, subclass thereof or None, optional
+    node : :class:`netsquid.nodes.node.Node`, subclass thereof or None, optional
         The QPU node that this protocol will act on. If None, a node should be
         set later before starting this protocol.
     name : str or None, optional
@@ -140,7 +140,7 @@ class QpuOSProtocol(NodeProtocol):
         
         Parameters
         ----------
-        physical_layer_protocol : :class: `~dqc_simulator.software.physical_layer.Base4PhysicalLayerProtocol`
+        physical_layer_protocol : :class:`~dqc_simulator.software.physical_layer.Base4PhysicalLayerProtocol`
             A physical layer protocol.
         """
         physical_layer_protocol.superprotocol = self
@@ -940,7 +940,7 @@ class dqcMasterProtocol(LocalProtocol):
     physical_layer_protocol_class: class or None
         The class of the physical layer protocol. The choice must be callable
         with no explicit arguments. If None, 
-        :class: `~dqc_simulator.software.physical_layer.AbstractCentralSourceEntangleProtocol`
+        :class:`~dqc_simulator.software.physical_layer.AbstractCentralSourceEntangleProtocol`
         is used.
     background_protocol_lookup : dict
         Lookup table with keys being subclasses of netsquid.nodes.node.Node
@@ -964,7 +964,7 @@ class dqcMasterProtocol(LocalProtocol):
             
     Attributes
     ----------
-    physical_layer_protocol : :class: `~dqc_simulator.software.physical_layer.Base4PhysicalLayer
+    physical_layer_protocol : :class:`~dqc_simulator.software.physical_layer.Base4PhysicalLayer
         The physical layer protocol used.
         
     Notes
@@ -993,7 +993,7 @@ class dqcMasterProtocol(LocalProtocol):
     References
     ----------
     The parameters in which Ref. [1]_ was cited were inherited from 
-    :class: `~netsquid.protocols.protocol.Protocol` and the description
+    :class:`~netsquid.protocols.protocol.Protocol` and the description
     used for those parameters was taken from the NetSquid documentation [1]_
     
     .. [1] https://netsquid.org/

@@ -26,11 +26,11 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
     """
     Helper function
     
-    Assumes that :class: `~netsquid.qubits.dmtools.DenseDMRepr` is used.
+    Assumes that :class:`~netsquid.qubits.dmtools.DenseDMRepr` is used.
     
     Parameters
     ----------
-    qubits : :class: `~netsquid.qubits.qubit.Qubit` obj or list of them
+    qubits : :class:`~netsquid.qubits.qubit.Qubit` obj or list of them
         The qubits upon which to act depolarising noise.
     p_error : float
         The probability of a qubit being depolarised in this channel. See 
@@ -120,7 +120,7 @@ class AnalyticalDepolarisationModel(QuantumErrorModel):
     """
     Noise model for applying analytical depolarising noise to a qubit.
     
-    Based on :class: `~netsquid.components.models.DepolarNoiseModel` but 
+    Based on :class:`~netsquid.components.models.DepolarNoiseModel` but 
     adjusted to 
     be applied analytically and within the DM formalism only. This is 
     intended to avoid the need for multiple runs and thus reduce 

@@ -111,11 +111,11 @@ def get_data_collector(master_protocol, qubit_indices_2b_checked,
 
     Parameters
     ----------
-    master_protocol: :class: netsquid.protocols.protocol.Protocol
+    master_protocol: :class:netsquid.protocols.protocol.Protocol
         Protocol to run the DQC circuit.
     qubits_2b_checked: list of tuples of form (list of indices, node)
         The qubits whose state should be checked against a known state
-    desired_state: :class: numpy.ndarray
+    desired_state: :class:numpy.ndarray
         The ideal state which the actual state should be compared to. Can be
         given as a ket vector or density matrix regardless of the formalism 
         being worked with
@@ -198,7 +198,7 @@ def get_data_collector4dm(master_protocol, qubit_indices_2b_checked,
 
     Parameters
     ----------
-    master_protocol: :class: `~netsquid.protocols.protocol.Protocol`
+    master_protocol: :class:`~netsquid.protocols.protocol.Protocol`
         Protocol to run the DQC circuit.
     qubits_2b_checked: list of tuples of form (list of indices, node)
         The qubits whose state should be checked against a known state

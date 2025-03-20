@@ -104,7 +104,7 @@ class ASTType(Enum):
 
         Returns
         -------
-        :class: `~enum.Enum`
+        :class:`~enum.Enum`
             Enumerator indicating line type.
         """
         if source == '':
@@ -169,11 +169,11 @@ class ASTElement():
     Parameters
     ----------
     filenum : int
-        Index of filepath in :class: `T_Sect` 
+        Index of filepath in :class:`T_Sect` 
         filepaths vector.
     linenum : int
         The linenumber of the source code line being parsed.
-    ast_type : element of :class: `ASTType`
+    ast_type : element of :class:`ASTType`
     source : str
         A line from the  source code (.qasm file) to be parsed.
     save_element_source : bool
@@ -469,7 +469,7 @@ class Gate_Operation():
     """
 
     def __init__(self, op, op_param_list, op_reg_list):
-        """Instance structures filled in by :class: `QasmTranslator`"""
+        """Instance structures filled in by :class:`QasmTranslator`"""
         self.operation = {
             'op': op,
             'op_param_list': op_param_list,
@@ -486,7 +486,7 @@ class Gate_Definition():
     source : str
         The line to be parsed from the source file.
     filenum : int
-        Index of filepath in :class: `T_Sect` filepaths vector.
+        Index of filepath in :class:`T_Sect` filepaths vector.
     linenum : int
         Line number in source file
     param_list : list of str
@@ -494,7 +494,7 @@ class Gate_Definition():
     ops_raw_list : list of str
         Vecotr of operations as expressed in source code.
     ops_list : list of dict
-        Vector of :class: `Gate_Operation` (translated operations)
+        Vector of :class:`Gate_Operation` (translated operations)
         
     Attributes
     ----------
@@ -504,7 +504,7 @@ class Gate_Definition():
     
     def __init__(self, source, filenum, linenum, param_list, ops_raw_list,
                  ops_list):
-        """Instance structures filled in by :class: `QasmTranslator`."""
+        """Instance structures filled in by :class:`QasmTranslator`."""
         self.gate_definition = {
             'source': source,
             'filenum': filenum,
@@ -526,7 +526,7 @@ class Source_Body():
     Parameters
     ----------
     filenum : int
-        Index of filepath in :class: `T_Sect` filepaths vector.
+        Index of filepath in :class:`T_Sect` filepaths vector.
     source : str
         The line to be parsed from the source file.
         
@@ -537,7 +537,7 @@ class Source_Body():
     """
 
     def __init__(self, filenum, source):
-        """Instance structures filled in by :class: `QasmTranslator`."""
+        """Instance structures filled in by :class:`QasmTranslator`."""
         self.source_body = {
             'filenum': filenum,
             'source': source
@@ -556,11 +556,11 @@ class T_Sect():
     Attributes
     ----------
     t_sect : dict
-        The t_sect of the AST. Will be filled in by :class: `QasmTranslator`.
+        The t_sect of the AST. Will be filled in by :class:`QasmTranslator`.
     """
 
     def __init__(self, name):
-        """Instance structures filled in by :class: `QasmTranslator`."""
+        """Instance structures filled in by :class:`QasmTranslator`."""
         self.t_sect = {
             'name': name,
             'filepaths': [],
@@ -582,12 +582,12 @@ class C_Sect():
     Attributes
     ----------
     c_sect : list
-        The c_sect of the output AST. Vector of :class: `ASTElement`.
+        The c_sect of the output AST. Vector of :class:`ASTElement`.
     """
 
     def __init__(self):
         """
-        Instance structures filled in by :class: `QasmTranslator`.
+        Instance structures filled in by :class:`QasmTranslator`.
         """
         self.c_sect = []
 
@@ -600,12 +600,12 @@ class G_Sect():
     ----------
     g_sect : list
         The user gate section of the output AST, to be filled in by 
-        :class: `QasmTranslator`.
+        :class:`QasmTranslator`.
         
     """
 
     def __init__(self):
-        """Instance structures filled in by :class: `QasmTranslator`."""
+        """Instance structures filled in by :class:`QasmTranslator`."""
         self.g_sect = []
 
 
@@ -616,8 +616,8 @@ class S_Sect():
     Attributes
     ----------
     s_sect : list
-        Vector of :class: `Source_Body` to be filled in by 
-        :class: `QasmTranslator`.
+        Vector of :class:`Source_Body` to be filled in by 
+        :class:`QasmTranslator`.
     """
 
     def __init__(self):
@@ -776,13 +776,13 @@ class QasmTranslator():
         
     Attributes
     ----------
-    t_sect : :class: `T_Sect`
-    c_sect : :class: `C_Sect`
-    g_sect : :class: `G_Sect`
-    s_sect : :class: `S_Sect`
+    t_sect : :class:`T_Sect`
+    c_sect : :class:`C_Sect`
+    g_sect : :class:`G_Sect`
+    s_sect : :class:`S_Sect`
     translation : dict
         Dictionary containing all of the sections (t_sect, c_sect, etc).
-    source_frame_stack : :class: `Source_Frame_Stack`
+    source_frame_stack : :class:`Source_Frame_Stack`
     
     """
 
@@ -868,7 +868,7 @@ class QasmTranslator():
             
         Returns
         -------
-        qt : :class: `QasmTranslator`
+        qt : :class:`QasmTranslator`
         """
         qasmsourcelines = []
         for line in file_handle:
@@ -892,7 +892,7 @@ class QasmTranslator():
         """
         Create parser given filepath.
         
-        Creates :class: `QasmTranslator` given filepath. Opens file indicated 
+        Creates :class:`QasmTranslator` given filepath. Opens file indicated 
         by `filepath`, reads in all lines and closes file.
 
         filepath : str or None
@@ -920,7 +920,7 @@ class QasmTranslator():
             
         Returns
         -------
-        qt : :class: `QasmTranslator`
+        qt : :class:`QasmTranslator`
         """
         if not os.path.exists(filepath) or not os.access(filepath, os.R_OK):
             raise Qasm_Cannot_Read_File_Exception(None, None, None, None, 

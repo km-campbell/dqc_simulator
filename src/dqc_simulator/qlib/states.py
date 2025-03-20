@@ -25,7 +25,7 @@ def get_ghz_state_ket(num_qubits):
 
     Returns
     -------
-    :class: `~numpy.ndarray`
+    :class:`~numpy.ndarray`
         The ket vector for an n-qubit genralised GHZ state.
 
     """

@@ -6,7 +6,7 @@ This module defines classes that are used to parse an abstract syntax tree
 created using :func: `~dqc_simulator.software.qasm2ast.qasm2ast`, which is 
 adapted from the open source nuqasm2 package. It heavily uses the openQASM 2.0
 grammar. The abstract syntax tree is parsed into a 
-:class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`.
+:class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`.
 
 Notes
 -----
@@ -337,7 +337,7 @@ class AstComment(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             The unchanged DQC circuit.
 
         """
@@ -352,7 +352,7 @@ class AstQreg(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             The updated DQC circuit.
         """
         qreg_name = self.ast_c_sect_element['qreg_name']
@@ -371,7 +371,7 @@ class AstCreg(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             The updated DQC circuit.
         """
         creg_name = self.ast_c_sect_element['creg_name']
@@ -388,7 +388,7 @@ class AstMeasure(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             An unchanged DQC circuit. Right now, measurements specified in 
             the abstract syntax tree are ignored.
         """
@@ -425,7 +425,7 @@ class AstBarrier(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             An unchanged DQC circuit. Right now, the barrier command is
             ignored.
         """
@@ -547,7 +547,7 @@ class AstGate(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             The updated DQC circuit.
         """
         arg_interpreter = ArgumentInterpreter().interpret
@@ -602,7 +602,7 @@ class AstDeclaration_Qasm_2_0(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             The updated DQC circuit.
         """
         return self.dqc_circuit #do nothing. The error raised if this is not
@@ -619,7 +619,7 @@ class AstInclude(Ast2SimReadable):
         """
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
             The updated DQC circuit.
         """
         #TO DO: exchange this all for 'return self.dqc_circuit' once the rest
@@ -719,10 +719,10 @@ class QasmTwoUniversalSet():
     ----------
     gates : dict
         Lookup table relating strings that reference gates to the relevant 
-        :class: `~netsquid.components.instructions.Instruction` or function
+        :class:`~netsquid.components.instructions.Instruction` or function
         that outputs an 
-        :class: `~netsquid.components.instructions.Instruction`,
-        :class: `~netsquid.qubits.operators.Operator` pair.
+        :class:`~netsquid.components.instructions.Instruction`,
+        :class:`~netsquid.qubits.operators.Operator` pair.
         
     """
     
@@ -740,10 +740,10 @@ class Ast2DqcCircuitTranslator():
         A lookup table defining the gates
         that should be treated as native gates for the hardware. The lookup 
         table relates strings to the relevant 
-        :class: `~netsquid.components.instructions.Instruction` or function
+        :class:`~netsquid.components.instructions.Instruction` or function
         that outputs an 
-        :class: `~netsquid.components.instructions.Instruction`,
-        :class: `~netsquid.qubits.operators.Operator` pair.
+        :class:`~netsquid.components.instructions.Instruction`,
+        :class:`~netsquid.qubits.operators.Operator` pair.
     
     """
     
@@ -1216,11 +1216,11 @@ class Ast2DqcCircuitTranslator():
         
         Converts an abstract syntax tree created using
         :func: `~dqc_simulator.software.qasm2ast.qasm2ast` into a 
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit` object.
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit` object.
             
         Returns
         -------
-        :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+        :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
         """
 
         #implementing functions from <exp> in openQASM 2.0's grammar:

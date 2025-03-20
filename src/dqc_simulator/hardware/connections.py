@@ -48,9 +48,9 @@ def create_classical_fibre_link(network, node_a, node_b, length,
 
     Parameters
     ----------
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The entire network.
-    node_a, node_b : :class: `~netsquid.nodes.Node`
+    node_a, node_b : :class:`~netsquid.nodes.Node`
         The QPUs to be linked.
     length : float
         the length of the connection.
@@ -90,11 +90,11 @@ class BlackBoxEntanglingQsourceConnection(Connection):
     chosen entanglement distribution rate (ie, the average entanglement 
     distribution rate should be used).
     
-    The black box :class: `~netsquid.components.qsource.QSource` is triggered
+    The black box :class:`~netsquid.components.qsource.QSource` is triggered
     via the sending of a classical trigger message from either QPU. It is 
     assumed that both QPUs are ready to receive an entangled qubit when the 
     trigger message is sent, which will need to be enforced using the 
-    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol`(s) used to send 
+    :class:`~netsquid.protocols.nodeprotocols.NodeProtocol` (s) used to send 
     the trigger message. Only one trigger message should be sent per 
     entanglement distribution desired to avoid unintended behaviour (ie, a 
     trigger message should not be sent by both QPUs requesting the same 
@@ -174,11 +174,11 @@ class ProbabilisticQSourceConnection(Connection):
     Generates a pair of entangled qubits sharing a particular state without 
     regard for how that state was generated. 
     
-    The black box :class: `~netsquid.components.qsource.QSource` is triggered
+    The black box :class:`~netsquid.components.qsource.QSource` is triggered
     via the sending of a classical trigger message from either QPU. It is 
     assumed that both QPUs are ready to receive an entangled qubit when the 
     trigger message is sent, which will need to be enforced using the 
-    :class: `~netsquid.protocols.nodeprotocols.NodeProtocol`(s) used to send 
+    :class:`~netsquid.protocols.nodeprotocols.NodeProtocol`(s) used to send 
     the trigger message. Only one trigger message should be sent per 
     entanglement distribution desired to avoid unintended behaviour (ie, a 
     trigger message should not be sent by both QPUs requesting the same 
@@ -264,9 +264,9 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
     
     Parameters
     ----------
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The entire network.
-    node_a, node_b : :class: `~netsquid.nodes.Node`
+    node_a, node_b : :class:`~netsquid.nodes.Node`
         A network node.
     state4distribution : numpy.ndarray 
         The entangled state distributed between nodes when
@@ -316,9 +316,9 @@ def create_probabilistic_qsource_connection(network, node_a, node_b,
     
     Parameters
     ----------
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The entire network.
-    node_a, node_b : :class: `~netsquid.nodes.Node`
+    node_a, node_b : :class:`~netsquid.nodes.Node`
         A network node.
     states4distribution : dict
         Keys are quantum state representations `~netsquid.qubits.qrepr.QRepr`, 
@@ -367,14 +367,14 @@ def create_midpoint_heralded_entangling_link(
     Sets up an entangling connection with a central BSM between two QPUs.
     
     Adds a 
-    :class: `netsquid_physlayer.heralded_connection.MiddleHeraldedConnection` 
+    :class:`netsquid_physlayer.heralded_connection.MiddleHeraldedConnection` 
     between two nodes.
 
     Parameters
     ----------
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The entire network.
-    node_a, node_b : :class: `~netsquid.nodes.Node`
+    node_a, node_b : :class:`~netsquid.nodes.Node`
         The QPU nodes to be linked.
     length: float
         Total length [km] of heralded connection (i.e. sum of fibers on both sides on midpoint station).

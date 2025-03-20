@@ -8,11 +8,11 @@
 Additional quantum gates to those included natively in NetSquid.
 
 The gates defined in this module are 
-:class: `~netsquid.components.instructions.Instruction` objects or tuples
-containing :class: `~netsquid.components.instructions.Instruction` objects or
-functions returning :class: `~netsquid.components.instructions.Instruction`
+:class:`~netsquid.components.instructions.Instruction` objects or tuples
+containing :class:`~netsquid.components.instructions.Instruction` objects or
+functions returning :class:`~netsquid.components.instructions.Instruction`
  objects or tuples containing instructions and 
-:class: `~netsquid.qubits.operators.Operator` objects to be used by those 
+:class:`~netsquid.qubits.operators.Operator` objects to be used by those 
 instructions. In short, the gates in this module are intended for backend use 
 and will utilised directly by the simulation.
 """
@@ -40,7 +40,7 @@ def make_state_gen_op(alpha, beta):
 
     Returns
     -------
-    state_gen_op : :class: `~netsquid.qubits.operators.Operator`
+    state_gen_op : :class:`~netsquid.qubits.operators.Operator`
         An operator describing a fictitious quantum gate which can create an
         arbitrary single qubit gate.
     """
@@ -53,7 +53,7 @@ def INSTR_ARB_GEN(alpha, beta):
     """
     For generating arbitrary quantum states.
     
-    Creates :class: `~netsquid.components.instructions.Instruction` that 
+    Creates :class:`~netsquid.components.instructions.Instruction` that 
     generates arbitrary quantum states.
 
     Parameters
@@ -70,7 +70,7 @@ def INSTR_ARB_GEN(alpha, beta):
 
     Returns
     -------
-    instruction : :class: `~netsquid.components.instructions.Instruction`
+    instruction : :class:`~netsquid.components.instructions.Instruction`
         An instruction that creates arbitrary quantum states.
         
     Notes
@@ -78,10 +78,10 @@ def INSTR_ARB_GEN(alpha, beta):
     This function will be deprecated in a future version. It was implemented
     to allow arbitrary quantum states to be generated, however, I would like
     to do this using :func: `~dqc_simulator.qlib.make_state_gen_op`
-    and an instruction :class: `~netsquid.components.instructions.Instruction`
+    and an instruction :class:`~netsquid.components.instructions.Instruction`
     without an operator in the future. This will avoid the need to bake 
     `alpha` and `beta` into the 
-    :class: `~netsquid.components.qprocessor.QuantumProcessor`.
+    :class:`~netsquid.components.qprocessor.QuantumProcessor`.
     """
     #THIS WILL BE DEPRECATED IN FUTURE VERSION
     total_probability_q1 = abs(alpha)**2 + abs(beta)**2
@@ -133,8 +133,8 @@ def INSTR_U(theta, phi, lambda_var, controlled=False):
     Returns
     -------
     instructionNop : tuple
-        The NetSquid :class: `~netsquid.components.instructions.Instruction`
-        and operation :class: `~netsquid.qubits.operators.Operator`
+        The NetSquid :class:`~netsquid.components.instructions.Instruction`
+        and operation :class:`~netsquid.qubits.operators.Operator`
         needed to carry out this gate.
         Here, the instruction essentially indicates all relevant metadata and 
         can be used to dictate which noise should be applied to the gate, 
@@ -195,8 +195,8 @@ def instrNop_RZ(angle, controlled=False, conjugate=False):
     Returns
     -------
     instructionNop : tuple
-        The NetSquid :class: `~netsquid.components.instructions.Instruction`
-        and operation :class: `~netsquid.qubits.operators.Operator`
+        The NetSquid :class:`~netsquid.components.instructions.Instruction`
+        and operation :class:`~netsquid.qubits.operators.Operator`
         needed to carry out this gate.
         Here, the instruction essentially indicates all relevant metadata and 
         can be used to dictate which noise should be applied to the gate, 

@@ -43,10 +43,10 @@ class QPU(QuantumProcessor):
         DESCRIPTION. The default is None.
     num_comm_qubits : TYPE, optional
         DESCRIPTION. The default is 0.
-    comm_qubit_mem_noise_model : :class: `~netsquid.components.models.qerrormodels.QuantumErrorModel`
+    comm_qubit_mem_noise_model : :class:`~netsquid.components.models.qerrormodels.QuantumErrorModel`
         The memory noise model for all comm qubits. If this is not None, 
         mem_noise_models will be overridden.
-    processing_qubit_mem_noise_model : :class: `~netsquid.components.models.qerrormodels.QuantumErrorModel`
+    processing_qubit_mem_noise_model : :class:`~netsquid.components.models.qerrormodels.QuantumErrorModel`
         The memory noise model for all processing qubits. If this is not None, 
         mem_noise_models will be overridden.
         
@@ -178,7 +178,7 @@ class QPU(QuantumProcessor):
 
         Returns
         -------
-        mem_noise_models: list of :class: `~netsquid.components.models.qerrormodels.QuantumErrorModel`
+        mem_noise_models: list of :class:`~netsquid.components.models.qerrormodels.QuantumErrorModel`
             The noise models to apply to the corresponding memory positions.
         """
         mem_noise_models = []
@@ -224,7 +224,7 @@ def create_processor(alpha=1, beta=0, depolar_rate=0, dephase_rate=0,
     -----
     The gate durations are too small to be physical. This processor was used
     for cases where gate duration (as long as it was finite to avoid a
-    :class: `~netsquid.components.qprocessor.ProcessorBusyError`) did not
+    :class:`~netsquid.components.qprocessor.ProcessorBusyError`) did not
     matter.
     """
 # =============================================================================
@@ -303,7 +303,7 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
 
     Returns
     -------
-    physical_instructions : list of :class: `~netsquid.components.qprocessor.PhysicalInstruction`s
+    physical_instructions : list of :class:`~netsquid.components.qprocessor.PhysicalInstruction`s
     """
     #creating processor for all Nodes
     physical_instructions = [
@@ -408,7 +408,7 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
 
     Returns
     -------
-    qprocessor : :class: `~netsquid.components.qprocessor.QuantumProcessor`
+    qprocessor : :class:`~netsquid.components.qprocessor.QuantumProcessor`
     
     Notes
     -----
@@ -496,7 +496,7 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
 
     Returns
     -------
-    qprocessor : :class: `netsquid.components.qprocessor.QuantumProcessor
+    qprocessor : :class:`netsquid.components.qprocessor.QuantumProcessor
     
     Notes
     -----

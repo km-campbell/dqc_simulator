@@ -43,13 +43,13 @@ from netsquid.protocols import NodeProtocol
 #     
 #     Parameters
 #     ----------
-#     superprotocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+#     superprotocol : :class:`netsquid.protocols.nodeprotocols.NodeProtocol`
 #         The superprotocol for this protocl. The link layer protocol will be 
 #         executed as a subprotocol of the superprotocol.
-#     physical_layer_protocol : :class: `netsquid.protocols.nodeprotocols.NodeProtocol`
+#     physical_layer_protocol : :class:`netsquid.protocols.nodeprotocols.NodeProtocol`
 #         Instance of the physical layer protocol to use to handle entanglement 
 #         generation.
-#     node : :class: `netsquid.nodes.node.Node`, subclass thereof or None, optional
+#     node : :class:`netsquid.nodes.node.Node`, subclass thereof or None, optional
 #         The QPU node that this protocol will act on. If None, a node should be
 #         set later before starting this protocol. [1]_
 #     name : str or None, optional
@@ -60,7 +60,7 @@ from netsquid.protocols import NodeProtocol
 #     References
 #     ----------
 #     The parameters in which Ref. [1]_ was cited were inherited from 
-#     :class: `~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
+#     :class:`~netsquid.protocols.nodeprotocols.NodeProtocol` and the description
 #     used for those parameters was taken from the NetSquid documentation with 
 #     very minor modification [1]_.
 #     

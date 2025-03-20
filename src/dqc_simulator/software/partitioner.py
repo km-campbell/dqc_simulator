@@ -24,7 +24,7 @@ def bisect_circuit(dqc_circuit, comm_qubits_per_node=2):
     
     Parameters
     ----------
-    dqc_circuit : :class: `~dqc_simulator.software.dqc_circuit.DqcCircuit`
+    dqc_circuit : :class:`~dqc_simulator.software.dqc_circuit.DqcCircuit`
         A monolithic quantum circuit.
     comm_qubits_per_node : int
         The number of qubits each QPU node has
@@ -152,12 +152,12 @@ def network2qpu_nodes(network):
 
     Parameters
     ----------
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The quantum network for a quantum data centre.
 
     Returns
     -------
-    qpu_nodes : list of :class: `~netsquid.nodes.node.Node`
+    qpu_nodes : list of :class:`~netsquid.nodes.node.Node`
         The nodes with a QPU. These are intended to contribute directly to a 
         computation rather than performing an administrative function.
     """
@@ -185,7 +185,7 @@ def partition_gate_tuples(gate_tuples, network, scheme,
         (instruction, qubit_index_ii, node_name, qubit_index_jj, node_name, ...)
         where in the latter case node_name will be a constant (the name of the 
         monolithic quantum processor the circuit was originally designed for)
-    network : :class: `~netsquid.nodes.network.Network`
+    network : :class:`~netsquid.nodes.network.Network`
         The quantum network for a quantum data centre.
     scheme : str
         The scheme to use for remote gates. Allowed values are 'cat', '1tp',
@@ -221,7 +221,7 @@ def partition_gate_tuples(gate_tuples, network, scheme,
                                      bsm or correction).Note if this is given as
                                     empty list and scheme = "tp" then it will
                                     just do a teleportation
-                                gate_instruction : :class: `~netsquid.components.instructions.Instruction`
+                                gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                     The gate instruction for the target gate
                                 instruction_tuple : tuple 
                                     Tuple of form (gate_instruction, op), where
