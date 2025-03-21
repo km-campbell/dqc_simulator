@@ -3,18 +3,16 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to dqc_simulator's documentation!
+Documentation
 =========================================
-
-
-.. todolist::
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
    
    installation
-   usage
+   getting_started
+   user_guide 
    License<LICENSE>    
 
 .. toctree::
@@ -30,6 +28,10 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+To do
+------
+
+.. todolist::
 
 
 
