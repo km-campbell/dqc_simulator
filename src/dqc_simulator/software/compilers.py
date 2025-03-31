@@ -581,7 +581,7 @@ def sort_greedily_by_node_and_time(partitioned_gates,
                                 remote gate. Ie, for remote-cnot this would
                                 contain the cnot (but not the gates used for
                                  bsm or correction).Note if this is given as
-                                empty list and scheme = "tp" then it will
+                                empty list and scheme = "tp_risky" then it will
                                 just do a teleportation
                             gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                 The gate instruction for the target gate
