@@ -1,12 +1,15 @@
 dqc\_simulator.software
 =======================
 
+Modules for the emulation of software used to run a distributed quantum computer.
+
 .. todo::
 
    Could potentially change way control qubits are managed using
    :attr: `~netsquid.components.qmemory.MemoryPosition.in_use`
    flag and corresponding `pydynaa` events. Could also 
-   make use of `~netsquid-qrepchain.processing_nodes.CommunicationMemoryManager`
+   make use of `~netsquid-qrepchain.processing_nodes.CommunicationMemoryManager`.
+   Finally, the modules related to parsing should potentially be moved.
 
 
 .. toctree::

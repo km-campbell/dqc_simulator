@@ -1,6 +1,8 @@
 dqc\_simulator.hardware
 =======================
 
+Modules for the emulation of distributed quantum computing hardware.
+
 .. toctree::
    :caption: Modules
    :maxdepth: 2
