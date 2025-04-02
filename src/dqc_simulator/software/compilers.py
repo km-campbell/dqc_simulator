@@ -62,7 +62,7 @@ class QpuOps():
 # =============================================================================
 #         self.comm_schemes = {
 #             'cat' : self.cat_comm, 
-#             'tp_risky' : self.tp_risky,
+#             '1tp' : self.one_tp,
 #             'tp_safe' : self.tp_safe}
 # =============================================================================
 
@@ -172,12 +172,56 @@ class QpuOps():
 #         self.add_time_slice(node1_name)
 # =============================================================================
 
-    def tp_risky(self, gate_instructions, qubit_index0, node0_name, 
+    def one_tp(self, gate_instructions, qubit_index0, node0_name, 
                  node1_name):
-        #does not teleport back to original node to free up 
-        #comm-qubit
+        """
+        Add gate tuples for 1tp remote gate, in which a processing qubit
+        is teleported to an automatically assigned comm-qubit in another QPU 
+        and then the gate or gates are done locally by the QPU.
+        
+        No teleportation is done back to the original QPU to free up the 
+        comm-qubit used.
+        """
         node0_ops = [(qubit_index0, node1_name, "tp", "bsm")] 
         node1_ops = [(node0_name, "tp", "correct")] + gate_instructions
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+        
+    def teleport_only(self, gate_instructions, proc_qubit2teleport_from, 
+                   comm_qubit2teleport_to, node0_name, node1_name):
+        """
+        Add gate tuples for a teleportation.
+        
+        No subsequent gate is done automatically.
+        
+        Parameters
+        ----------
+        gate_instructions : empty list
+            Must be empty list, and is included only for input checking
+        proc_qubit2teleport_from : int
+            The index of the processing qubit to teleport from (the control 
+            qubit in the remote gate).
+        comm_qubit2teleport_to : int
+            The index of the comm-qubit to be teleported to.
+        node0_name : str
+            The name of the QPU node to be teleported from.
+        node1_name : str
+            The name of the QPU node to be teleported to.
+            
+        .. todo::
+            
+            Deprecate the type check here, by changing the way gate tuples 
+            with four or more elements are interpreted. Length alone is not 
+            a stable interpretation method.
+        """
+        if gate_instructions != []:
+            #TO DO: deprecate this type check by changing the way that 
+            #interpretation of gate_tuples is done
+            raise ValueError('gate_instructions must be empty list because '
+                             'teleport_only involves only teleportation ')
+        node0_ops = [(proc_qubit2teleport_from, node1_name, "tp", "bsm")] 
+        node1_ops = ([(comm_qubit2teleport_to, node0_name, "tp", 
+                       "correct_manually")])
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
         
@@ -200,10 +244,15 @@ class QpuOps():
 
     def tp_safe(self, gate_instructions, qubit_index0, qubit_index1,
                 node0_name, node1_name):
-        #implements tp remote gate then teleports back to original node 
-        #to free up comm-qubit.
+        """Specifying gate tuples needed to implement remote gate using 1tp, 
+        then teleports back to original qubit on the QPU to free up comm-qubits.
+        
+        In the ideal case, the qubits would be left in the state they would 
+        have been had it been possible to do a local gate between them (ie, 
+        all quantum information is stored in processing qubits).
+        """
         #For remote gate:
-        self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+        self.one_tp(gate_instructions, qubit_index0, node0_name, 
                       node1_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
@@ -215,7 +264,7 @@ class QpuOps():
         #to free up comm-qubit.
 # =============================================================================
 #         #For remote gate:
-#         self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+#         self.one_tp(gate_instructions, qubit_index0, node0_name, 
 #                       node1_name)
 #         self.add_time_slice(node0_name)
 #         self.add_time_slice(node1_name)
@@ -233,7 +282,7 @@ class QpuOps():
 #         #correction and the measurement dependent gates act on the data qubit
 #         #(see figure 2b of published version of AutoComm paper)
 #         #For remote gate:
-#         self.tp_risky(gate_instructions, qubit_index0, node0_name, 
+#         self.one_tp(gate_instructions, qubit_index0, node0_name, 
 #                       node1_name)
 #         self.add_time_slice(node0_name)
 #         self.add_time_slice(node1_name)
@@ -251,8 +300,11 @@ class QpuOps():
         comm_schemes = {
             'cat' : partial(self.cat_comm, gate_instructions, qubit_index0, 
                             qubit_index1, node0_name, node1_name), 
-            'tp_risky' : partial(self.tp_risky, gate_instructions,
+            '1tp' : partial(self.one_tp, gate_instructions,
                                  qubit_index0, node0_name, node1_name),
+            'teleport_only' : partial(self.teleport_only, gate_instructions,
+                                   qubit_index0, qubit_index1, node0_name, 
+                                   node1_name),
             'free_comm_qubit_with_tele' : partial(self.free_comm_qubit_with_tele,
                                                   qubit_index0, qubit_index1,
                                                   node0_name, node1_name),
@@ -267,6 +319,7 @@ class QpuOps():
     
 def find_qubit_node_pairs(partitioned_gates):
     """
+    
     Parameters
     ----------
     partitioned_gates : list of tuples
@@ -280,11 +333,10 @@ def find_qubit_node_pairs(partitioned_gates):
     qubit_node_pairs : dict
         All of the gates associated with a qubit-node pair. Qubit-node pairs
         are referred to by a key of the form (qubit0_index, node0_name,
-                                              node1_name), where the first two
+        node1_name), where the first two
         entries define the qubit and the latter the node. The remote gates for
         each qubit-node pair are lists of the form [gate, ID] where gate is 
         the gate tuple form partitioned gates and ID
-
     """
     def _add_entry(a_dict, key, value):
         if key in a_dict:
@@ -581,7 +633,7 @@ def sort_greedily_by_node_and_time(partitioned_gates,
                                 remote gate. Ie, for remote-cnot this would
                                 contain the cnot (but not the gates used for
                                  bsm or correction).Note if this is given as
-                                empty list and scheme = "tp_risky" then it will
+                                empty list and scheme = "1tp" then it will
                                 just do a teleportation
                             gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                 The gate instruction for the target gate

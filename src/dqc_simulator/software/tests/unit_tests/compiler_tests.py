@@ -72,12 +72,19 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
                                        (4, 'node_0', 'cat', 'disentangle_start')]]}
         self.assertEqual(updated_node_op_dict, expected_output)
 
-    def test_can_add_tp_risky_cx(self):
-        partitioned_gates = [(instr.INSTR_CNOT, 2, "node_0", 4, "node_1", "tp_risky")]
+    def test_can_add_1tp_cx(self):
+        partitioned_gates = [(instr.INSTR_CNOT, 2, "node_0", 4, "node_1", "1tp")]
         updated_node_op_dict = self.compiler(partitioned_gates)
         expected_output = {'node_0': [[(2, 'node_1', 'tp', 'bsm')]],
                            'node_1': [[('node_0', 'tp', 'correct'), 
                                        (instr.INSTR_CNOT, -1, 4)]]}
+        self.assertEqual(updated_node_op_dict, expected_output)
+        
+    def test_can_teleport_to_specific_comm_qubit(self):
+        partitioned_gates = [([], 2, "node_0", 4, "node_1", "teleport_only")]
+        updated_node_op_dict = self.compiler(partitioned_gates)
+        expected_output = {'node_0': [[(2, 'node_1', 'tp', 'bsm')]],
+                           'node_1': [[(4, 'node_0', 'tp', 'correct_manually')]]}
         self.assertEqual(updated_node_op_dict, expected_output)
     
 # =============================================================================
@@ -126,8 +133,6 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
         expected_output = {'node_0' : [[(instr.INSTR_INIT, 2),
                                         (instr.INSTR_MEASURE, 2, 'logging')]]}
         self.assertEqual(updated_node_op_dict, expected_output)
-
-
 
 class Test_find_qubit_node_pairs(unittest.TestCase):
     def test_adds_single_gate(self):

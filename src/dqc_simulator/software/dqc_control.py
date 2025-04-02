@@ -379,10 +379,13 @@ class QpuOSProtocol(NodeProtocol):
     
     def _bsm(self, program, data_or_tele_qubit_index, other_node_name,
              classical_comm_port):
+        #doing all pending local operations
         yield self.node.qmemory.execute_program(program)
         self._gate_tuples_evaluated[-1].extend(self._local_gate_tuples_pending)
         #re-initialising self._local_gate_tuples_pending
         self._local_gate_tuples_pending = []
+        
+        #implement a BSM
         program=QuantumProgram()
         if len(self.node.qmemory.comm_qubits_free) == 0 :
             #if there are no comm-qubits free:
@@ -474,7 +477,7 @@ class QpuOSProtocol(NodeProtocol):
     
     def _tp_correct(self, program, other_node_name,
                     classical_comm_port, reserve_comm_qubit, swap_commNdata,
-                    data_qubit_index=None):
+                    data_or_tele_qubit_index=None, manual=False):
         """
         
 
@@ -492,9 +495,13 @@ class QpuOSProtocol(NodeProtocol):
         swap_commNdata : bool
             Whether to swap the data qubit and comm qubit prior to applying
             measurement dependent gates.
-        data_qubit_index : int
+        manual : bool
+            Whether to have the user manually specify the comm-qubits or do 
+            this automatically (False). The default is False.
+        data_or_tele_qubit_index : int or None
             The index of the data qubit index to SWAP the comm qubit index with
-            if swap_commNdata == True
+            if swap_commNdata is True or the index of the qubit that has been 
+            teleported to if manual is True. The default is None.
 
         Raises
         ------
@@ -522,44 +529,49 @@ class QpuOSProtocol(NodeProtocol):
                             f" remote gates on "
                             f"{self.node.name} in "
                             f"this time slice")
-        else: #if there are comm-qubits free
-            #establishing new comm-qubit for the current
-            #teleportation
+        #elif there are comm-qubits free:
+            
+        #establishing new comm-qubit for the current teleportation
+        if not manual: #if specifying comm-qubit index automatically:
             comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
-            if reserve_comm_qubit:
-                del self.node.qmemory.comm_qubits_free[0]
-            #removing comm qubit being used from list of 
-            #available comm-qubits:
-            if not self.node.qmemory.ebit_ready:#if there is no ebit ready:
-                yield from self._request_entanglement('server', 
-                                                      other_node_name, 
-                                                      [comm_qubit_index])
-            yield self.await_port_input(classical_comm_port)
-            meas_results, = classical_comm_port.rx_input().items
-            if swap_commNdata:
+        else: #if specifying comm-qubit index manually:
+            comm_qubit_index = data_or_tele_qubit_index
+            
+        if reserve_comm_qubit:
+            #removing comm qubit being used from list of available comm-qubits
+            reserved_index = self.node.qmemory.comm_qubits_free.index(
+                comm_qubit_index)
+            del self.node.qmemory.comm_qubits_free[reserved_index]
+        if not self.node.qmemory.ebit_ready:#if there is no ebit ready:
+            yield from self._request_entanglement('server', 
+                                                  other_node_name, 
+                                                  [comm_qubit_index])
+        yield self.await_port_input(classical_comm_port)
+        meas_results, = classical_comm_port.rx_input().items
+        if swap_commNdata:
 # =============================================================================
 #                 program.apply(instr.INSTR_CNOT, [comm_qubit_index,
-#                                                  data_qubit_index])
-#                 program.apply(instr.INSTR_CNOT, [data_qubit_index,
+#                                                  data_or_tele_qubit_index])
+#                 program.apply(instr.INSTR_CNOT, [data_or_tele_qubit_index,
 #                                                  comm_qubit_index])
 #                 program.apply(instr.INSTR_CNOT, [comm_qubit_index,
-#                                                  data_qubit_index])
+#                                                  data_or_tele_qubit_index])
 # =============================================================================
-                program.apply(instr.INSTR_SWAP, [comm_qubit_index,
-                                                 data_qubit_index])
-                self._handle_meas_results4tp_correct(meas_results, 
-                                                     data_qubit_index, 
-                                                     program)
-            else:
-                self._handle_meas_results4tp_correct(meas_results, 
-                                                     comm_qubit_index, 
-                                                     program)
-            yield self.node.qmemory.execute_program(program)
-            self._gate_tuples_evaluated[-1].extend(
-                                               self._local_gate_tuples_pending)
-            #re-initialising self._local_gate_tuples_pending
-            self._local_gate_tuples_pending = []
-            program = QuantumProgram()
+            program.apply(instr.INSTR_SWAP, [comm_qubit_index,
+                                             data_or_tele_qubit_index])
+            self._handle_meas_results4tp_correct(meas_results, 
+                                                 data_or_tele_qubit_index, 
+                                                 program)
+        else:
+            self._handle_meas_results4tp_correct(meas_results, 
+                                                 comm_qubit_index, 
+                                                 program)
+        yield self.node.qmemory.execute_program(program)
+        self._gate_tuples_evaluated[-1].extend(
+                                           self._local_gate_tuples_pending)
+        #re-initialising self._local_gate_tuples_pending
+        self._local_gate_tuples_pending = []
+        program = QuantumProgram()
         return (comm_qubit_index, program)
     
     def _cat_subgenerator(self, role, program, other_node_name,
@@ -652,49 +664,52 @@ class QpuOSProtocol(NodeProtocol):
             program = evexpr_or_program
 
         elif role == "correct":
-            reserve_comm_qubit = True
-            swap_commNdata = False
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
                     other_node_name,
                     classical_comm_port,
-                    reserve_comm_qubit,
-                    swap_commNdata))
+                    reserve_comm_qubit=True,
+                    swap_commNdata=False))
             comm_qubit_index = evexpr_or_tuple[0]
             program = evexpr_or_tuple[1]
                 
         elif role == "correct4tele_only":
-            reserve_comm_qubit = False
-            swap_commNdata = False
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
                     other_node_name,
                     classical_comm_port,
-                    reserve_comm_qubit,
-                    swap_commNdata))
+                    reserve_comm_qubit=False,
+                    swap_commNdata=False))
             comm_qubit_index = evexpr_or_tuple[0]
             program = evexpr_or_tuple[1]
             
         elif role == "swap_then_correct":
-            reserve_comm_qubit = False
-            swap_commNdata = True
             evexpr_or_tuple = (
                 yield from self._tp_correct(
                     program,
                     other_node_name,
                     classical_comm_port,
-                    reserve_comm_qubit,
-                    swap_commNdata,
-                    data_qubit_index=data_or_tele_qubit_index))
+                    reserve_comm_qubit=False,
+                    swap_commNdata=True,
+                    data_or_tele_qubit_index=data_or_tele_qubit_index))
+            comm_qubit_index = evexpr_or_tuple[0]
+            program = evexpr_or_tuple[1]
+            
+        elif role == "correct_manually":
+            evexpr_or_tuple = ( 
+                yield from self._tp_correct(
+                    program, other_node_name, classical_comm_port,
+                    reserve_comm_qubit=True, swap_commNdata=False,
+                    manual=True, 
+                    data_or_tele_qubit_index=data_or_tele_qubit_index))
             comm_qubit_index = evexpr_or_tuple[0]
             program = evexpr_or_tuple[1]
                 
         else:
             raise ValueError(
-                "final element of gate_tuple is not valid"
-                " role")
+                f"final element, {role} of gate_tuple is not a valid role")
         return (comm_qubit_index, program)
     
     #SHOULD the following be implemented as a protocol in its own right along 
@@ -758,7 +773,6 @@ class QpuOSProtocol(NodeProtocol):
         #allowing us to raise error if not all gate tuples are 
         #evaluated at the end of the sim run.
         
-    #TO DO: remove the following if you can't get it to work.
     def _handle_remote_gate_primitive(self, program, gate_tuple, 
                                       comm_qubit_index):
         #The remote gates in this block will use different
@@ -870,7 +884,7 @@ class QpuOSProtocol(NodeProtocol):
             
     def raise_error_if_not_all_gates_executed(self):
         """
-        To be run after the end of a sim run.
+        To be run at the end of the protocol's run.
         """
         if self._gate_tuples_evaluated != self.gate_tuples:
             index_of_last_time_slice_evaluated = ( 

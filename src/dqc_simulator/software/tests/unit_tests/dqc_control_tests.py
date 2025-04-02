@@ -100,6 +100,18 @@ class TestDqcMasterProtocol(unittest.TestCase):
         fidelity = qapi.fidelity([qubit_node_0, qubit_node_1], ks.b00)
         self.assertAlmostEqual(fidelity, 1.0, 5)
         
+    def test_can_implement_teleportation_to_comm_qubit(self):
+        gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
+                       (instr.INSTR_H, 2, "node_0"), 
+                       ([], 2, "node_0", 0, "node_1", 'teleport_only')]
+        protocol = dqcMasterProtocol(gate_tuples, self.network.nodes)
+        protocol.start()
+        ns.sim_run(self.sim_runtime)
+        protocol.check_quantum_circuit_finished()
+        qubit_node_1, = self.node_1.qmemory.pop(0)
+        fidelity = qapi.fidelity([qubit_node_1], ks.h0)
+        self.assertAlmostEqual(fidelity, 1.0, 5)
+        
     def test_can_implement_remote_CNOT_gate_with_tp_safe(self):
         gate_tuples = [(instr.INSTR_INIT, 2, "node_0"), 
                        (instr.INSTR_INIT, 2, "node_1"),
@@ -912,9 +924,9 @@ class TestDqcMasterProtocol(unittest.TestCase):
 #                        (instr.INSTR_H, 2, "node_0"), 
 #                        (instr.INSTR_S, 2, "node_0"),
 #                        (instr.INSTR_CNOT, 2, "node_0", 2, 
-#                         "node_1", "tp_risky"),
+#                         "node_1", "1tp"),
 #                        ([], -1, "node_1", -1,
-#                         "node_0", "tp_risky")]
+#                         "node_0", "1tp")]
 # # =============================================================================
 # #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
 # #         print(f"node_op_dict is {node_op_dict}")
@@ -952,11 +964,11 @@ class TestDqcMasterProtocol(unittest.TestCase):
 #                        (instr.INSTR_H, 2, "node_0"), 
 #                        (instr.INSTR_S, 2, "node_0"),
 #                        (instr.INSTR_CNOT, 2, "node_0", 2, 
-#                         "node_1", "tp_risky"),
-#                        ([], -1 , "node_1", -1, "node_0", "tp_risky"),
+#                         "node_1", "1tp"),
+#                        ([], -1 , "node_1", -1, "node_0", "1tp"),
 #                        (instr.INSTR_CNOT, 2, "node_1", 2,
-#                         "node_2", "tp_risky"),
-#                        ([], -1, "node_2", -1, "node_1", "tp_risky")]
+#                         "node_2", "1tp"),
+#                        ([], -1, "node_2", -1, "node_1", "1tp")]
 #         master_protocol = dqcMasterProtocol(
 #                              gate_tuples, self.network,
 #                              compiler_func=sort_greedily_by_node_and_time)
@@ -986,10 +998,10 @@ class TestDqcMasterProtocol(unittest.TestCase):
 #                        (instr.INSTR_H, 2, "node_0"), 
 #                        (instr.INSTR_S, 2, "node_0"),
 #                        (instr.INSTR_CNOT, 2, "node_0", 2, 
-#                         "node_1", "tp_risky"),
+#                         "node_1", "1tp"),
 #                        ([], -1 , "node_1", 2, "node_0", "free_comm_qubit_with_tele"),
 #                        (instr.INSTR_CNOT, 2, "node_1", 2,
-#                         "node_2", "tp_risky"),
+#                         "node_2", "1tp"),
 #                        ([],-1, "node_2", 2, "node_1", "free_comm_qubit_with_tele")]
 # # =============================================================================
 # #         node_op_dict = sort_greedily_by_node_and_time(gate_tuples)
