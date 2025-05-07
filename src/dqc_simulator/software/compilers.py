@@ -44,6 +44,8 @@ class QpuOps():
     """
     Data structure for tracking the operations of all QPUs within a DQC.
     
+    Intended to help users develop their own compilers.
+    
     Attributes
     ----------
     ops : dict
@@ -60,10 +62,8 @@ class QpuOps():
     def __init__(self):
         self.ops = {}
 # =============================================================================
-#         self.comm_schemes = {
-#             'cat' : self.cat_comm, 
-#             '1tp' : self.one_tp,
-#             'tp_safe' : self.tp_safe}
+#         self.internode_primitives = {
+#             'request_ebit' : }
 # =============================================================================
 
     def add_empty_node_entry(self, node_name):
@@ -134,14 +134,30 @@ class QpuOps():
                 del self.ops[node_key][-1]
         
 # =============================================================================
-#         for node_key in self.ops:
-#             if not self.ops[node_key][-1]:
-#             #if last time slice is empty:
-#                 del self.ops[node_key][-1]
+#     def request_ebit(self, node0_name, node1_name):
+#         """
+#         Request ebit (entangled pair) between two QPU nodes.
+# 
+#         Parameters
+#         ----------
+#         node0_name, node1_name : str
+#             The names of the nodes to receive each half of the ebit.
+#         """
+#         node0_ops = [()]
 # =============================================================================
-            
+
+    def distribute_ebit(self, gate_tuple):
+        # It doesn't matter here which node is the client and which is the 
+        # server
+        node0_name = gate_tuple[0]
+        node1_name = gate_tuple[1]
+        node0_op = (node0_name, 'client', 'distribute_ebit')
+        node1_op = (node1_name, 'server', 'distribute_ebit')
+        self.append_op_2current_time_slice(node0_name, node0_op)
+        self.append_op2current_time_slice(node1_name, node1_op)
+
     def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
-                       node0_name, node1_name):
+                 node0_name, node1_name):
 # =============================================================================
 #         node0_op = [(qubit_index0, node1_name, "cat", "entangle")]
 #         node1_op = [(node0_name, "cat", "correct")]
@@ -668,6 +684,8 @@ def sort_greedily_by_node_and_time(partitioned_gates,
     qpu_ops = QpuOps()
 
     for gate_tuple in partitioned_gates:
+        if len(gate_tuple) == 3 and gate_tuple[-1] == 'distribute_ebit':
+            qpu_ops.distribute_ebit(gate_tuple)
         if len(gate_tuple) == 3: #if single-qubit gate:
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]

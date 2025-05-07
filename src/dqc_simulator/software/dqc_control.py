@@ -217,7 +217,6 @@ class QpuOSProtocol(NodeProtocol):
         None.
 
         """
-        
         #send entanglement request to link layer specifying the other node
         #involved in the connection and the comm-qubit to be used:
         self.send_signal(self.ent_request_label, 
@@ -761,6 +760,34 @@ class QpuOSProtocol(NodeProtocol):
         except TypeError: #elif gate_instr is not iterable
             gate_op = None
         return gate_instr, gate_op
+    
+    def _distribute_ebit(self, program, gate_tuple):
+        """
+        Low-level command to distribute an ebit (pair of entangled qubits)
+
+        Parameters
+        ----------
+        program : TYPE
+            DESCRIPTION.
+        gate_tuple : TYPE
+            DESCRIPTION.
+
+        Yields
+        ------
+        TYPE
+            DESCRIPTION.
+
+        """
+        comm_qubit_index = self.node.qmemory.comm_qubits_free[0]
+        other_node_name = gate_tuple[0]
+        role = gate_tuple[1]
+        yield from self._request_entanglement(
+            role, other_node_name, [comm_qubit_index], 
+            num_entanglements2generate=1, 
+            entanglement_type2generate='bell_pair')
+        # Reserving comm-qubit
+        del self.node.qmemory.comm_qubits_free[0]
+        self._gate_tuples_evaluated[-1].append(gate_tuple)
         
     def _handle_single_qubit_gate(self, program, gate_tuple):
         gate_instr, gate_op = self._get_gate_instruction_and_op(gate_tuple)
@@ -843,9 +870,11 @@ class QpuOSProtocol(NodeProtocol):
             elif gate_tuple[-1] in self.single_qubit_subroutines: 
                 yield from self.single_qubit_subroutines[gate_tuple[-1]](
                     program, gate_tuple)
+            elif gate_tuple[-1] == 'distribute_ebit':
+                yield from self._distribute_ebit(program, gate_tuple)
             elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
                   self.remote_gate_variants): #if primitive for remote
-                                                #gate:
+                                              #gate:
                 #The remote gates in this block will use different
                 #comm-qubits because logical gates using the same 
                 #comm-qubit will occur in different time slices or will
