@@ -110,7 +110,7 @@ class QpuOSProtocol(NodeProtocol):
         super().__init__(node, name)
         #the allowed subgenerators (similar to subprotocols, see Notes section 
         #above):
-        self.single_qubit_subroutines = ('logged',)
+        self.single_qubit_subroutines = {'logged' : self._logged_instr,}
         self.remote_gate_variants = {"cat" : self._cat_subgenerator,
                                      "tp" : self._tp_subgenerator}
         #other import attributes
@@ -841,7 +841,8 @@ class QpuOSProtocol(NodeProtocol):
             if len(gate_tuple) == 2: #if single-qubit gate:
                 self._handle_single_qubit_gate(program, gate_tuple)
             elif gate_tuple[-1] in self.single_qubit_subroutines: 
-                yield from self._logged_instr(program, gate_tuple)
+                yield from self.single_qubit_subroutines[gate_tuple[-1]](
+                    program, gate_tuple)
             elif (isinstance(gate_tuple[-1], str) and gate_tuple[-2] in 
                   self.remote_gate_variants): #if primitive for remote
                                                 #gate:
