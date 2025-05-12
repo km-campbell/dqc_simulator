@@ -151,9 +151,9 @@ class QpuOps():
         # server
         node0_name = gate_tuple[0]
         node1_name = gate_tuple[1]
-        node0_op = (node0_name, 'client', 'distribute_ebit')
-        node1_op = (node1_name, 'server', 'distribute_ebit')
-        self.append_op_2current_time_slice(node0_name, node0_op)
+        node0_op = (node1_name, 'client', 'distribute_ebit')
+        node1_op = (node0_name, 'server', 'distribute_ebit')
+        self.append_op2current_time_slice(node0_name, node0_op)
         self.append_op2current_time_slice(node1_name, node1_op)
 
     def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
@@ -685,8 +685,16 @@ def sort_greedily_by_node_and_time(partitioned_gates,
 
     for gate_tuple in partitioned_gates:
         if len(gate_tuple) == 3 and gate_tuple[-1] == 'distribute_ebit':
+            node0_name = gate_tuple[0]
+            node1_name = gate_tuple[1]
+            if node0_name not in qpu_ops.ops: 
+                qpu_ops.add_empty_node_entry(node0_name)
+            if node1_name not in qpu_ops.ops: 
+                qpu_ops.add_empty_node_entry(node1_name)
+                
+            qpu_ops.make_num_time_slices_match(node0_name, node1_name)
             qpu_ops.distribute_ebit(gate_tuple)
-        if len(gate_tuple) == 3: #if single-qubit gate:
+        elif len(gate_tuple) == 3: #if single-qubit gate:
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
