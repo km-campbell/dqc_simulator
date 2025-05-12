@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Software for controlling the simulated DQC hardware.
 
