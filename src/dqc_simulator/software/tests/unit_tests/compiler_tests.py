@@ -137,9 +137,17 @@ class Test_sort_greedily_by_node_and_time(unittest.TestCase):
     def test_distribute_ebit(self):
         partitioned_gates = [('node_0', 'node_1', 'distribute_ebit')]
         updated_node_op_dict = self.compiler(partitioned_gates)
-        print(updated_node_op_dict)
         expected_output = {'node_0' : [[('node_1', 'client', 'distribute_ebit')]],
                            'node_1' : [[('node_0', 'server', 'distribute_ebit')]]}
+        self.assertEqual(updated_node_op_dict, expected_output)
+        
+    def test_distribute_2_ebits(self):
+        partitioned_gates = [('node_0', 'node_1', 'distribute_ebit')] * 2
+        updated_node_op_dict = self.compiler(partitioned_gates)
+        expected_output = {'node_0' : [[('node_1', 'client', 'distribute_ebit'),
+                                        ('node_1', 'client', 'distribute_ebit')]],
+                           'node_1' : [[('node_0', 'server', 'distribute_ebit'),
+                                        ('node_0', 'server', 'distribute_ebit')]]}
         self.assertEqual(updated_node_op_dict, expected_output)
 
 class Test_find_qubit_node_pairs(unittest.TestCase):
