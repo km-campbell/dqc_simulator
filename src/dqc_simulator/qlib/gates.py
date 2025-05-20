@@ -113,6 +113,8 @@ INSTR_SINGLE_QUBIT_UNITARY = instr.IGate('single_qubit_unitary',
 INSTR_TWO_QUBIT_UNITARY = instr.IGate('two_qubit_unitary', num_positions=2)
 INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME = instr.IGate('neglibible_time_instr',
                                                  num_positions=1)
+INSTR_TWO_QUBIT_NEGLIGIBLE_TIME = instr.IGate('neglible_time_2_qubit',
+                                              num_positions=2)
 
 def INSTR_U(theta, phi, lambda_var, controlled=False):
     """

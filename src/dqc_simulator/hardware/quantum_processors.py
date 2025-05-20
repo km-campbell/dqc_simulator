@@ -16,7 +16,8 @@ from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
                                       INSTR_S_DAGGER,
                                       INSTR_SINGLE_QUBIT_UNITARY, 
                                       INSTR_TWO_QUBIT_UNITARY,
-                                      INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME)
+                                      INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME,
+                                      INSTR_TWO_QUBIT_NEGLIGIBLE_TIME)
 
 
 class QPU(QuantumProcessor):
@@ -360,6 +361,8 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
                                 duration=two_qubit_gate_time,
                                 parallel=True, topology=None),
             PhysicalInstruction(INSTR_SINGLE_QUBIT_NEGLIGIBLE_TIME,
+                                duration=3, parallel=True, topology=None),
+            PhysicalInstruction(INSTR_TWO_QUBIT_NEGLIGIBLE_TIME, 
                                 duration=3, parallel=True, topology=None)]
     return physical_instructions
 
