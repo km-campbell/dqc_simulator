@@ -5,7 +5,8 @@
 # @author: kenny
 # =============================================================================
 """
-Extendable library of useful quantum states.
+Extendable library of useful quantum states and helper functions for creating
+states.
 """
 
 import functools as ft
@@ -13,6 +14,24 @@ import functools as ft
 import netsquid as ns
 from netsquid.qubits import ketstates as ks
 import numpy as np
+
+def get_zket(*args):
+    """
+    Define arbitrary tensor product of kets in the computational basis.
+
+    Parameters
+    ----------
+    *args : int
+        The bits defining the basis. Eg, for args 1, 0, 1, basis return |101>
+
+    Returns
+    -------
+    np.array
+        Ket of form |ijkl....> for args i, j, k, l....
+
+    """
+    ket_lookup = {0 : ks.s0, 1 : ks.s1}
+    return ft.reduce(np.kron, [ket_lookup[arg] for arg in args])
 
 def get_ghz_state_ket(num_qubits):
     """
