@@ -19,12 +19,8 @@ into their existing workflow if they wish to consider more complicated
 scenarios, such as error detection, or specify their own hardware in 
 more detail. 
 
-Importing dqc_simulator
------------------------
-
-dqc_simulator can be imported into python code with the line: ::
-
-       import dqc_simulator
+This guide will take you through the main ideas of dqc_simulator and 
+take you through building your first DQC simulation experiment.
 
 Why use dqc_simulator?
 ----------------------
@@ -53,6 +49,7 @@ or the use of DQCs within larger networks.
 The key features of dqc_simulator are:
 
 *  **Easy-to-use interface for specifying distributed quantum circuits.**
+*  **Interpreter for running communication primitives.**
 *  **Automatic partitioning of monolithic (single-processor)**
    **quantum circuits between quantum processing units (QPUs).** Arbitrary
    algorithms for doing this can be specified by the user
@@ -63,11 +60,89 @@ The key features of dqc_simulator are:
 *  **Automatic compilation using pre-made compilers.** The user
    can also easily specify their own.
 
-The DQC circuit interface
--------------------------
+Importing dqc_simulator
+-----------------------
 
+dqc_simulator can be imported into python code with the line: ::
 
+       import dqc_simulator
+
+Creating the hardware
+---------------------
+
+Hardware specification can be done in three easy stages:
+
+1. Specify a QPU
+2. Specify a connection
+3. Specify the network.
+
+For step 1, a handy pre-built function is provided. Lets use it to create a 
+processor: ::
+
+      from dqc_simulator.hardware.quantum_processors import create_noisy_qpu
+      qpu = create_noisy_qpu()
+
+This QPU has two types of qubit: communication qubits, which 
+are used to host ebits, and processing qubits, which are used in 
+the same way as qubits on a monolithic processor. We can specify
+the maximum number of communication qubits that our QPU can hold
+with the `num_comm_qubits` keyword argument and the total number 
+of qubits (including communication and processing qubits) using
+`num_positions`. Ie, ::
+
+   qpu = create_noisy_qpu(num_comm_qubits=2,
+                          num_positions=10)
+
+Creates a processor with space for 2 comm-qubits and 8 processing 
+qubits, making 10 total qubits. This allows us to constrain what 
+it is possible for our hardware to handle. 
+
+By default all noise is turned off and the QPU is ideal. However,
+adding noise is as simple as choosing keyword arguments in the 
+above function. For example: ::
+
+   qpu = create_noisy_qpu(
+                      p_depolar_error_cnot=1e-03,
+                      single_qubit_gate_error_prob=2e-05,
+                      meas_error_prob=3e-03,
+                      comm_qubit_depolar_rate=0.06,
+                      proc_qubit_depolar_rate=0.05,
+                      single_qubit_gate_time=135 * 10**3,
+                      two_qubit_gate_time=600 * 10**3,
+                      measurement_time=600 * 10**4, 
+                      num_positions=10,
+                      num_comm_qubits=2)
+
+We have now added depolarising noise to all cnot gates with 
+probability :math:`1 \times 10^{-03}` and to all single-qubit 
+gates with probability :math:`2 \times 10^{-05}`. The probability
+of getting a bit flip during measurement has been set to 
+:math:`3 \times 10^{-03}` and we have imposed time dependent 
+memory depolarisation at a rate of memory depolarisation at a 
+rate of :math:`0.06`Hz on the communication qubits and 
+:math:`0.05Hz` on the processing qubits. You will also
+notice that we have defined times for various operations (in 
+units of ns). These define the duration of that operation and
+influence any time dependent memory depolarisation or anything 
+else that depends on time.
    
+.. note::
+   Advanced users, with a background in
+    `NetSquid <https://netsquid.org/>`_ may wish to define their
+    own QPUs. This can be done by subclassing from the
+    `dqc_simulator.hardware.quantum_processors.QPU`. This is itself
+    a subclass to the `QuantumProcessor` class defined in 
+    `NetSquid <https://netsquid.org/>`_ and is very similar but 
+    it adds the `comm_qubit_positions` and 
+    `processing_qubit_positions` attributes, which are made use 
+    of a great deal by the interpreter and so it is recommended 
+    to use the `QPU` as your base class. See the API reference for
+    more details.
+
+Step 2 is very similar. **FINISH. Do more briefly just specifying
+the function and options needed.**
+
+
 References
 ----------
 
