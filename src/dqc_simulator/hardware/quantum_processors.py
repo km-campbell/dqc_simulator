@@ -10,7 +10,9 @@ from netsquid.components.qprocessor import QuantumProcessor, PhysicalInstruction
 from netsquid.components.models.qerrormodels import (DepolarNoiseModel, 
                                                      DephaseNoiseModel)
 
-from dqc_simulator.hardware.noise_models import AnalyticalDepolarisationModel
+from dqc_simulator.hardware.noise_models import (AnalyticalDepolarisationModel,
+                                                 MeasurementNoiseModel,
+                                                 NDimDepolarNoiseModel)
 from dqc_simulator.qlib.gates import (INSTR_ARB_GEN, INSTR_CH, INSTR_CT,
                                       INSTR_T_DAGGER,
                                       INSTR_S_DAGGER,
@@ -275,7 +277,10 @@ def create_processor(alpha=1, beta=0, depolar_rate=0, dephase_rate=0,
 
 
 def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
-                                        cnot_depolar_model, num_comm_qubits,
+                                        cnot_depolar_model,
+                                        single_qubit_gate_noise_model,
+                                        meas_noise_model,
+                                        num_comm_qubits,
                                         single_qubit_gate_time,
                                         two_qubit_gate_time,
                                         measurement_time,
@@ -311,16 +316,27 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
             PhysicalInstruction(instr.INSTR_INIT, duration=3, parallel=False,
                                 toplogy=None),
             PhysicalInstruction(instr.INSTR_H, duration=single_qubit_gate_time, 
-                                parallel=True, topology=None),
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
             PhysicalInstruction(instr.INSTR_X, duration=single_qubit_gate_time,
-                                parallel=True, topology=None),
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
             PhysicalInstruction(instr.INSTR_Z, duration=single_qubit_gate_time,
-                                parallel=True, topology=None),
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
             PhysicalInstruction(instr.INSTR_S, duration=single_qubit_gate_time,
-                                parallel=True, topology=None),
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
             PhysicalInstruction(INSTR_S_DAGGER, 
                                 duration=single_qubit_gate_time,
-                                parallel=True, topology=None),
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
+            PhysicalInstruction(instr.INSTR_T, duration=single_qubit_gate_time,
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
+            PhysicalInstruction(INSTR_T_DAGGER, duration=single_qubit_gate_time,
+                                parallel=True, topology=None,
+                                quantum_noise_model=single_qubit_gate_noise_model),
             PhysicalInstruction(instr.INSTR_CNOT, duration=two_qubit_gate_time,
                                 parallel=True, topology=None, 
                                 quantum_noise_model=cnot_depolar_model),
@@ -335,7 +351,7 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
                                                 #state arrived at
             PhysicalInstruction(instr.INSTR_MEASURE, duration=measurement_time,
                                 parallel=True, topology=None,
-                                quantum_noise_model=None, 
+                                quantum_noise_model=meas_noise_model, 
                                 apply_q_noise_after=False,
                                 discard=True),
             PhysicalInstruction(instr.INSTR_DISCARD, 
@@ -348,12 +364,6 @@ def _phys_instructions_4_standard_lib_gates_and_convenience_ops(
 #                                                 #to approximate ideality for 
 #                                                 #TP-safe. MAYBE REVISIT
 # =============================================================================
-            PhysicalInstruction(instr.INSTR_T, duration=single_qubit_gate_time,
-                                parallel=True, 
-                                topology=None),
-            PhysicalInstruction(INSTR_T_DAGGER, duration=single_qubit_gate_time,
-                                parallel=True,
-                                topology=None),
             PhysicalInstruction(INSTR_SINGLE_QUBIT_UNITARY, 
                                 duration=single_qubit_gate_time,
                                 parallel=True, topology=None),
@@ -380,6 +390,10 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
     """
     Creates quantum processor loosely based on ionQ Aria but with different
     native gates.
+    
+    .. deprecated::
+        This function will be removed in later version as its functionality is
+        already 
     
     Parameters
     ----------
@@ -433,10 +447,104 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
         comm_qubit_depolar_rate, time_independent=False)
     processing_qubit_memory_depolar_model = AnalyticalDepolarisationModel(
         proc_qubit_depolar_rate, time_independent=False)
+    single_qubit_gate_noise_model = None
+    meas_noise_model = None
     #creating processor for all Nodes
     physical_instructions = ( 
         _phys_instructions_4_standard_lib_gates_and_convenience_ops(
-                                            cnot_depolar_model, 
+                                        cnot_depolar_model,
+                                        single_qubit_gate_noise_model,
+                                        meas_noise_model,
+                                        num_comm_qubits,
+                                        single_qubit_gate_time,
+                                        two_qubit_gate_time,
+                                        measurement_time,
+                                        alpha, beta))
+    qprocessor = QPU("custom_noisy_qprocessor",
+                     phys_instructions=physical_instructions, 
+                     num_positions=num_positions,
+                     num_comm_qubits=num_comm_qubits,
+                     comm_qubit_mem_noise_model=comm_qubit_memory_depolar_model, 
+                     processing_qubit_mem_noise_model=processing_qubit_memory_depolar_model)
+    
+    qprocessor.add_composite_instruction(instr.INSTR_SWAP, 
+                                         [(instr.INSTR_CNOT, (0, 1)),
+                                          (instr.INSTR_CNOT, (1, 0)),
+                                          (instr.INSTR_CNOT, (0, 1))],
+                                          topology=None)
+    return qprocessor
+
+def create_noisy_qpu( p_depolar_error_cnot=0,
+                      single_qubit_gate_error_prob=0,
+                      meas_error_prob=0,
+                      comm_qubit_depolar_rate=0,
+                      proc_qubit_depolar_rate=0,
+                      single_qubit_gate_time=135 * 10**3,
+                      two_qubit_gate_time=600 * 10**3,
+                      measurement_time=600 * 10**4, 
+                      alpha=1, beta=0,
+                      num_positions=20,
+                      num_comm_qubits=2):
+    """
+    Creates quantum processor loosely based on ionQ Aria but with different
+    native gates.
+    
+    Parameters
+    ----------
+    p_depolar_error_cnot : float, optional
+        The probability of a depolarisation error after each CNOT gate.
+        The default value is 0.
+    comm_qubit_depolar_rate : float, optional
+        The depolarisation rate for communication qubits. 
+        The default value is 0.
+    proc_qubit_depolar_rate : float
+        The depolarisation rate for processing qubits.
+        The default value is 0.
+    single_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 135 * 10**3.
+    two_qubit_gate_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**3.
+    measurement_time : TYPE, optional
+        DESCRIPTION. The default is 600 * 10**4.
+    alpha, beta : float, optional
+        Settings for the artificial convenience gate INSTR_ARB_GEN, which 
+        initialises the state of a qubit as alpha |0> + beta |1>. The default 
+        is 1 for alpha and 0 for beta.
+    num_positions : TYPE, optional
+        DESCRIPTION. The default is 20.
+    num_comm_qubits : TYPE, optional
+        DESCRIPTION. The default is 2.
+
+    Returns
+    -------
+    qprocessor : :class:`netsquid.components.qprocessor.QuantumProcessor
+    
+    Notes
+    -----
+    Uses universal gate sets from Ref. [1]_. Numerical noise is used.
+    Gate durations are taken from averages for single and two-qubit gates on
+    IonQ's Aria machine.
+    
+    References
+    ----------
+    .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
+        Information, 10th ed. (Cambridge University Press, 2010).
+    """
+    cnot_depolar_model = NDimDepolarNoiseModel(p_depolar_error_cnot, 
+                                               time_independent=True)
+    comm_qubit_memory_depolar_model = DepolarNoiseModel(comm_qubit_depolar_rate,
+                                                        time_independent=False)
+    processing_qubit_memory_depolar_model = DepolarNoiseModel(proc_qubit_depolar_rate,
+                                                        time_independent=False)
+    meas_noise_model = MeasurementNoiseModel(meas_error_prob)
+    single_qubit_gate_noise_model = DepolarNoiseModel(single_qubit_gate_error_prob,
+                                                      time_independent=True)
+    #creating processor for all Nodes
+    physical_instructions = ( 
+        _phys_instructions_4_standard_lib_gates_and_convenience_ops(
+                                            cnot_depolar_model,
+                                            single_qubit_gate_noise_model,
+                                            meas_noise_model,
                                             num_comm_qubits,
                                             single_qubit_gate_time,
                                             two_qubit_gate_time,
@@ -459,6 +567,8 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
 
 def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(   
                                          p_depolar_error_cnot=0,
+                                         single_qubit_gate_error_prob=0,
+                                         meas_error_prob=0,
                                          comm_qubit_depolar_rate=0,
                                          proc_qubit_depolar_rate=0,
                                          single_qubit_gate_time=135 * 10**3,
@@ -512,34 +622,18 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
     .. [1] M. Nielsen and I. Chuang, Quantum Computation and Quantum 
         Information, 10th ed. (Cambridge University Press, 2010).
     """
-    cnot_depolar_model = DepolarNoiseModel(p_depolar_error_cnot, 
-                                           time_independent=True)
-    comm_qubit_memory_depolar_model = DepolarNoiseModel(comm_qubit_depolar_rate,
-                                                        time_independent=False)
-    processing_qubit_memory_depolar_model = DepolarNoiseModel(proc_qubit_depolar_rate,
-                                                        time_independent=False)
-    #creating processor for all Nodes
-    physical_instructions = ( 
-        _phys_instructions_4_standard_lib_gates_and_convenience_ops(
-                                            cnot_depolar_model, 
-                                            num_comm_qubits,
-                                            single_qubit_gate_time,
-                                            two_qubit_gate_time,
-                                            measurement_time,
-                                            alpha, beta))
-    qprocessor = QPU("custom_noisy_qprocessor",
-                     phys_instructions=physical_instructions, 
-                     num_positions=num_positions,
-                     num_comm_qubits=num_comm_qubits,
-                     comm_qubit_mem_noise_model=comm_qubit_memory_depolar_model, 
-                     processing_qubit_mem_noise_model=processing_qubit_memory_depolar_model)
-    
-    qprocessor.add_composite_instruction(instr.INSTR_SWAP, 
-                                         [(instr.INSTR_CNOT, (0, 1)),
-                                          (instr.INSTR_CNOT, (1, 0)),
-                                          (instr.INSTR_CNOT, (0, 1))],
-                                          topology=None)
-    return qprocessor
+    return create_noisy_qpu( 
+                            p_depolar_error_cnot=p_depolar_error_cnot,
+                            single_qubit_gate_error_prob=single_qubit_gate_error_prob,
+                            meas_error_prob=meas_error_prob,
+                            comm_qubit_depolar_rate=comm_qubit_depolar_rate,
+                            proc_qubit_depolar_rate=proc_qubit_depolar_rate,
+                            single_qubit_gate_time=single_qubit_gate_time,
+                            two_qubit_gate_time=two_qubit_gate_time,
+                            measurement_time=measurement_time, 
+                            alpha=alpha, beta=beta,
+                            num_positions=num_positions,
+                            num_comm_qubits=num_comm_qubits)
 
 
 # =============================================================================

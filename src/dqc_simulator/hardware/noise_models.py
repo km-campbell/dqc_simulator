@@ -12,16 +12,17 @@ Noise models for acting on simulated QPUs.
     to retain backwards compatibility.
 """
 
+import functools as ft
+import itertools as it
 import warnings
-
-import numpy as np
 
 import netsquid as ns
 from netsquid.components.models.qerrormodels import QuantumErrorModel
-from netsquid.qubits import qubitapi as qapi
+from netsquid.qubits import qubitapi as qapi, operators as ops
 from netsquid.util.constrainedmap import ValueConstraint
 from netsquid.qubits.dmutil import partialtrace, reorder_dm
 from netsquid.qubits.qformalism import QFormalism
+import numpy as np
 
 #To take analytical approach of applying a channel rather than an operator,
 #you will need to specify that the density matrix formalism is used
@@ -248,3 +249,94 @@ class AnalyticalDepolarisationModel(QuantumErrorModel):
 #                     
 # =============================================================================
                     
+class MeasurementNoiseModel(QuantumErrorModel):
+    """
+    Noise model for applying bit flip noise to a measurement, giving the 
+    opposite result from the ideal measurement with some probability.
+    """
+    def __init__(self, error_probability, **kwargs):
+        super().__init__(**kwargs)
+        
+        def error_probability_constraint(value):
+            if not 0 <= value <= 1:
+                return False
+            else:
+                return True
+        self.add_property('error_probability', error_probability,
+                          value_type=(int, float),
+                          value_constraints=ValueConstraint(error_probability_constraint))
+        
+    @property
+    def error_probability(self):
+        """float: 
+            probability that a bit flip error will occur during measurement."""
+        return self.properties['error_probability']
+    
+    @error_probability.setter
+    def error_probability(self, value):
+        self.properties['error_probability'] = value
+        
+    def error_operation(self, qubits, delta_time=0, **kwargs):
+        """Error operation to apply to qubits.
+
+        Parameters
+        ----------
+        qubits : tuple of :obj:`~netsquid.qubits.qubit.Qubit`
+            Qubits to apply noise to.
+        """
+        for qubit in qubits:
+            if qubit is not None:
+                qapi.apply_pauli_noise(qubit, (1 - self.error_probability, 
+                                               self.error_probability, 0, 0))
+
+class NDimDepolarNoiseModel(QuantumErrorModel):
+    """
+    Apply N dimensional depolar noise channel.
+    
+    Useful for example for depolarisation noise due to multi-qubit gates.
+    """
+    def __init__(self, error_probability, **kwargs):
+        super().__init__(**kwargs)
+        
+        def error_probability_constraint(value):
+            if not 0 <= value <= 1:
+                return False
+            else:
+                return True
+        self.add_property('error_probability', error_probability,
+                          value_type=(int, float),
+                          value_constraints=ValueConstraint(error_probability_constraint))
+        
+    @property
+    def error_probability(self):
+        """float: 
+            probability that a bit flip error will occur during measurement."""
+        return self.properties['error_probability']
+    
+    @error_probability.setter
+    def error_probability(self, value):
+        self.properties['error_probability'] = value
+        
+    def error_operation(self, qubits, delta_time=0, **kwargs):
+        """Error operation to apply to qubits.
+
+        Parameters
+        ----------
+        qubits : tuple of :obj:`~netsquid.qubits.qubit.Qubit`
+            Qubits to apply noise to.
+        """
+        # Defining the number of possible Pauli strings that could be applied 
+        # to the qubits, including the identity string
+        num_paulis = 4**len(qubits)
+        num_errors = num_paulis - 1
+        
+        # Defining all Pauli strings that can act on the relevant qubits
+        tensorprod = lambda a, b : a ^ b
+        paulis = [ft.reduce(tensorprod, tup) for tup in 
+                  it.product([ops.I, ops.X, ops.Y, ops.Z], repeat=len(qubits))]
+        
+        # Apply Pauli strings to relevant qubits
+        p = self.error_probability/num_paulis
+        qapi.stochastic_operate(
+            qubits, paulis,
+            p_weights=tuple([1 - num_errors * p] + [p] * num_errors))

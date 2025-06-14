@@ -13,12 +13,12 @@ import numpy as np
 from netsquid.components import instructions as instr
 from netsquid.components import QuantumProcessor
 from netsquid.components.qprogram import QuantumProgram
-from netsquid.qubits import ketstates as ks
-from netsquid.qubits import qubitapi as qapi
+from netsquid.qubits import (ketstates as ks, qubitapi as qapi, 
+                             set_qstate_formalism, QFormalism)
 from netsquid.nodes import Node, Network
 
 from dqc_simulator.hardware.quantum_processors import (
-    create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates,
+    create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates,
     QPU)
 
 #for debugging
@@ -63,16 +63,17 @@ class TestQPU(unittest.TestCase):
         self.assertEqual(qpu.num_real_positions, 20)
 
 
-class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+class Test_create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
         unittest.TestCase):
     def setUp(self):
+        set_qstate_formalism(QFormalism.DM)
         ns.sim_reset()
         
     def test_can_apply_mem_depol2comm_qubits(self):
         p_depolar_error_cnot = 0.
         comm_qubit_depolar_rate = 1/10 #Hz
         proc_qubit_depolar_rate = 0.
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+        processor = create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
                         p_depolar_error_cnot=p_depolar_error_cnot,
                         comm_qubit_depolar_rate=comm_qubit_depolar_rate,
                         proc_qubit_depolar_rate=proc_qubit_depolar_rate,
@@ -95,7 +96,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         p_depolar_error_cnot = 0.
         comm_qubit_depolar_rate = 0.
         proc_qubit_depolar_rate = 1/10 #Hz
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+        processor = create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
             p_depolar_error_cnot=p_depolar_error_cnot, 
             comm_qubit_depolar_rate=comm_qubit_depolar_rate,
             proc_qubit_depolar_rate=proc_qubit_depolar_rate)
@@ -117,7 +118,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         p_depolar_error_cnot = 0.1
         comm_qubit_depolar_rate = 0.
         proc_qubit_depolar_rate = 0.
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+        processor = create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
             p_depolar_error_cnot=p_depolar_error_cnot, 
             comm_qubit_depolar_rate=comm_qubit_depolar_rate,
             proc_qubit_depolar_rate=proc_qubit_depolar_rate)
@@ -140,11 +141,11 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
         fidelity = qapi.fidelity(qubits, desired_state)
         self.assertAlmostEqual(fidelity, 1.00000, 5)
         
-    def test_can_do_10percent_cnot_depol_on_data_qubits(self):
+    def test_can_do_10percent_cnot_depol_on_proc_qubits(self):
         p_depolar_error_cnot = 0.1
         comm_qubit_depolar_rate = 0.
         proc_qubit_depolar_rate = 0.
-        processor = create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+        processor = create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
             p_depolar_error_cnot=p_depolar_error_cnot,
             comm_qubit_depolar_rate=comm_qubit_depolar_rate,
             proc_qubit_depolar_rate=proc_qubit_depolar_rate)
@@ -182,7 +183,7 @@ class Test_create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib
 #         proc_qubit_depolar_rate = 0.
 #         alice = (
 #             Node("node_0",
-#                  qmemory=create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
+#                  qmemory=create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
 #                  p_depolar_error_cnot=p_depolar_error_cnot,
 #                  comm_qubit_depolar_rate=comm_qubit_depolar_rate,
 #                  proc_qubit_depolar_rate=proc_qubit_depolar_rate)))
