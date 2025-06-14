@@ -494,6 +494,12 @@ def create_noisy_qpu( p_depolar_error_cnot=0,
     p_depolar_error_cnot : float, optional
         The probability of a depolarisation error after each CNOT gate.
         The default value is 0.
+    single_qubit_gate_error_prob : float
+        The probability of a depolarisation error occuring during a single 
+        qubit gate.
+    meas_error_prob : float
+        The probability of a bit flip error occuring during measurement, giving
+        the opposite result from an ideal measurement.
     comm_qubit_depolar_rate : float, optional
         The depolarisation rate for communication qubits. 
         The default value is 0.
