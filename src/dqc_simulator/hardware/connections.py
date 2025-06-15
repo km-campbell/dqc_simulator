@@ -75,7 +75,6 @@ def create_classical_fibre_link(network, node_a, node_b, length,
                            label=label)
 
 
-
 class BlackBoxEntanglingQsourceConnection(Connection):
     """
     Intended to connnect source of entangled photons and 2 QPUs.

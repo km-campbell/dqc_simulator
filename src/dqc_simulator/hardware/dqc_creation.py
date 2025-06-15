@@ -6,10 +6,11 @@ These tools are designed to be controlled using software from
 :mod: `~dqc_simulator.software.dqc_control`
 """
 
+from copy import deepcopy
 import warnings
 
 import netsquid as ns
-from netsquid.nodes import Node, Connection, Network
+from netsquid.nodes import Node, Connection, DirectConnection, Network
 from netsquid.components.qchannel import QuantumChannel
 from netsquid.components.cchannel import ClassicalChannel
 from netsquid.components.qsource import QSource, SourceStatus
@@ -415,6 +416,80 @@ def create_dqc_network(
     return network
 
 
+
+def create_dqc(qpu, entangling_connection, num_qpus,
+               quantum_topology, classical_topology,
+               classical_connection=None,
+               want_extra_classical_link=True, name="DQC"):
+    """
+    Creates a network suitable for distributed quantum computing
+
+    Returns
+    -------
+    network : :class:`~netsquid.nodes.network.Network`
+        The simulated hardware for a distributed quantum computer.
+    """
+
+    def _create_qpu_nodes(num_qpus, starting_index):
+        qpu_list = []
+        for ii in range(num_qpus):
+            qpu_copy = deepcopy(qpu)
+            qpu_copy.name = f"qproc4node_{ii+starting_index}"
+            qpu_node = Node(f"node_{ii+starting_index}", qmemory=qpu_copy)
+            qpu_list = qpu_list + [qpu_node] #appending node to node_list
+        return qpu_list
+    
+    dqc = Network(name)
+    qpu_nodes = _create_qpu_nodes(num_qpus, 0)
+    for pair in quantum_topology:
+        label = 'entangling'
+        node_a = qpu_nodes[pair[0]]
+        node_b = qpu_nodes[pair[1]]
+        node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                       label=label)
+        node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                       label=label)
+        dqc.add_connection(node_a, node_b,
+                           connection=deepcopy(entangling_connection),
+                           label=label,
+                           port_name_node_1=node_a_port_name,
+                           port_name_node2=node_b_port_name)
+    for pair in classical_topology:
+        label = 'classical'
+        node_a = qpu_nodes[pair[0]]
+        node_b = qpu_nodes[pair[1]]
+        node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                       label=label)
+        node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                       label=label)
+        
+        if classical_connection is None:
+            connection = DirectConnection(
+                                        'DirectConnection',
+                                       channel_AtoB=ClassicalChannel(
+                                           "Channel_A2B", length=2e-3,
+                                            models={"delay_model": FibreDelayModel()}),
+                                       channel_BtoA=ClassicalChannel(
+                                           "Channel_B2A", length=2e-3,
+                                            models={"delay_model": FibreDelayModel()}))
+        
+        dqc.add_connection(node_a, node_b, 
+                           connection=deepcopy(classical_connection),
+                           label=label,
+                           port_name_node_1=node_a_port_name,
+                           port_name_node2=node_b_port_name)
+        if want_extra_classical_link:
+            label = 'extra_classical'
+            node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                           label=label)
+            node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                           label=label)
+            dqc.add_connection(node_a, node_b, 
+                               connection=deepcopy(classical_connection),
+                               label=label,
+                               port_name_node_1=node_a_port_name,
+                               port_name_node2=node_b_port_name)
+    return dqc
 
 
 #CHANGELOG:
