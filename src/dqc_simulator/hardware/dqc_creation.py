@@ -463,19 +463,14 @@ class DQC(Network):
 
         if nodes is None and qpu_class is None:
             raise ValueError('nodes and qpu_class cannot both have value None')
-        if qpu_class is None:
-            qpu_nodes = self._create_qpu_nodes(num_qpus)
+        if qpu_class is not None:
+            qpu_nodes = self._create_qpu_nodes(**kwarg_types[qpu_class])
+            self.add_nodes(qpu_nodes)
         else:
             qpu_nodes = list(self.nodes.values())
-        if classical_connection_class is not None:
-            classical_connection = classical_connection_class(
-                **kwarg_types[classical_connection_class])
-        else:
-            classical_connection = None
-        entangling_connection = entangling_connection_class(**kwarg_types[entangling_connection_class])
             
         for pair in quantum_topology:
-            print(pair)
+            entangling_connection = entangling_connection_class(**kwarg_types[entangling_connection_class])
             label = 'entangling'
             node_a = qpu_nodes[pair[0]]
             node_b = qpu_nodes[pair[1]]
@@ -486,7 +481,7 @@ class DQC(Network):
             self.add_connection(node_a, node_b,
                                connection=entangling_connection,
                                label=label,
-                               port_name_node_1=node_a_port_name,
+                               port_name_node1=node_a_port_name,
                                port_name_node2=node_b_port_name)
         for pair in classical_topology:
             label = 'classical'
@@ -496,21 +491,12 @@ class DQC(Network):
                                                            label=label)
             node_b_port_name = node_b.connection_port_name(node_a.name,
                                                            label=label)
-            
-            if classical_connection is None:
-                connection = DirectConnection(
-                                            'DirectConnection',
-                                           channel_AtoB=ClassicalChannel(
-                                               "Channel_A2B", length=2e-3,
-                                                models={"delay_model": FibreDelayModel()}),
-                                           channel_BtoA=ClassicalChannel(
-                                               "Channel_B2A", length=2e-3,
-                                                models={"delay_model": FibreDelayModel()}))
-            
+            classical_connection = self._get_classical_connection(
+                classical_connection_class, kwarg_types)
             self.add_connection(node_a, node_b, 
                                connection=classical_connection,
                                label=label,
-                               port_name_node_1=node_a_port_name,
+                               port_name_node1=node_a_port_name,
                                port_name_node2=node_b_port_name)
             if want_extra_classical_link:
                 label = 'extra_classical'
@@ -518,10 +504,12 @@ class DQC(Network):
                                                                label=label)
                 node_b_port_name = node_b.connection_port_name(node_a.name,
                                                                label=label)
+                classical_connection = self._get_classical_connection(
+                    classical_connection_class, kwarg_types)
                 self.add_connection(node_a, node_b, 
                                    connection=classical_connection,
                                    label=label,
-                                   port_name_node_1=node_a_port_name,
+                                   port_name_node1=node_a_port_name,
                                    port_name_node2=node_b_port_name)
 
     def _create_qpu_nodes(self, **kwargs4qpu):
@@ -533,6 +521,20 @@ class DQC(Network):
             qpu_list = qpu_list + [qpu_node] #appending node to node_list
         return qpu_list
     
+    def _get_classical_connection(self, classical_connection_class,
+                                  kwarg_types):
+            if classical_connection_class is None:
+                return DirectConnection(
+                                            'DirectConnection',
+                                           channel_AtoB=ClassicalChannel(
+                                               "Channel_A2B", length=2e-3,
+                                                models={"delay_model": FibreDelayModel()}),
+                                           channel_BtoA=ClassicalChannel(
+                                               "Channel_B2A", length=2e-3,
+                                                models={"delay_model": FibreDelayModel()}))
+            else:
+                return  classical_connection_class(
+                            **kwarg_types[classical_connection_class])
 
 
 
