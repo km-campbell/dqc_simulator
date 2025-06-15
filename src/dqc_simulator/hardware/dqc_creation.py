@@ -6,7 +6,6 @@ These tools are designed to be controlled using software from
 :mod: `~dqc_simulator.software.dqc_control`
 """
 
-from copy import deepcopy
 import warnings
 
 import netsquid as ns
@@ -417,12 +416,24 @@ def create_dqc_network(
 
 
 
-def create_dqc(qpu, entangling_connection, num_qpus,
-               quantum_topology, classical_topology,
-               classical_connection=None,
-               want_extra_classical_link=True, name="DQC"):
+class DQC(Network):
     """
     Creates a network suitable for distributed quantum computing
+    
+    Parameters
+    ----------
+    entangling_connection_class : 
+        
+    num_qpus : int
+        
+    quantum_topology: list of (int, int)
+    
+    classical_topology : list of (int, int)
+    
+    qpu_class : 
+        
+    nodes : 
+        Overwritten if qpu_class is specified.
 
     Returns
     -------
@@ -430,66 +441,99 @@ def create_dqc(qpu, entangling_connection, num_qpus,
         The simulated hardware for a distributed quantum computer.
     """
 
-    def _create_qpu_nodes(num_qpus, starting_index):
-        qpu_list = []
-        for ii in range(num_qpus):
-            qpu_copy = deepcopy(qpu)
-            qpu_copy.name = f"qproc4node_{ii+starting_index}"
-            qpu_node = Node(f"node_{ii+starting_index}", qmemory=qpu_copy)
-            qpu_list = qpu_list + [qpu_node] #appending node to node_list
-        return qpu_list
-    
-    dqc = Network(name)
-    qpu_nodes = _create_qpu_nodes(num_qpus, 0)
-    for pair in quantum_topology:
-        label = 'entangling'
-        node_a = qpu_nodes[pair[0]]
-        node_b = qpu_nodes[pair[1]]
-        node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                       label=label)
-        node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                       label=label)
-        dqc.add_connection(node_a, node_b,
-                           connection=deepcopy(entangling_connection),
-                           label=label,
-                           port_name_node_1=node_a_port_name,
-                           port_name_node2=node_b_port_name)
-    for pair in classical_topology:
-        label = 'classical'
-        node_a = qpu_nodes[pair[0]]
-        node_b = qpu_nodes[pair[1]]
-        node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                       label=label)
-        node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                       label=label)
-        
-        if classical_connection is None:
-            connection = DirectConnection(
-                                        'DirectConnection',
-                                       channel_AtoB=ClassicalChannel(
-                                           "Channel_A2B", length=2e-3,
-                                            models={"delay_model": FibreDelayModel()}),
-                                       channel_BtoA=ClassicalChannel(
-                                           "Channel_B2A", length=2e-3,
-                                            models={"delay_model": FibreDelayModel()}))
-        
-        dqc.add_connection(node_a, node_b, 
-                           connection=deepcopy(classical_connection),
-                           label=label,
-                           port_name_node_1=node_a_port_name,
-                           port_name_node2=node_b_port_name)
-        if want_extra_classical_link:
-            label = 'extra_classical'
+    def __init__(self, entangling_connection_class, num_qpus,
+                quantum_topology, classical_topology,
+                qpu_class=None,
+                classical_connection_class=None,
+                want_extra_classical_link=True, name="DQC", nodes=None,
+                **kwargs):
+        super().__init__(name, nodes=nodes)
+        # Splitting the kwargs by the class that they should be applied to
+        class_names = ('entangling_connection_class', 'qpu_class', 
+                       'classical_connection_class')
+        class_tuple = (entangling_connection_class, qpu_class, 
+                        classical_connection_class)
+        classes = [value for value in class_tuple if value is not None]
+        kwargs4each_class = filter_kwargs4internal_functions(
+                                classes, kwargs)
+        kwarg_types = {key:kwargs4each_class[key] for key in classes}
+            
+        self.qpu_class = qpu_class
+        self.num_qpus = num_qpus
+
+        if nodes is None and qpu_class is None:
+            raise ValueError('nodes and qpu_class cannot both have value None')
+        if qpu_class is None:
+            qpu_nodes = self._create_qpu_nodes(num_qpus)
+        else:
+            qpu_nodes = list(self.nodes.values())
+        if classical_connection_class is not None:
+            classical_connection = classical_connection_class(
+                **kwarg_types[classical_connection_class])
+        else:
+            classical_connection = None
+        entangling_connection = entangling_connection_class(**kwarg_types[entangling_connection_class])
+            
+        for pair in quantum_topology:
+            print(pair)
+            label = 'entangling'
+            node_a = qpu_nodes[pair[0]]
+            node_b = qpu_nodes[pair[1]]
             node_a_port_name = node_a.connection_port_name(node_b.name, 
                                                            label=label)
             node_b_port_name = node_b.connection_port_name(node_a.name,
                                                            label=label)
-            dqc.add_connection(node_a, node_b, 
-                               connection=deepcopy(classical_connection),
+            self.add_connection(node_a, node_b,
+                               connection=entangling_connection,
                                label=label,
                                port_name_node_1=node_a_port_name,
                                port_name_node2=node_b_port_name)
-    return dqc
+        for pair in classical_topology:
+            label = 'classical'
+            node_a = qpu_nodes[pair[0]]
+            node_b = qpu_nodes[pair[1]]
+            node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                           label=label)
+            node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                           label=label)
+            
+            if classical_connection is None:
+                connection = DirectConnection(
+                                            'DirectConnection',
+                                           channel_AtoB=ClassicalChannel(
+                                               "Channel_A2B", length=2e-3,
+                                                models={"delay_model": FibreDelayModel()}),
+                                           channel_BtoA=ClassicalChannel(
+                                               "Channel_B2A", length=2e-3,
+                                                models={"delay_model": FibreDelayModel()}))
+            
+            self.add_connection(node_a, node_b, 
+                               connection=classical_connection,
+                               label=label,
+                               port_name_node_1=node_a_port_name,
+                               port_name_node2=node_b_port_name)
+            if want_extra_classical_link:
+                label = 'extra_classical'
+                node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                               label=label)
+                node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                               label=label)
+                self.add_connection(node_a, node_b, 
+                                   connection=classical_connection,
+                                   label=label,
+                                   port_name_node_1=node_a_port_name,
+                                   port_name_node2=node_b_port_name)
+
+    def _create_qpu_nodes(self, **kwargs4qpu):
+        qpu_list = []
+        for ii in range(self.num_qpus):
+            qpu = self.qpu_class(**kwargs4qpu)
+            qpu.name = f"qproc4node_{ii}"
+            qpu_node = Node(f"node_{ii}", qmemory=qpu)
+            qpu_list = qpu_list + [qpu_node] #appending node to node_list
+        return qpu_list
+    
+
 
 
 #CHANGELOG:

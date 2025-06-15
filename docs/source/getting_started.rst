@@ -184,13 +184,37 @@ together and see `create_dqc_network` in action: ::
 
       import itertools as it
 
-      dqc = create_dqc_network(create_entangling_link=elink_func,
-                               custom_qpu_func=qpu_func,
-                               **params4qpu_func,
-                               **params4_elink_func,
-                               num_qpus=3
-                               classical_topology=[list(it.combinations(range(3), 2))],
-                               quantum_topology=[(0, 1)])
+      from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
+      from dqc_simulator.hardware.dqc_creation import DQC
+      from dqc_simulator.hardware.quantum_processors import NoisyQPU
+      from dqc_simulator.qlib.states import werner_state
+
+      # Defining QPU
+      qpu_class = NoisyQPU
+      kwargs4qpu = {'p_depolar_error_cnot' : 1e-03,
+                     'single_qubit_gate_error_prob' : 2e-05,
+                     'meas_error_prob' : 3e-03,
+                     'comm_qubit_depolar_rate' : 0.06,
+                     'proc_qubit_depolar_rate' : 0.05,
+                     'single_qubit_gate_time' : 135 * 10**3,
+                     'two_qubit_gate_time' : 600 * 10**3,
+                     'measurement_time' : 600 * 10**4, 
+                     'num_positions' : 10,
+                     'num_comm_qubits' : 2}
+
+      # Defining connection
+      entangling_connection_class = BlackBoxEntanglingQsourceConnection
+      F_werner = 0.9
+      kwargs4conn = {'delay' : 1e9/182, #in ns
+                     'state4distribution' : werner_state(F_werner)}
+
+      num_qpus = 3
+      quantum_topology = list(it.combinations(range(3), 2))
+      classical_topology = [(0, 1)]
+      dqc = DQC(entangling_connection_class, num_qpus,
+                  quantum_topology, classical_topology,
+                  qpu_class=qpu_class,
+                  **kwargs4qpu, **kwargs4conn)
 
 
 
