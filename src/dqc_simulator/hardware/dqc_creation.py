@@ -472,45 +472,17 @@ class DQC(Network):
         for pair in quantum_topology:
             entangling_connection = entangling_connection_class(**kwarg_types[entangling_connection_class])
             label = 'entangling'
-            node_a = qpu_nodes[pair[0]]
-            node_b = qpu_nodes[pair[1]]
-            node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                           label=label)
-            node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                           label=label)
-            self.add_connection(node_a, node_b,
-                               connection=entangling_connection,
-                               label=label,
-                               port_name_node1=node_a_port_name,
-                               port_name_node2=node_b_port_name)
+            self._add_link(qpu_nodes, pair, entangling_connection, label)
         for pair in classical_topology:
             label = 'classical'
-            node_a = qpu_nodes[pair[0]]
-            node_b = qpu_nodes[pair[1]]
-            node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                           label=label)
-            node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                           label=label)
             classical_connection = self._get_classical_connection(
                 classical_connection_class, kwarg_types)
-            self.add_connection(node_a, node_b, 
-                               connection=classical_connection,
-                               label=label,
-                               port_name_node1=node_a_port_name,
-                               port_name_node2=node_b_port_name)
+            self._add_link(qpu_nodes, pair, classical_connection, label)
             if want_extra_classical_link:
                 label = 'extra_classical'
-                node_a_port_name = node_a.connection_port_name(node_b.name, 
-                                                               label=label)
-                node_b_port_name = node_b.connection_port_name(node_a.name,
-                                                               label=label)
                 classical_connection = self._get_classical_connection(
                     classical_connection_class, kwarg_types)
-                self.add_connection(node_a, node_b, 
-                                   connection=classical_connection,
-                                   label=label,
-                                   port_name_node1=node_a_port_name,
-                                   port_name_node2=node_b_port_name)
+                self._add_link(qpu_nodes, pair, classical_connection, label)
 
     def _create_qpu_nodes(self, **kwargs4qpu):
         qpu_list = []
@@ -535,6 +507,39 @@ class DQC(Network):
             else:
                 return  classical_connection_class(
                             **kwarg_types[classical_connection_class])
+            
+    def _add_link(self, qpu_nodes, nodes2connect, connection, label):
+        """
+        
+
+        Parameters
+        ----------
+        qpu_nodes : TYPE
+            DESCRIPTION.
+        qpus2connect : (int, int)
+            The indices of the QPU nodes to connect
+        connection : TYPE
+            DESCRIPTION.
+        label : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
+        node_a = qpu_nodes[nodes2connect[0]]
+        node_b = qpu_nodes[nodes2connect[1]]
+        node_a_port_name = node_a.connection_port_name(node_b.name, 
+                                                       label=label)
+        node_b_port_name = node_b.connection_port_name(node_a.name,
+                                                       label=label)
+        self.add_connection(node_a, node_b,
+                           connection=connection,
+                           label=label,
+                           port_name_node1=node_a_port_name,
+                           port_name_node2=node_b_port_name)
+        
 
 
 

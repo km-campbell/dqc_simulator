@@ -74,24 +74,24 @@ Hardware specification can be done in three easy stages:
 
 1. Specify a QPU
 2. Specify a quantum connection
-3. Specify the network
+3. Create the network
 
-For step 1, a handy pre-built function is provided. Lets use it to create a 
-processor: ::
+For step 1, a handy class is provided. Lets use it to create a 
+QPU: ::
 
-      from dqc_simulator.hardware.quantum_processors import create_noisy_qpu
-      qpu = create_noisy_qpu()
+      from dqc_simulator.hardware.quantum_processors import NoisyQPU
+      qpu = NoisyQPU()
 
 This QPU has two types of qubit: communication qubits, which 
 are used to host ebits, and processing qubits, which are used in 
-the same way as qubits on a monolithic processor. We can specify
+the same way as qubits on a monolithic quantum computer. We can specify
 the maximum number of communication qubits that our QPU can hold
 with the `num_comm_qubits` keyword argument and the total number 
 of qubits (including communication and processing qubits) using
 `num_positions`. Ie, ::
 
-   qpu = create_noisy_qpu(num_comm_qubits=2,
-                          num_positions=10)
+   qpu = NoisyQPU(num_comm_qubits=2,
+                  num_positions=10)
 
 Creates a processor with space for 2 comm-qubits and 8 processing 
 qubits, making 10 total qubits. This allows us to constrain what 
@@ -101,17 +101,17 @@ By default all noise is turned off and the QPU is ideal. However,
 adding noise is as simple as choosing keyword arguments in the 
 above function. For example: ::
 
-   qpu = create_noisy_qpu(
-                      p_depolar_error_cnot=1e-03,
-                      single_qubit_gate_error_prob=2e-05,
-                      meas_error_prob=3e-03,
-                      comm_qubit_depolar_rate=0.06,
-                      proc_qubit_depolar_rate=0.05,
-                      single_qubit_gate_time=135 * 10**3,
-                      two_qubit_gate_time=600 * 10**3,
-                      measurement_time=600 * 10**4, 
-                      num_positions=10,
-                      num_comm_qubits=2)
+   qpu = NoisyQPU(
+                  p_depolar_error_cnot=1e-03,
+                  single_qubit_gate_error_prob=2e-05,
+                  meas_error_prob=3e-03,
+                  comm_qubit_depolar_rate=0.06,
+                  proc_qubit_depolar_rate=0.05,
+                  single_qubit_gate_time=135 * 10**3,
+                  two_qubit_gate_time=600 * 10**3,
+                  measurement_time=600 * 10**4, 
+                  num_positions=10,
+                  num_comm_qubits=2)
 
 We have now added depolarising noise to all cnot gates with 
 probability :math:`1 \times 10^{-03}` and to all single-qubit 
@@ -141,46 +141,43 @@ else that depends on time.
 
 We actually don't need to create a `QPU` object at this point. 
 It's going to be done for us behind the scenes in step 3.
-However, we will need to provide the function we wish to 
-use to create a `QPU` and the parameters we want. This 
+However, we will need to provide the subclass of 
+ `QPU` that we wish to use and the parameters we want. This 
 will look something like: ::
 
-      qpu_func = create_noisy_qpu
-      params4qpu_func = {'p_depolar_error_cnot' : 1e-03,
-                        'single_qubit_gate_error_prob' : 2e-05,
-                        'meas_error_prob' : 3e-03,
-                        'comm_qubit_depolar_rate' : 0.06,
-                        'proc_qubit_depolar_rate' : 0.05,
-                        'single_qubit_gate_time' : 135 * 10**3,
-                        'two_qubit_gate_time' : 600 * 10**3,
-                        'measurement_time' : 600 * 10**4, 
-                        'num_positions' : 10,
-                        'num_comm_qubits' : 2}
+      qpu_class = NoisyQPU
+      kwargs4qpu = {'p_depolar_error_cnot' : 1e-03,
+                     'single_qubit_gate_error_prob' : 2e-05,
+                     'meas_error_prob' : 3e-03,
+                     'comm_qubit_depolar_rate' : 0.06,
+                     'proc_qubit_depolar_rate' : 0.05,
+                     'single_qubit_gate_time' : 135 * 10**3,
+                     'two_qubit_gate_time' : 600 * 10**3,
+                     'measurement_time' : 600 * 10**4, 
+                     'num_positions' : 10,
+                     'num_comm_qubits' : 2}
 
-Step 2 is very similar. This time there are a few functions to 
-choose from. We will focus here on
- `create_bb_elink`, which is 
- recommended for those new to the package, who wish to work in 
- the densitry matrix formalism. This creates a connection 
- object, which is essentially a black box source of entangled 
- ebits between QPUs, where the ebits can be in any two-qubit state
- specified in the density matrix formalism. For typical and simple modelling 
- of noisy ebits, I recommend the `werner_state` function. 
- Lets see what this will look like: ::
+Step 2 is very similar. This time there are a few classes to choose from,
+which are all subclasses of `netsquid.nodes.connections.Connection`.
+We will focus here on `BlackBoxEntanglingQsourceConnection`, which is 
+recommended for those new to `dqc_simulator`, who wish to work in 
+the densitry matrix formalism. This creates a black box source of 
+ebits between QPUs, where the ebits can be in any two-qubit state
+specified in the density matrix formalism. For typical and simple  
+modelling of noisy ebits, I recommend the `werner_state` function. 
+Lets see what this will look like: ::
 
-      from dqc_simulator.hardware.connections import create_bb_elink
+      from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
       from dqc_simulator.qlib.states import werner_state
-      F_werner = 0.9 # The Werner state fidelity
-      ent_dist_rate = 182 # Hz
-      elink_func = create_bb_elink
-      params4elink_func = { 
-         'state4distribution': werner_state(F_werner), 
-         'ent_dist_rate': ent_dist_rate}
+      entangling_connection_class = BlackBoxEntanglingQsourceConnection
+      F_werner = 0.9
+      kwargs4conn = {'delay' : 1e9/182, # in ns. Corresponds to rate of 182Hz
+                     'state4distribution' : werner_state(F_werner)}
       
-Step 3 brings everything together using one more function,
-`create_dqc_network`, which links together copies of the specified
-QPU using copies of the specified connection. Lets bring everything 
-together and see `create_dqc_network` in action: ::
+Step 3 brings everything together using one more Class,
+`DQC`, which links together copies of the specified
+`QPU` using copies of the specified `Connection`. Lets bring everything 
+together and see `DQC` in action: ::
 
       import itertools as it
 
@@ -209,26 +206,22 @@ together and see `create_dqc_network` in action: ::
                      'state4distribution' : werner_state(F_werner)}
 
       num_qpus = 3
-      quantum_topology = list(it.combinations(range(3), 2))
-      classical_topology = [(0, 1)]
+      quantum_topology = [(0, 1)]
+      classical_topology = list(it.combinations(range(3), 2))
       dqc = DQC(entangling_connection_class, num_qpus,
                   quantum_topology, classical_topology,
                   qpu_class=qpu_class,
                   **kwargs4qpu, **kwargs4conn)
 
+This creates a distributed quantum computer (`DQC`) with three 
+QPUs, two of which are connected by an entangling connection 
+over which ebits can be distributed. All of the qubits are 
+connected classically. Alternative network topologies can 
+be specified by changing the `quantum_topology` and 
+`classical_topology` arguments. 
 
-
-
-.. todo::
-
-   Make things work more using instantiated QPU objects and 
-   connection objects. This is more pythonic and readable. For backwards 
-   commpatability, what is already there can be retained too.
-
-
-
-
-
+Creating the software
+---------------------
 
 
 References
