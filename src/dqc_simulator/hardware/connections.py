@@ -305,6 +305,32 @@ def create_black_box_central_source_entangling_link(network, node_a, node_b,
                            port_name_node2=node_b_port_name,
                            label='entangling')
     
+def create_bb_elink(network, node_a, node_b, state4distribution, 
+                    ent_dist_rate=0):
+    """
+    Alias for create_black_box_central_source_entangling_link.
+
+    Parameters
+    ----------
+    network : TYPE
+        DESCRIPTION.
+    node_a : TYPE
+        DESCRIPTION.
+    node_b : TYPE
+        DESCRIPTION.
+    state4distribution : TYPE
+        DESCRIPTION.
+    ent_dist_rate : TYPE, optional
+        DESCRIPTION. The default is 0.
+
+    Returns
+    -------
+    None.
+
+    """
+    create_black_box_central_source_entangling_link(network, node_a, node_b,
+                                                    state4distribution,
+                                                    ent_dist_rate=ent_dist_rate)
     
 def create_probabilistic_qsource_connection(network, node_a, node_b,
                                             states4distribution,
