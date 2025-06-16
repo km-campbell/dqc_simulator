@@ -956,7 +956,7 @@ class QpuOSProtocol(NodeProtocol):
                 #self._gate_tuples
                 self._gate_tuples_evaluated.append([])
 
-class dqcMasterProtocol(LocalProtocol):
+class DQCMasterProtocol(LocalProtocol):
     """ Protocol which executes a distributed quantum circuit. 
     
     Parameters
@@ -1149,6 +1149,11 @@ class dqcMasterProtocol(LocalProtocol):
             dummy_entity._schedule_now(evtype_dummy)
             
         self.check_quantum_circuit_finished()
+
+
+# For backwards compatability
+dqcMasterProtocol = DQCMasterProtocol
+
 
 # =============================================================================
 # class MultiCircuitDQCProtocol(Protocol):
