@@ -142,40 +142,9 @@ def get_data_collector(master_protocol, qubit_indices_2b_checked,
             qubits = node.qmemory.pop(qubit_indices)
             qubits_2b_checked = qubits_2b_checked + qubits
 
-# =============================================================================
-#         #Re-ordering qubits_2b_checked to match the ordering of qubits in the
-#         #qstate of any combined qubits. This is needed to avoid errors in the 
-#         #call to qapi.fidelity. I do this only in cases where all data
-#         #qubits are being looked at as otherwise this may fail when I have just
-#         #one qubit of interest but it was combined with others at some point
-#         #in the circuit (even if entanglement is destroyed, the combination
-#         #may persist).
-#         print(f"pre-combo {qubits_2b_checked[0].qstate}")
-#         print(f"pre-combo {qubits_2b_checked[0].qstate.qrepr}")
-#         print(f"pre-combo {qubits_2b_checked}")
-#         qapi.combine_qubits(qubits_2b_checked)
-#         indices = qubits_2b_checked[0].qstate.indices_of(qubits_2b_checked)
-#         print(f"idx before if is {_idx(qubits_2b_checked)}")
-#         if qubits_2b_checked[0].qstate.num_qubits == len(indices):
-#         #if number of qubits in qstate == number of qubits being checked:
-#             #re-ordering:
-#             reordered_indices = list(indices)
-#             reordered_indices.sort()
-#             index_mapping = {key:value for (key, value) in zip(indices, reordered_indices)}
-#             qubits_2b_checked = [qubits_2b_checked[index_mapping[ii]] for ii in reordered_indices]
-#         print(qubits_2b_checked[0].qstate.qrepr)
-#         print(qubits_2b_checked)
-#         print(f"idx after if {_idx(qubits_2b_checked)}")
-# =============================================================================
         fidelity = qapi.fidelity(qubits_2b_checked, desired_state, 
                                  squared=True)
-# =============================================================================
-#         import numpy as np # for debugging only
-#         print(f"desired state is {desired_state} with dimensions {np.shape(desired_state)}")
-#         from netsquid.qubits.dmtools import DenseDMRepr #for debugging
-#         fidelity = qubits[0].qstate.qrepr.fidelity(DenseDMRepr(dm=desired_state), 
-#                                                    squared=True) #for debugging
-# =============================================================================
+
         for qubit in qubits_2b_checked:
             qapi.discard(qubit)
         return {"fidelity": fidelity}
