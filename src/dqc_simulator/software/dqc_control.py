@@ -964,12 +964,12 @@ class DQCMasterProtocol(LocalProtocol):
     partitioned_gates:  list of tuples.
         The gates implemented in the entire circuit. The tuples should be
         of the form:
-        1) single-qubit gate: (gate_instr, qubit, node_name)
-        2) two-qubit gate: (list of instructions or gate_instruction if
-                            local,qubit0, node0_name, qubit1, node1_name,
-                            scheme) 
-                            #can later extend this to multi-qubit gates
-                            #keeping scheme as last element
+        1) single-qubit gate: (gate_instr, qubit_index, node_name)
+        2) local two-qubit gate: (gate_instr, qubit_index0, node0_name,
+                                  qubit_index1, node1_name)
+        3) two-qubit gate: (list of instructions or gate_instruction if
+                            local, qubit_index0, node0_name, qubit_index1,
+                            node1_name, scheme) where
                             list of instructions: list
                                 list of same form as partitioned_gates
                                 containing the local gates to be conducted
