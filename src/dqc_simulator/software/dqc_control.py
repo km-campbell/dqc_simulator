@@ -1155,27 +1155,6 @@ class DQCMasterProtocol(LocalProtocol):
 dqcMasterProtocol = DQCMasterProtocol
 
 
-# =============================================================================
-# class MultiCircuitDQCProtocol(Protocol):
-#     """
-#     Handles multiple quantum circuits in a distributed quantum computer.
-#     
-#     Allows multiple quantum circuits to be handled with conditional operations 
-#     so that quantum circuits can be treated as subroutines in a larger 
-#     circuit. Actions such as repeating the subroutine until success can be 
-#     carried out, which is useful for quantum error correction (for example).
-#     
-#     Parameters
-#     ----------
-#     subroutines : list of lists of tuples
-#     """
-#     def __init__(self, subroutines, name=None):
-#         super().__init__(name)
-# 
-#     def run(self):
-# =============================================================================
-        
-
 
 #Correcting occupies a qubit because that needs to be used as the control for 
 #a cnot etc but the bsm frees one if done to teleport a comm_qubit
