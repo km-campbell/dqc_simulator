@@ -446,11 +446,14 @@ class DQC(Network):
                 qpu_class=None,
                 classical_connection_class=None,
                 want_extra_classical_link=True, name="DQC", nodes=None,
+                node_separation=None,
                 **kwargs):
         super().__init__(name, nodes=nodes)
+        # Instantiating mutable default values.
+        if node_separation is None:
+            self.node_separation = 2e-3 # 2m
+        
         # Splitting the kwargs by the class that they should be applied to
-        class_names = ('entangling_connection_class', 'qpu_class', 
-                       'classical_connection_class')
         class_tuple = (entangling_connection_class, qpu_class, 
                         classical_connection_class)
         classes = [value for value in class_tuple if value is not None]
@@ -499,11 +502,13 @@ class DQC(Network):
                 return DirectConnection(
                                             'DirectConnection',
                                            channel_AtoB=ClassicalChannel(
-                                               "Channel_A2B", length=2e-3,
-                                                models={"delay_model": FibreDelayModel()}),
+                                               "Channel_A2B", 
+                                               length=self.node_separation,
+                                               models={"delay_model": FibreDelayModel()}),
                                            channel_BtoA=ClassicalChannel(
-                                               "Channel_B2A", length=2e-3,
-                                                models={"delay_model": FibreDelayModel()}))
+                                               "Channel_B2A",
+                                               length=self.node_separation,
+                                               models={"delay_model": FibreDelayModel()}))
             else:
                 return  classical_connection_class(
                             **kwarg_types[classical_connection_class])
