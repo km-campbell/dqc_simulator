@@ -452,6 +452,8 @@ class DQC(Network):
         # Instantiating mutable default values.
         if node_separation is None:
             self.node_separation = 2e-3 # 2m
+        else:
+            self.node_separation = node_separation
         
         # Splitting the kwargs by the class that they should be applied to
         class_tuple = (entangling_connection_class, qpu_class, 
