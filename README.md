@@ -42,7 +42,7 @@ It is intended to make this package available on PyPi in the near future.
 For now, please access directly from this repository using the command
 
 ```
-
+pip install git+https://github.com/km-campbell/dqc_simulator.git
 ```
 
 ### Known issues
