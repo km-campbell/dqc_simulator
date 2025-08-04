@@ -30,6 +30,10 @@ Key features:
 4. Automatic compilation using pre-made compilers. The user
    can also easily specify their own.
 
+### Documentation
+
+Full project documentation is available at [here](https://km-campbell-dqc-simulator.readthedocs.io/en/latest/).
+
 ### Requirements
 
 * python 3.9
