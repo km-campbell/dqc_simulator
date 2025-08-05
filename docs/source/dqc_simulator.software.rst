@@ -1,7 +1,13 @@
 dqc\_simulator.software
 =======================
 
-Modules for the emulation of software used to run a distributed quantum computer.
+Everything needed to define, compile, and interpret quantum circuits
+on a distributed quantum computer. 
+
+This includes the capacity to parse openQASM 2.0 files for arbitrary 
+monolithic quantum circuits, partition them then interpret them in a 
+form the underlying NetSquid backend can understand or define 
+pre-partitioned distributed quantum circuits and interpret those.
 
 .. todo::
 

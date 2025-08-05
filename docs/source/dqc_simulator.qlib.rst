@@ -1,8 +1,12 @@
 dqc\_simulator.qlib 
 ===================
 
-The quantum library. An extensible library of various things useful for working 
-with quantum systems, such as quantum states and quantum circuits.
+The quantum library. An extensible library of various predefined quantum 
+objects, such as specific quantum states and quantum circuits. 
+
+Nothing in qlib is integral to the functioning of dqc\_simulator
+but qlib does increase the convenience of working with commonly 
+used circuits, identities, gates and states.
 
 .. toctree::
    :caption: Modules
