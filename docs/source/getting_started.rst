@@ -70,6 +70,19 @@ The key features of dqc_simulator are:
 *  **Automatic compilation using pre-made compilers.** The user
    can also easily specify their own.
 
+Typical workflow
+================
+
+To run your own experiments on a DQC, the typical workflow is as 
+follows:
+
+1. import dqc_simulator
+2. Specify the DQC hardware to use
+3. Specify the quantum circuit to use as a protocol
+4. Run the experiment
+
+The rest of this guide gives more details on each of these steps. 
+
 Importing dqc_simulator
 =======================
 
@@ -355,9 +368,51 @@ take simulation results in a :ref:`later section <taking_simulation_results>`.
 Starting with a monolithic circuit
 ----------------------------------
 
+For this demonstration, please put an openQASM 2.0 file in your working directory or 
+any other accessible directory whose path you know.
+I will be using a file, defining a GHZ generation circuit, from
+`MQT Bench benchmarking suite <https://www.cda.cit.tum.de/mqtbench/>` which can be 
+downloaded by following the `link <https://www.cda.cit.tum.de/mqtbench/>` and 
+selecting the ``GHZ State`` box under the ``Benchmark Selection`` section and 
+the ``Qiskit`` box in the ``Target-independent level`` subsection of the 
+``Abstraction Level Selection`` section before clicking the 
+``Download selected Benchmarks`` button.
+
+With this done, we can run the circuit on the hardware we defined previously as follows ::
+
+      from dqc_simulator.software.ast2dqc_circuit import Ast2DqcCircuitTranslator
+      from dqc_simulator.software.dqc_control import DQCMasterProtocol
+      from dqc_simulator.software.partitioner import ( 
+         first_come_first_served_qubits_to_qpus as allocate,
+         partition_gate_tuples as partition)
+      from dqc_simulator.software.qasm2ast import qasm2ast
+
+      # import .qasm file and convert to gate_tuples
+      filepath = 
+      ast = qasm2ast(filepath, include_path=include_path)
+      dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+      monolithic_circuit = dqc_circuit.ops # gate_tuples
+
+      # Determine allocation of processing qubits to QPUs
+      old_to_new_lookup, proc_qubit_allocation4each_qpu = allocate(
+         monolithic_circuit, qpu_nodes)
+      # Enforce allocation of processing qubits to QPUs
+      scheme = 'cat' # the remote gate scheme to use
+      partitioned_gate_tuples = partition(monolithic_circuit, 
+                                          dqc, # defined earlier in tutorial
+                                          scheme, 
+                                          old_to_new_lookup,
+                                          proc_qubit_allocation4each_qpu)
+
+      protocol = DQCMasterProtocol(partitioned_gate_tuples,
+                                 nodes=dqc.nodes)
+      protocol.start()
+      ns.sim_run()
+
 .. todo::
 
-   Write this section. Only the first step of the above will change (ie, how the 
+   Finish this section. Only the first step of the above will change from the
+   prev. section (ie, how the 
    gate_tuples are arrived at behind the scenes).
 
 .. _taking_simulation_results:
