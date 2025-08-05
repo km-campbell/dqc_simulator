@@ -1,0 +1,2 @@
+pyparsing >= 3.0.9
+--user --extra-index-url https://:@pypi.netsquid.org netsquid-physlayer == 4.3.0 # if errors occur try removing this line and doing manually with username and password 
