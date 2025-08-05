@@ -13,7 +13,7 @@ Documentation
    installation
    getting_started
    user_guide 
-   License<LICENSE>    
+   Licence<LICENSE>    
 
 .. toctree::
    :maxdepth: 2
