@@ -40,8 +40,21 @@ Full project documentation is available at [here](https://km-campbell-dqc-simula
 * NetSquid 1.1.7. See [NetSquid](https://netsquid.org/).
 * NetSquid-PhysLayer 4.3.0. See [link](https://docs.netsquid.org/snippets/netsquid-physlayer/).
 
+The remaining requirements can be found on pypi and are in the requirements.txt file.
+
 ### Installation instructions for users
 
+First, install NetSquid version 1.1.7 using the instructions on 
+[NetSquid](https://netsquid.org/). This will require creating a NetSquid 
+account.
+
+Then install the requirements using the command 
+
+```
+pip install -r requirements.txt
+```
+
+Finally, the package itself can be installed.
 It is intended to make this package available on PyPi in the near future. 
 For now, please access directly from this repository using the command
 
