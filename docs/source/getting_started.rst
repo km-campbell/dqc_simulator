@@ -368,7 +368,8 @@ take simulation results in a :ref:`later section <taking_simulation_results>`.
 Starting with a monolithic circuit
 ----------------------------------
 
-For this demonstration, please put an openQASM 2.0 file in your working directory or 
+For this demonstration, please put an openQASM 2.0 (.qasm) file and the include (.inc) file
+that the .qasm file will import with the include statement in your working directory or 
 any other accessible directory whose path you know.
 I will be using a file, defining a GHZ generation circuit, from
 `MQT Bench benchmarking suite <https://www.cda.cit.tum.de/mqtbench/>` which can be 

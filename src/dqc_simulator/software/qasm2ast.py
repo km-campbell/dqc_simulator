@@ -848,8 +848,9 @@ class QasmTranslator():
         True if gate declaration should be noted in c_sect. Default value is 
         False.
     include_path : str
-        Path to include in file search. Default value is '.' (current 
-        working directory).
+        Path to the directory containing the .inc file to be included with the 
+        OPENQASM 2.0 include statement (typically qelib1.inc). Default value
+        is '.' (current working directory).
         
     Attributes
     ----------
