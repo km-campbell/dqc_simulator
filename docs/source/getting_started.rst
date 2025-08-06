@@ -207,6 +207,8 @@ Lets see what this will look like: ::
       kwargs4conn = {'delay' : 1e9/182, # in ns. Corresponds to rate of 182Hz
                      'state4distribution' : werner_state(F_werner)}
 
+.. _creating_a_dqc_network:
+
 Step 3: creating a DQC network
 ------------------------------
 
@@ -365,8 +367,11 @@ by inspecting the hardware. See the NetSquid
 as NetSquid users will also know, this is not necessary. We will explore how to 
 take simulation results in a :ref:`later section <taking_simulation_results>`.
 
-Starting with a monolithic circuit
-----------------------------------
+Starting with a monolithic circuit in openQASM 2.0
+--------------------------------------------------
+
+When starting with a monolithic circuit defined in openQASM 2.0, some processing is needed
+to get gate_tuples like the ones in the previous section.
 
 For this demonstration, please put an openQASM 2.0 (.qasm) file and the include (.inc) file
 that the .qasm file will import with the include statement in your working directory or 
@@ -379,25 +384,30 @@ the ``Qiskit`` box in the ``Target-independent level`` subsection of the
 ``Abstraction Level Selection`` section before clicking the 
 ``Download selected Benchmarks`` button.
 
-With this done, we can run the circuit on the hardware we defined previously as follows ::
+With this done, we can convert the .qasm file to a form that dqc\_simulator will understand
+as follows: ::
 
-      from dqc_simulator.software.ast2dqc_circuit import Ast2DqcCircuitTranslator
+      import netsquid as ns
+
+      # from dqc_simulator.software.ast2dqc_circuit import Ast2DqcCircuitTranslator
+      from dqc_simulator.software.compiler_preprocessing import preprocess_qasm_to_compilable_monolithic as preprocess
       from dqc_simulator.software.dqc_control import DQCMasterProtocol
       from dqc_simulator.software.partitioner import ( 
          first_come_first_served_qubits_to_qpus as allocate,
          partition_gate_tuples as partition)
       from dqc_simulator.software.qasm2ast import qasm2ast
 
-      # import .qasm file and convert to gate_tuples
-      filepath = 
-      ast = qasm2ast(filepath, include_path=include_path)
-      dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
+      # import .qasm file and convert to gate_tuples for monolithic_circuit
+      filepath = 'ghz_indep_qiskit_5.qasm' # assuming this is in current working directory
+      include_path='.' # assuming qelib1.inc is in current working directory
+      dqc_circuit = preprocess(filepath, include_path=include_path)
       monolithic_circuit = dqc_circuit.ops # gate_tuples
 
       # Determine allocation of processing qubits to QPUs
       old_to_new_lookup, proc_qubit_allocation4each_qpu = allocate(
-         monolithic_circuit, qpu_nodes)
-      # Enforce allocation of processing qubits to QPUs
+         monolithic_circuit, list(dqc.nodes.values()))
+
+      # Partition according to the previously defined qubit allocation
       scheme = 'cat' # the remote gate scheme to use
       partitioned_gate_tuples = partition(monolithic_circuit, 
                                           dqc, # defined earlier in tutorial
@@ -405,16 +415,17 @@ With this done, we can run the circuit on the hardware we defined previously as 
                                           old_to_new_lookup,
                                           proc_qubit_allocation4each_qpu)
 
-      protocol = DQCMasterProtocol(partitioned_gate_tuples,
-                                 nodes=dqc.nodes)
-      protocol.start()
-      ns.sim_run()
+``partitioned_gate_tuples`` can then be used exactly like ``gate_tuples`` in the 
+previous section.
 
-.. todo::
+Please note that ``first_come_first_served_qubits_to_qpus`` will allocate to QPUs
+one at a time until there are no more qubits to allocate. If a different allocation
+strategy is desired then one should add a different allocation strategy to the 
+``software.partitioner`` module.
 
-   Finish this section. Only the first step of the above will change from the
-   prev. section (ie, how the 
-   gate_tuples are arrived at behind the scenes).
+Also note that if you wish to a simulation with the above code you will need 
+to change the quantum topology to all_to_all. Only the quantum_topology
+line needs changed in the :ref:`relevant <creating_a_dqc_network>` hardware section.
 
 .. _taking_simulation_results:
 
