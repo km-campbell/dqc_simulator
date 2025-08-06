@@ -78,8 +78,10 @@ follows:
 
 1. import dqc_simulator
 2. Specify the DQC hardware to use
-3. Specify the quantum circuit to use as a protocol
-4. Run the experiment
+3. Specify the quantum circuit to use as a list of gate tuples. If starting from a 
+   .qasm file, some preprocessing can be used to achieve this.
+4. Input the gate_tuples to the interpreter
+5. Run the simulation 
 
 The rest of this guide gives more details on each of these steps. 
 
