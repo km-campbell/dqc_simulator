@@ -30,10 +30,6 @@ Key features:
 4. Automatic compilation using pre-made compilers. The user
    can also easily specify their own.
 
-### Documentation
-
-Full project documentation is available at [here](https://km-campbell-dqc-simulator.readthedocs.io/en/latest/).
-
 ### Requirements
 
 * python 3.9
@@ -61,6 +57,25 @@ For now, please access directly from this repository using the command
 ```
 pip install git+https://github.com/km-campbell/dqc_simulator.git
 ```
+
+To edit the package or have access to the documentation use 
+
+```
+git clone https://github.com/km-campbell/dqc_simulator.git
+```
+
+### Documentation
+
+Full project documentation can be built locally by cloning the repository, 
+as detailed above, and then using the commands 
+
+```
+cd docs
+make html
+```
+
+A version of the documentation will then be available in the docs/build directory.
+Within that directory open index.html to access the documentation.
 
 ### Known issues
 
