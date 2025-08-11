@@ -418,22 +418,52 @@ def create_dqc_network(
 
 class DQC(Network):
     """
-    Creates a network suitable for distributed quantum computing
+    Encapsulates all of the hardware needed for distributed quantum computing.
+    
+    Creates `num_qpus` QPU nodes, with quantum memories defined by `qpu_class`,
+    connected by quantum and classical Connections according to the classical 
+    and quantum topologies specified by `classical_topology` and 
+    `quantum_topology`, respectively.
+    
     
     Parameters
     ----------
-    entangling_connection_class : 
-        
+    entangling_connection_class : subclass of :class:`~netsquid.nodes.connections.Connection`
+        The subclass to use for creating a connections between QPU nodes. Can 
+        be used to define a specific connection. Pre-made Connections can 
+        be found in `dqc_simulator.hardware.connections`.
     num_qpus : int
-        
+        The number of quantum processing units in the DQC.
     quantum_topology: list of (int, int)
-    
+        The topology of quantum connections between QPU nodes.
     classical_topology : list of (int, int)
-    
-    qpu_class : 
+        The topology of classical connections between QPU nodes. These are 
+        optical fibre connections.
+    qpu_class : subclass of :class:`~dqc_simulator.hardware.quantum_processors.QPU` or None, optional
+        The class to use when creating the QPUs. Allows a specific type of 
+        QPU to be specied. The default is None. If this is None, `nodes` 
+        must not be None and the QPUs used will be defined there.
+    classical_connection_class : subclass of :class:`~netsquid.nodes.connections.Connection` or None, optional
+        The classical connection to use. The default is None. If None, a 
+        classical fibre connection is used
+    want_extra_classical_link : bool, optional
+        Whether to create two classical connections of class 
+        `classical_connection_class` for every connection indicated in 
+        `classical_topology`. The default is True. 
+    name : str, optional
+        The name of the DQC object. The default is "DQC".
+    nodes : list of :class:`~netsquid.nodes.node.Node` instances or None, optional
+        Overwritten if qpu_class is specified. If this is None, `nodes` must 
+        not be None.
+    node_separation : float or None, optional
+        The distance between QPU nodes in km. Used when instantiating the default 
+        `classical_connection_class`. Default is None. If None, the value of 
+        2e-3 (corresponding to 2m) is used.
+    **kwargs
+        The kwargs needed by `entangling_connection_class`, `qpu_class` and
+        `classical_connection_class`. Note that if these classes have 
+        keyword arguments with the same name, an error will be raised.
         
-    nodes : 
-        Overwritten if qpu_class is specified.
 
     Returns
     -------
