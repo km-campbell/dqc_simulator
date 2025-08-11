@@ -8,4 +8,3 @@ Utility functions for using or developing dqc_simulator.
    :maxdepth: 2
 
    util/dqc_simulator.util.helper
-   util/dqc_simulator.util.qasm2ast
