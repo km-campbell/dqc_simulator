@@ -34,6 +34,12 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
     """
     Helper function
     
+    .. deprecated::
+        Will be deprecated in future version as `netsquid.qubitapi.depolarise` 
+        already does the same job 
+        when the QFormalism is set to DM! This is kept only for backwards 
+        compatibility.
+    
     Assumes that :class:`~netsquid.qubits.dmtools.DenseDMRepr` is used.
     
     Parameters
@@ -63,13 +69,6 @@ def apply_analytical_depolarisation2dm(qubits, p_error):
     This noise model is designed to be used after a gate or only on one qubit
     at a time because it assumes all qubits share a qstate. This assumption 
     is good if the qubits have been acted on by a multi-qubit gate
-    
-    .. warning::
-        
-        Will be deprecated in future version as `netsquid.qubitapi.depolarise` 
-        already does the same job 
-        when the QFormalism is set to DM! This is kept only for backwards 
-        compatibility
     """
     warnings.warn("This will be deprecated in a future version. Use NetSquid's"
                   " built-in netsquid.qubitapi.depolarise function instead.",
@@ -138,6 +137,11 @@ class AnalyticalDepolarisationModel(QuantumErrorModel):
     """
     Noise model for applying analytical depolarising noise to a qubit.
     
+    .. deprecated::
+        Will be deprecated in future version as 
+        `netsquid.components.models.qerrormodels.DepolarNoiseModel` already 
+        does the same job when the DM formalism is used.
+    
     Based on :class:`~netsquid.components.models.DepolarNoiseModel` but 
     adjusted to 
     be applied analytically and within the DM formalism only. This is 
@@ -169,12 +173,6 @@ class AnalyticalDepolarisationModel(QuantumErrorModel):
     time_independent : bool, optional
         Whether or not the probability of a depolarisation error occurring
         depends on time. The default is True.
-        
-    .. warning::
-        
-        Will be deprecated in future version as 
-        `netsquid.components.models.qerrormodels.DepolarNoiseModel` already 
-        does the same job when the DM formalism is used.
     """
     def __init__(self, p_error, time_independent=True, **kwargs):
         warnings.warn(

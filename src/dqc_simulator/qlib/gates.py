@@ -53,6 +53,15 @@ def INSTR_ARB_GEN(alpha, beta):
     """
     For generating arbitrary quantum states.
     
+    .. deprecated::
+    This function will be deprecated in a future version. It was implemented
+    to allow arbitrary quantum states to be generated, however, this is now 
+    done using :func: `~dqc_simulator.qlib.make_state_gen_op`
+    and an instruction :class:`~netsquid.components.instructions.Instruction`
+    without an operator in the future. This will avoid the need to bake 
+    `alpha` and `beta` into the 
+    :class:`~netsquid.components.qprocessor.QuantumProcessor`.
+    
     Creates :class:`~netsquid.components.instructions.Instruction` that 
     generates arbitrary quantum states.
 
@@ -73,15 +82,6 @@ def INSTR_ARB_GEN(alpha, beta):
     instruction : :class:`~netsquid.components.instructions.Instruction`
         An instruction that creates arbitrary quantum states.
         
-    Notes
-    -----
-    This function will be deprecated in a future version. It was implemented
-    to allow arbitrary quantum states to be generated, however, I would like
-    to do this using :func: `~dqc_simulator.qlib.make_state_gen_op`
-    and an instruction :class:`~netsquid.components.instructions.Instruction`
-    without an operator in the future. This will avoid the need to bake 
-    `alpha` and `beta` into the 
-    :class:`~netsquid.components.qprocessor.QuantumProcessor`.
     """
     #THIS WILL BE DEPRECATED IN FUTURE VERSION
     total_probability_q1 = abs(alpha)**2 + abs(beta)**2
