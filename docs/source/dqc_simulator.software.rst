@@ -31,4 +31,3 @@ pre-partitioned distributed quantum circuits and interpret those.
    software/dqc_simulator.software.partitioner
    software/dqc_simulator.software.physical_layer
    software/dqc_simulator.software.qasm2ast
-   software/dqc_simulator.software.transpiler
