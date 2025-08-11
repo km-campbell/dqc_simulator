@@ -395,7 +395,8 @@ def create_qproc_with_analytical_noise_ionQ_aria_durations_N_standard_lib_gates(
     
     .. deprecated::
         This function will be removed in later version as its functionality is
-        already 
+        now provided by the more general NoisyQPU class in a style more
+        consistent with object-orientated programming
     
     Parameters
     ----------
@@ -490,6 +491,9 @@ def create_noisy_qpu( p_depolar_error_cnot=0,
     """
     Creates quantum processor loosely based on ionQ Aria but with different
     native gates.
+    
+    .. deprecated::
+        Use NoisyQPU instead.
     
     Parameters
     ----------
@@ -589,6 +593,9 @@ def create_qproc_with_numerical_noise_ionQ_aria_durations_N_standard_lib_gates(
     """
     Creates quantum processor loosely based on ionQ Aria but with different
     native gates.
+    
+    .. deprecated::
+        Use noisy QPU instead.
     
     Parameters
     ----------
