@@ -676,7 +676,7 @@ what has been discussed in this guide. Please see the API reference for more det
    subprocess package from the Python standard library. I describe how I go about 
    doing this in more detail below.
 
-To circumvent the but referenced in the warning above I use the code: ::
+To circumvent the bug referenced in the warning above I use the code: ::
 
    import pickle
    import subprocess
