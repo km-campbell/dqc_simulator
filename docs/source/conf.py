@@ -35,6 +35,14 @@ extensions = ['sphinx.ext.autodoc',
               #'sphinx.ext.doctest',
 ]
 
+# Getting autodoc to mock imports to avoid it running netsquid
+autodoc_mock_imports = [
+    'netsquid',
+    'netsquid.nodes',
+    'netsquid.qubits',
+    'netsquid.protocols'
+]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
