@@ -79,7 +79,9 @@ class BlackBoxEntanglingQsourceConnection(Connection):
     """
     Intended to connnect source of entangled photons and 2 QPUs.
     
-    Generates a pair of entangled qubits sharing a particular state without 
+    This class only works with the density matrix formalism and so violates the 
+    formalism agnosticism of NetSqiud. It generates a pair of entangled qubits 
+    sharing a particular state without 
     regard for how that state was generated. The state is intended to be 
     specified analytically and the state definition can be used to specify the
     noise on the entangled photons if desired. In this way, the need for 
