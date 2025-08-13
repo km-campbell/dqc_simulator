@@ -13,7 +13,8 @@ from netsquid.protocols.protocol import Signals, Protocol
 from netsquid.protocols.nodeprotocols import NodeProtocol, LocalProtocol
 
 from dqc_simulator.hardware.quantum_processors import QPU
-from dqc_simulator.software.compilers import sort_greedily_by_node_and_time
+from dqc_simulator.software.compilers import (sort_greedily_by_node_and_time,
+    sort_many_qpus_greedily_by_node_and_time)
 from dqc_simulator.software.physical_layer import (
                                     Base4PhysicalLayerProtocol, 
                                     AbstractCentralSourceEntangleProtocol)
@@ -1069,8 +1070,10 @@ class DQCMasterProtocol(LocalProtocol):
         else:
             #TO DO: raise error if calling this without arguments raises error
             physical_layer_protocol_class = physical_layer_protocol_class
-        if compiler_func is None:
+        if compiler_func is None and len(self.nodes) <= 2:
             self.compiler_func = sort_greedily_by_node_and_time
+        elif compiler_func is None and len(self.nodes) > 2:
+            self.compiler_func = sort_many_qpus_greedily_by_node_and_time
         else:
             self.compiler_func = compiler_func
             
