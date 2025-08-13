@@ -51,8 +51,9 @@ class QpuOSProtocol(NodeProtocol):
         Each gate_tuple in gate_tuples4this_node_and_time must have
         form:
         1) for single-qubit gate: (gate_type, qubit_index)
-        2) for two-qubit gate: (gate_type, qubit_index1, qubit_index2)
-        3) for remote gate primitive:
+        2) for single-qubit primitive: (gate_Type, qubit_index, primitive_label)
+        3) for two-qubit gate: (gate_type, qubit_index1, qubit_index2)
+        4) for remote gate primitive:
                 either : i) (data_qubit_index or sometimes
                              index of qubit to be
                              teleported/distributed, 
