@@ -5,6 +5,8 @@ Tests for qasm2gate_tuples module
 import itertools as it
 import unittest
 
+from netsquid.components import instructions as instr
+
 from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
 from dqc_simulator.hardware.dqc_creation import DQC
 from dqc_simulator.hardware.quantum_processors import NoisyQPU
@@ -42,13 +44,24 @@ class Test_qasm2gate_tuples(unittest.TestCase):
                   **kwargs4qpu, **kwargs4conn)
         
     def test_on_ghz_circuit(self):
-        filepath = 'ghz_indep_qiskit_5.qasm'
+        # assuming that working directory is repo root
+        filepath = ('./src/dqc_simulator/software/tests/unit_tests/'
+                    'ghz_indep_qiskit_5.qasm')
+        include_path = './src/dqc_simulator/software/tests/unit_tests/'
         scheme = 'cat'
         gate_tuples = qasm2gate_tuples(self.dqc, filepath, scheme, 
-                                       include_path='.')
-        print(gate_tuples)
-# =============================================================================
-#         expected_output = 
-#         self.assertEqual(gate_tuples, expected_output)
-# =============================================================================
+                                       include_path=include_path)
+        expected_output = [
+            (instr.INSTR_INIT, [2, 3], 'node_0'),
+            (instr.INSTR_INIT, [2, 3], 'node_1'),
+            (instr.INSTR_INIT, [2], 'node_2'),
+            (instr.INSTR_H, 2, 'node_2'),
+            (instr.INSTR_CNOT, 2, 'node_2', 3, 'node_1', 'cat'),
+            (instr.INSTR_CNOT, 3, 'node_1', 2, 'node_1'),
+            (instr.INSTR_CNOT, 2, 'node_1', 3, 'node_0', 'cat'),
+            (instr.INSTR_CNOT, 3, 'node_0', 2, 'node_0')
+        ]
+        self.assertEqual(gate_tuples, expected_output)
 
+if __name__ == '__main__':
+    unittest.main()
