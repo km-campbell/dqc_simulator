@@ -133,6 +133,7 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.superprotocol = None #should be overwritten by higher-layer
                                   #protocols. superprotocol will typically be
                                   #InterpreterProtocol from dqc_control module
+                                  #and set in DQCMasterProtocol
         self.other_node_name = other_node_name
         self.comm_qubit_indices = comm_qubit_indices
         self.ready4ent = ready4ent
