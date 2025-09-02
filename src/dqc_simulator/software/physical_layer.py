@@ -131,7 +131,8 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
                  ready4ent=True):
         super().__init__(node=node, name=name)
         self.superprotocol = None #should be overwritten by higher-layer
-                                  #protocols
+                                  #protocols. superprotocol will typically be
+                                  #InterpreterProtocol from dqc_control module
         self.other_node_name = other_node_name
         self.comm_qubit_indices = comm_qubit_indices
         self.ready4ent = ready4ent
