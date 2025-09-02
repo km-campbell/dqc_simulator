@@ -158,7 +158,7 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         self.classical_conn_port = None
         self.entangling_connection_port_name = None
         self.ent_conn_port = None
-        #TO DO: think about if you should declare these in QpuOSProtocol, which
+        #TO DO: think about if you should declare these in InterpreterProtocol, which
         #you will need to do anyway, and then send them here with the other 
         #attributes
         
@@ -277,7 +277,7 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
                 evexpr = yield (self.await_port_input(self.classical_conn_port) | 
                                 self.await_timer(wait_time))
                 #note: timeout may occur if physical layers signalled at different 
-                #times by their QpuOSProtocol
+                #times by their InterpreterProtocol
                 if evexpr.first_term.value:
                     msg, = self.classical_conn_port.rx_input().items
                     if msg == self.handshake_not_ready_label:
@@ -441,7 +441,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
         msg.meta['qm_positions'] = self.comm_qubit_indices
         self.ent_conn_port.forward_input(self.node.qmemory.ports['qin'])
         self.ent_conn_port.tx_input(msg)
-        #signalling QpuOSProtocol that entanglement is ready.
+        #signalling InterpreterProtocol that entanglement is ready.
         self.send_signal(self.ent_ready_label)
         #undoing the forward input setup above so that, the next time
         #entanglement is distributed, the message is again amended with 

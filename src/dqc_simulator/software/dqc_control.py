@@ -28,12 +28,12 @@ class UnfinishedQuantumCircuitError(Exception):
     pass
 
 
-class QpuOSProtocol(NodeProtocol):
+class InterpreterProtocol(NodeProtocol):
     """
-    Runs all operations for a given QPU.
+    Interprets and runs all operations for a given QPU.
     
-    This protocol serves as the operating system for our QPU. It will be used
-    as a subprotocol of another protocol (the `superprotocol`).
+    This protocol will be used as a subprotocol of another protocol 
+    (the `superprotocol`, DQCMasterProtocol).
     
     Parameters
     ----------
@@ -1090,11 +1090,11 @@ class DQCMasterProtocol(LocalProtocol):
             if isinstance(node.qmemory, QPU): 
             #if the node has a QPU and that QPU has instructions to run at any
             #point
-                qpu_protocol = QpuOSProtocol(
+                qpu_protocol = InterpreterProtocol(
                                     superprotocol=self, 
                                     gate_tuples=self.qpu_op_dict[node_name],
                                     node=node,
-                                    name=f'QpuOSProtocol_{node.name}')
+                                    name=f'InterpreterProtocol_{node.name}')
                 self.physical_layer_protocol = ( 
                     physical_layer_protocol_class(node=node))
                 if not self.physical_layer_protocol.deterministic:
