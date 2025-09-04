@@ -50,7 +50,7 @@ from netsquid.qubits import ketstates as ks
 #TO DO: think about enforcing some expected inheritance behaviour, eg with 
 #properties
 
-class Base4PhysicalLayerProtocol(NodeProtocol):
+class PhysicalLayerProtocol(NodeProtocol):
     """
     An abstract base class for physical layer protocols.
     
@@ -321,9 +321,9 @@ class Base4PhysicalLayerProtocol(NodeProtocol):
         #which may require having some sort of job ID.
 
 #Following decorator explicitly labels the next class as a subprotocol of 
-#Base4PhysicalLayerProtocol
-@Base4PhysicalLayerProtocol.register
-class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
+#PhysicalLayerProtocol
+@PhysicalLayerProtocol.register
+class AbstractCentralSourceEntangleProtocol(PhysicalLayerProtocol):
     """ Abstract protocol for generating entanglement.
     
     An abstract way of generating ebits designed to act on QPUs connected by
@@ -475,7 +475,7 @@ class AbstractCentralSourceEntangleProtocol(Base4PhysicalLayerProtocol):
             
 
 
-class ProbabilisticEntanglingProtocol(Base4PhysicalLayerProtocol):
+class ProbabilisticEntanglingProtocol(PhysicalLayerProtocol):
     """
     An abstract base class for probabilistic physical layer protocols.
     

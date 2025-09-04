@@ -16,7 +16,7 @@ from dqc_simulator.hardware.quantum_processors import QPU
 from dqc_simulator.software.compilers import (sort_greedily_by_node_and_time,
     sort_many_qpus_greedily_by_node_and_time)
 from dqc_simulator.software.physical_layer import (
-                                    Base4PhysicalLayerProtocol, 
+                                    PhysicalLayerProtocol, 
                                     AbstractCentralSourceEntangleProtocol)
 from dqc_simulator.util.helper import QDCSignals
 
@@ -141,7 +141,7 @@ class InterpreterProtocol(NodeProtocol):
         
         Parameters
         ----------
-        physical_layer_protocol : :class:`~dqc_simulator.software.physical_layer.Base4PhysicalLayerProtocol`
+        physical_layer_protocol : :class:`~dqc_simulator.software.physical_layer.PhysicalLayerProtocol`
             A physical layer protocol.
         """
         physical_layer_protocol.superprotocol = self
@@ -939,9 +939,9 @@ class InterpreterProtocol(NodeProtocol):
     def run(self):
         if 'physical_layer_protocol' not in self.subprotocols or not \
             isinstance(self.subprotocols['physical_layer_protocol'], 
-                       Base4PhysicalLayerProtocol):
+                       PhysicalLayerProtocol):
             raise ValueError(f'{self.name} requires a physical layer protocol, '
-                             'which is a subclass of Base4PhysicalLayerProtocol,'
+                             'which is a subclass of PhysicalLayerProtocol,'
                              'to be added. This can be done with the '
                              'add_phys_layer method')
         
