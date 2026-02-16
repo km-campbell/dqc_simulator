@@ -66,7 +66,7 @@ git clone https://github.com/km-campbell/dqc_simulator.git
 
 ### Documentation
 
-The documentation is available via readthedocs [here]<https://km-campbell-dqc-simulator.readthedocs.io/en/latest/>
+The documentation is available via readthedocs [here](https://km-campbell-dqc-simulator.readthedocs.io/en/latest/).
 
 Alternatively, the project documentation can be built locally by cloning the repository, 
 as detailed above, and then using the commands 
