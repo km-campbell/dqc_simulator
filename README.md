@@ -66,7 +66,9 @@ git clone https://github.com/km-campbell/dqc_simulator.git
 
 ### Documentation
 
-Full project documentation can be built locally by cloning the repository, 
+The documentation is available via readthedocs [here]<https://km-campbell-dqc-simulator.readthedocs.io/en/latest/>
+
+Alternatively, the project documentation can be built locally by cloning the repository, 
 as detailed above, and then using the commands 
 
 ```
@@ -79,7 +81,7 @@ Within that directory open index.html to access the documentation.
 
 ### Known issues
 
-Any known issues will be posted here.
+In addition, to anything listed in the issues section of the repo, the following issues exist.
 
 * Some tests are implemented within a separate private repository as they pertain to
   specific experiments. Equivalent tests need to be added here.
@@ -90,5 +92,5 @@ Any known issues will be posted here.
 
 I acknowledge the use of modified code from nuqasm2 in the qasm2ast module 
 subject to the Apache 2.0 license included above under the name
-LICENSE4qasm2ast_base_code.
+LICENSE4qasm2ast_base_code. It is explicitly stated in any modules where modified nuqasm2 code is used.
 
