@@ -1,77 +1,74 @@
-# -*- coding: utf-8 -*-
 """
 Distributed quantum computing compilers.
 
 These compilers take a list of gate tuples, and output a time-sliced dictionary
-of what happens on each individual QPU. 
+of what happens on each individual QPU.
 
 Notes
 -----
-Some compilation is also done in dqc_control.py. There common 
+Some compilation is also done in dqc_control.py. There common
 subroutines used by Cat-comm and TP-comm are broken down into individual gates
-and run on individual nodes. The role of these compilers is to break a 
+and run on individual nodes. The role of these compilers is to break a
 monolithic quantum circuit into the lower level commands used in
 :mod: `~dqc_simulator.software.dqc_control`.
 That said, very general compilers can be defined here. The main limitations are
-that they use only intraprocessor quantum gates and the interprocessor 
+that they use only intraprocessor quantum gates and the interprocessor
 subroutines involved in Cat and TP-comm (at least for now) and that the backend
 defined in :mod: `~dqc_simulator.software.dqc_control` may not be able to cope
 with carrying out multiple inter-QPU gates on a given node within the same
-time-slice. Each time slice is intended to be 
-greedily compiled and executed by functions in 
+time-slice. Each time slice is intended to be
+greedily compiled and executed by functions in
 :mod: `~dqc_simulator.software.dqc_control` but near-arbitrary compilation can
-be done by careful choice of the time slices. 
+be done by careful choice of the time slices.
 """
 
-#Note: some compilation is also done in dqc_control.py. There common 
-#subroutines used by Cat-comm and TP-comm are broken down into individual gates
-#and run on individual nodes. The role of these compilers is to break a 
-#monolithic quantum circuit into the lower level commands used in dqc_control.py.
-#That said, very general compilers can be defined here. The only limitation is
-#that they use only intraprocessor quantum gates and the interprocessor 
-#subroutines involved in Cat and TP-comm
+# Note: some compilation is also done in dqc_control.py. There common
+# subroutines used by Cat-comm and TP-comm are broken down into individual gates
+# and run on individual nodes. The role of these compilers is to break a
+# monolithic quantum circuit into the lower level commands used in dqc_control.py.
+# That said, very general compilers can be defined here. The only limitation is
+# that they use only intraprocessor quantum gates and the interprocessor
+# subroutines involved in Cat and TP-comm
 
-from collections import Counter
 from functools import partial
 
 import netsquid as ns
 from netsquid.components import instructions as instr
 
 
-
-
-class QpuOps():
+class QpuOps:
     """
     Data structure for tracking the operations of all QPUs within a DQC.
-    
+
     Intended to help users develop their own compilers.
-    
+
     Attributes
     ----------
     ops : dict
         The operations to carry out on each QPU in a DQC.
-        
+
     Notes
     -----
-    The definitions of cat-comm and TP-comm subroutines work less well for 
-    many QPU systems (rather than 2 QPU systems) and so this is best used for 
+    The definitions of cat-comm and TP-comm subroutines work less well for
+    many QPU systems (rather than 2 QPU systems) and so this is best used for
     compiling 2-QPU systems
-        
+
     """
-    
+
     def __init__(self):
         self.ops = {}
-# =============================================================================
-#         self.internode_primitives = {
-#             'request_ebit' : }
-# =============================================================================
+
+    # =============================================================================
+    #         self.internode_primitives = {
+    #             'request_ebit' : }
+    # =============================================================================
 
     def add_empty_node_entry(self, node_name):
         self.ops[node_name] = [[]]
 
     def append_op2current_time_slice(self, node_name, op):
         self.ops[node_name][-1].append(op)
-    
+
     def append_multiple_ops2current_time_slice(self, node_name, ops):
         self.ops[node_name][-1] = self.ops[node_name][-1] + ops
 
@@ -79,143 +76,150 @@ class QpuOps():
         if node_name not in self.ops:
             self.add_empty_node_entry(node_name)
         self.append_op2current_time_slice(node_name, op)
-            
+
     def add_time_slice(self, node_name):
         self.ops[node_name].append([])
-            
-    def pad_num_time_slices_until_matching(self, 
-                                           node_with_fewer_time_slices,
-                                           node_with_more_time_slices):
-        length_diff = (len(self.ops[node_with_more_time_slices]) - 
-                       len(self.ops[node_with_fewer_time_slices]))
-        #adding empty time slices to make lengths match (enforcing
-        #scheduling)
+
+    def pad_num_time_slices_until_matching(
+        self, node_with_fewer_time_slices, node_with_more_time_slices
+    ):
+        length_diff = len(self.ops[node_with_more_time_slices]) - len(
+            self.ops[node_with_fewer_time_slices]
+        )
+        # adding empty time slices to make lengths match (enforcing
+        # scheduling)
         start = len(self.ops[node_with_fewer_time_slices])
         end = start + length_diff
         for ii in range(start, end):
             self.add_time_slice(node_with_fewer_time_slices)
 
     def make_num_time_slices_match(self, node0_name, node1_name):
-        if (len(self.ops[node0_name])
-            > len(self.ops[node1_name])):
+        if len(self.ops[node0_name]) > len(self.ops[node1_name]):
             self.pad_num_time_slices_until_matching(node1_name, node0_name)
-        elif (len(self.ops[node0_name])
-              < len(self.ops[node1_name])): 
+        elif len(self.ops[node0_name]) < len(self.ops[node1_name]):
             self.pad_num_time_slices_until_matching(node0_name, node1_name)
-            
+
     def check_if_all_nodes_have_empty_trailing_time_slice(self):
         """
-        
+
 
         Returns
         -------
         all_nodes_have_empty_trailing_time_slice : bool
-            True if all nodes have an empty trailing time slice and false 
+            True if all nodes have an empty trailing time slice and false
             otherwise.
         """
         all_nodes_have_empty_trailing_time_slice = True
         for node_key in self.ops:
             if self.ops[node_key][-1]:
-            #if the last time slice is non-empty:
+                # if the last time slice is non-empty:
                 all_nodes_have_empty_trailing_time_slice = False
         return all_nodes_have_empty_trailing_time_slice
-                
+
     def remove_empty_trailing_time_slices(self):
         """
         Remove empty trailing time slices if they appear for all QPUs.
-        
+
         The constant number of time slices for all nodes is retained.
         """
-        need2remove_trailing_time_slices = ( 
-            self.check_if_all_nodes_have_empty_trailing_time_slice())
+        need2remove_trailing_time_slices = (
+            self.check_if_all_nodes_have_empty_trailing_time_slice()
+        )
         if need2remove_trailing_time_slices:
-            #removing last time slice from each node
+            # removing last time slice from each node
             for node_key in self.ops:
                 del self.ops[node_key][-1]
-        
-# =============================================================================
-#     def request_ebit(self, node0_name, node1_name):
-#         """
-#         Request ebit (entangled pair) between two QPU nodes.
-# 
-#         Parameters
-#         ----------
-#         node0_name, node1_name : str
-#             The names of the nodes to receive each half of the ebit.
-#         """
-#         node0_ops = [()]
-# =============================================================================
+
+    # =============================================================================
+    #     def request_ebit(self, node0_name, node1_name):
+    #         """
+    #         Request ebit (entangled pair) between two QPU nodes.
+    #
+    #         Parameters
+    #         ----------
+    #         node0_name, node1_name : str
+    #             The names of the nodes to receive each half of the ebit.
+    #         """
+    #         node0_ops = [()]
+    # =============================================================================
 
     def distribute_ebit(self, gate_tuple):
-        # It doesn't matter here which node is the client and which is the 
+        # It doesn't matter here which node is the client and which is the
         # server
         node0_name = gate_tuple[0]
         node1_name = gate_tuple[1]
-        node0_op = (node1_name, 'client', 'distribute_ebit')
-        node1_op = (node0_name, 'server', 'distribute_ebit')
+        node0_op = (node1_name, "client", "distribute_ebit")
+        node1_op = (node0_name, "server", "distribute_ebit")
         self.append_op2current_time_slice(node0_name, node0_op)
         self.append_op2current_time_slice(node1_name, node1_op)
 
-    def cat_comm(self, gate_instructions, qubit_index0, qubit_index1,
-                 node0_name, node1_name):
-# =============================================================================
-#         node0_op = [(qubit_index0, node1_name, "cat", "entangle")]
-#         node1_op = [(node0_name, "cat", "correct")]
-#         self.append_op2current_time_slice(node0_name, node0_op)
-#         self.append_op2current_time_slice(node1_name, node1_op)
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-#         node0_ops = [(qubit_index0, node1_name, "cat", "disentangle_end")]
-#         node1_ops = ([gate_instructions] + 
-#                     [(qubit_index1, node0_name, "cat", "disentangle_start")])
-#         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
-#         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-# =============================================================================
-        node0_ops = (
-            [(qubit_index0, node1_name, "cat", "entangle")] + 
-            [(qubit_index0, node1_name, "cat", "disentangle_end")])
+    def cat_comm(
+        self, gate_instructions, qubit_index0, qubit_index1, node0_name, node1_name
+    ):
+        # =============================================================================
+        #         node0_op = [(qubit_index0, node1_name, "cat", "entangle")]
+        #         node1_op = [(node0_name, "cat", "correct")]
+        #         self.append_op2current_time_slice(node0_name, node0_op)
+        #         self.append_op2current_time_slice(node1_name, node1_op)
+        #         self.add_time_slice(node0_name)
+        #         self.add_time_slice(node1_name)
+        #         node0_ops = [(qubit_index0, node1_name, "cat", "disentangle_end")]
+        #         node1_ops = ([gate_instructions] +
+        #                     [(qubit_index1, node0_name, "cat", "disentangle_start")])
+        #         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        #         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+        #         self.add_time_slice(node0_name)
+        #         self.add_time_slice(node1_name)
+        # =============================================================================
+        node0_ops = [(qubit_index0, node1_name, "cat", "entangle")] + [
+            (qubit_index0, node1_name, "cat", "disentangle_end")
+        ]
         node1_ops = (
             [(node0_name, "cat", "correct")]
-            + gate_instructions + 
-            [(qubit_index1, node0_name,
-              "cat", "disentangle_start")])
+            + gate_instructions
+            + [(qubit_index1, node0_name, "cat", "disentangle_start")]
+        )
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-# =============================================================================
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-# =============================================================================
 
-    def one_tp(self, gate_instructions, qubit_index0, node0_name, 
-                 node1_name):
+    # =============================================================================
+    #         self.add_time_slice(node0_name)
+    #         self.add_time_slice(node1_name)
+    # =============================================================================
+
+    def one_tp(self, gate_instructions, qubit_index0, node0_name, node1_name):
         """
         Add gate tuples for 1tp remote gate, in which a processing qubit
-        is teleported to an automatically assigned comm-qubit in another QPU 
+        is teleported to an automatically assigned comm-qubit in another QPU
         and then the gate or gates are done locally by the QPU.
-        
-        No teleportation is done back to the original QPU to free up the 
+
+        No teleportation is done back to the original QPU to free up the
         comm-qubit used.
         """
-        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")] 
+        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
         node1_ops = [(node0_name, "tp", "correct")] + gate_instructions
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-        
-    def teleport_only(self, gate_instructions, proc_qubit2teleport_from, 
-                   comm_qubit2teleport_to, node0_name, node1_name):
+
+    def teleport_only(
+        self,
+        gate_instructions,
+        proc_qubit2teleport_from,
+        comm_qubit2teleport_to,
+        node0_name,
+        node1_name,
+    ):
         """
         Add gate tuples for a teleportation.
-        
+
         No subsequent gate is done automatically.
-        
+
         Parameters
         ----------
         gate_instructions : empty list
             Must be empty list, and is included only for input checking
         proc_qubit2teleport_from : int
-            The index of the processing qubit to teleport from (the control 
+            The index of the processing qubit to teleport from (the control
             qubit in the remote gate).
         comm_qubit2teleport_to : int
             The index of the comm-qubit to be teleported to.
@@ -223,127 +227,161 @@ class QpuOps():
             The name of the QPU node to be teleported from.
         node1_name : str
             The name of the QPU node to be teleported to.
-            
+
         .. todo::
-            
-            Deprecate the type check here, by changing the way gate tuples 
-            with four or more elements are interpreted. Length alone is not 
+
+            Deprecate the type check here, by changing the way gate tuples
+            with four or more elements are interpreted. Length alone is not
             a stable interpretation method.
         """
         if gate_instructions != []:
-            #TO DO: deprecate this type check by changing the way that 
-            #interpretation of gate_tuples is done
-            raise ValueError('gate_instructions must be empty list because '
-                             'teleport_only involves only teleportation ')
-        node0_ops = [(proc_qubit2teleport_from, node1_name, "tp", "bsm")] 
-        node1_ops = ([(comm_qubit2teleport_to, node0_name, "tp", 
-                       "correct_manually")])
-        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
-        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-        
-    def free_comm_qubit_with_tele(self, qubit_index0,
-                                  qubit_index1, node0_name, node1_name):
-        #TO DO: potentially deprecate in favour of tele2data_qubit, however
-        #this will require changes to dqc_simulator.software.dqc_control
-        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
-        node1_ops = [(node0_name, "tp", "correct4tele_only"),
-                       (instr.INSTR_SWAP, -1, qubit_index1)] 
-        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
-        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
-        
-    def tele2data_qubit(self, qubit_index0, qubit_index1, node0_name,
-                       node1_name):
-        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
-        node1_ops = [(qubit_index1, node0_name, "tp", "swap_then_correct")] 
+            # TO DO: deprecate this type check by changing the way that
+            # interpretation of gate_tuples is done
+            raise ValueError(
+                "gate_instructions must be empty list because "
+                "teleport_only involves only teleportation "
+            )
+        node0_ops = [(proc_qubit2teleport_from, node1_name, "tp", "bsm")]
+        node1_ops = [(comm_qubit2teleport_to, node0_name, "tp", "correct_manually")]
         self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
         self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
 
-    def tp_safe(self, gate_instructions, qubit_index0, qubit_index1,
-                node0_name, node1_name):
-        """Specifying gate tuples needed to implement remote gate using 1tp, 
+    def free_comm_qubit_with_tele(
+        self, qubit_index0, qubit_index1, node0_name, node1_name
+    ):
+        # TO DO: potentially deprecate in favour of tele2data_qubit, however
+        # this will require changes to dqc_simulator.software.dqc_control
+        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
+        node1_ops = [
+            (node0_name, "tp", "correct4tele_only"),
+            (instr.INSTR_SWAP, -1, qubit_index1),
+        ]
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+
+    def tele2data_qubit(self, qubit_index0, qubit_index1, node0_name, node1_name):
+        node0_ops = [(qubit_index0, node1_name, "tp", "bsm")]
+        node1_ops = [(qubit_index1, node0_name, "tp", "swap_then_correct")]
+        self.append_multiple_ops2current_time_slice(node0_name, node0_ops)
+        self.append_multiple_ops2current_time_slice(node1_name, node1_ops)
+
+    def tp_safe(
+        self, gate_instructions, qubit_index0, qubit_index1, node0_name, node1_name
+    ):
+        """Specifying gate tuples needed to implement remote gate using 1tp,
         then teleports back to original qubit on the QPU to free up comm-qubits.
-        
-        In the ideal case, the qubits would be left in the state they would 
-        have been had it been possible to do a local gate between them (ie, 
+
+        In the ideal case, the qubits would be left in the state they would
+        have been had it been possible to do a local gate between them (ie,
         all quantum information is stored in processing qubits).
         """
-        #For remote gate:
-        self.one_tp(gate_instructions, qubit_index0, node0_name, 
-                      node1_name)
+        # For remote gate:
+        self.one_tp(gate_instructions, qubit_index0, node0_name, node1_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
-        #for teleportation back:
+        # for teleportation back:
         self.tele2data_qubit(-1, qubit_index0, node1_name, node0_name)
         self.add_time_slice(node0_name)
         self.add_time_slice(node1_name)
-        #implements tp remote gate then teleports back to original node 
-        #to free up comm-qubit.
-# =============================================================================
-#         #For remote gate:
-#         self.one_tp(gate_instructions, qubit_index0, node0_name, 
-#                       node1_name)
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-#         #For teleportation back:
-#         self.free_comm_qubit_with_tele(-1, qubit_index0, node1_name,
-#                                        node0_name)
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-# =============================================================================
-        
-# =============================================================================
-#     def tp_block(self, gate_instructions, qubit_index0, qubit_index1, 
-#                  node0_name, node1_name):
-#         #Very similar to TP-safe except that the SWAP happens before the 
-#         #correction and the measurement dependent gates act on the data qubit
-#         #(see figure 2b of published version of AutoComm paper)
-#         #For remote gate:
-#         self.one_tp(gate_instructions, qubit_index0, node0_name, 
-#                       node1_name)
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-#         #for teleportation back:
-#         self.tele2data_qubit(-1, qubit_index0, node1_name, node0_name)
-#         self.add_time_slice(node0_name)
-#         self.add_time_slice(node1_name)
-# =============================================================================
-            
-    def apply_remote_gate(self, scheme, gate_instructions, qubit_index0,
-                          qubit_index1, node0_name, node1_name):
-        #the use of functools.partial in the following just bakes in the 
-        #arguments and allows a single call of the dict to be used despite
-        #the arguments being different
-        comm_schemes = {
-            'cat' : partial(self.cat_comm, gate_instructions, qubit_index0, 
-                            qubit_index1, node0_name, node1_name), 
-            '1tp' : partial(self.one_tp, gate_instructions,
-                                 qubit_index0, node0_name, node1_name),
-            'teleport_only' : partial(self.teleport_only, gate_instructions,
-                                   qubit_index0, qubit_index1, node0_name, 
-                                   node1_name),
-            'free_comm_qubit_with_tele' : partial(self.free_comm_qubit_with_tele,
-                                                  qubit_index0, qubit_index1,
-                                                  node0_name, node1_name),
-            'tp_safe' : partial(self.tp_safe, gate_instructions, qubit_index0,
-                                qubit_index1, node0_name, node1_name)}
-                            
-        comm_schemes[scheme]()
-        
+        # implements tp remote gate then teleports back to original node
+        # to free up comm-qubit.
 
-#helper functions:
-    
-    
+    # =============================================================================
+    #         #For remote gate:
+    #         self.one_tp(gate_instructions, qubit_index0, node0_name,
+    #                       node1_name)
+    #         self.add_time_slice(node0_name)
+    #         self.add_time_slice(node1_name)
+    #         #For teleportation back:
+    #         self.free_comm_qubit_with_tele(-1, qubit_index0, node1_name,
+    #                                        node0_name)
+    #         self.add_time_slice(node0_name)
+    #         self.add_time_slice(node1_name)
+    # =============================================================================
+
+    # =============================================================================
+    #     def tp_block(self, gate_instructions, qubit_index0, qubit_index1,
+    #                  node0_name, node1_name):
+    #         #Very similar to TP-safe except that the SWAP happens before the
+    #         #correction and the measurement dependent gates act on the data qubit
+    #         #(see figure 2b of published version of AutoComm paper)
+    #         #For remote gate:
+    #         self.one_tp(gate_instructions, qubit_index0, node0_name,
+    #                       node1_name)
+    #         self.add_time_slice(node0_name)
+    #         self.add_time_slice(node1_name)
+    #         #for teleportation back:
+    #         self.tele2data_qubit(-1, qubit_index0, node1_name, node0_name)
+    #         self.add_time_slice(node0_name)
+    #         self.add_time_slice(node1_name)
+    # =============================================================================
+
+    def apply_remote_gate(
+        self,
+        scheme,
+        gate_instructions,
+        qubit_index0,
+        qubit_index1,
+        node0_name,
+        node1_name,
+    ):
+        # the use of functools.partial in the following just bakes in the
+        # arguments and allows a single call of the dict to be used despite
+        # the arguments being different
+        comm_schemes = {
+            "cat": partial(
+                self.cat_comm,
+                gate_instructions,
+                qubit_index0,
+                qubit_index1,
+                node0_name,
+                node1_name,
+            ),
+            "1tp": partial(
+                self.one_tp, gate_instructions, qubit_index0, node0_name, node1_name
+            ),
+            "teleport_only": partial(
+                self.teleport_only,
+                gate_instructions,
+                qubit_index0,
+                qubit_index1,
+                node0_name,
+                node1_name,
+            ),
+            "free_comm_qubit_with_tele": partial(
+                self.free_comm_qubit_with_tele,
+                qubit_index0,
+                qubit_index1,
+                node0_name,
+                node1_name,
+            ),
+            "tp_safe": partial(
+                self.tp_safe,
+                gate_instructions,
+                qubit_index0,
+                qubit_index1,
+                node0_name,
+                node1_name,
+            ),
+        }
+
+        comm_schemes[scheme]()
+
+
+# helper functions:
+
+
 def find_qubit_node_pairs(partitioned_gates):
     """
-    
+
     Parameters
     ----------
     partitioned_gates : list of tuples
         List of tuples with gate information including type of gate, qubit
-        indices acted on, node names acted on, and (for remote gates) a string 
+        indices acted on, node names acted on, and (for remote gates) a string
         indicating the scheme (here this should be some placeholder string
         as the scheme is not yet decided).
-        
+
     Returns
     -------
     qubit_node_pairs : dict
@@ -351,50 +389,54 @@ def find_qubit_node_pairs(partitioned_gates):
         are referred to by a key of the form (qubit0_index, node0_name,
         node1_name), where the first two
         entries define the qubit and the latter the node. The remote gates for
-        each qubit-node pair are lists of the form [gate, ID] where gate is 
+        each qubit-node pair are lists of the form [gate, ID] where gate is
         the gate tuple form partitioned gates and ID
     """
+
     def _add_entry(a_dict, key, value):
         if key in a_dict:
             a_dict[key].append(value)
         else:
             a_dict[key] = [value]
-            
+
     qubit_node_pairs = {}
-    for ii, gate in enumerate(partitioned_gates): #you will also iterate over gates of different
-                                   #type in linear merge but I'm not sure this can be
-                                   #avoided
+    for ii, gate in enumerate(
+        partitioned_gates
+    ):  # you will also iterate over gates of different
+        # type in linear merge but I'm not sure this can be
+        # avoided
         if len(gate) > 3 and gate[2] != gate[4]:
-        #if two-qubit remote gate (node names not the same):
+            # if two-qubit remote gate (node names not the same):
             ctrl_qubit = gate[1]
             ctrl_node = gate[2]
             target_qubit = gate[3]
             target_node = gate[4]
             key = (ctrl_qubit, ctrl_node, target_node)
-            #first two entries of key needed to fully specify ctrl qubit
+            # first two entries of key needed to fully specify ctrl qubit
             _add_entry(qubit_node_pairs, key, (gate, ii))
-            #index ii needed so that duplicate gates can be identified later 
-            #and their position in partitioned_gates can be ascertained
+            # index ii needed so that duplicate gates can be identified later
+            # and their position in partitioned_gates can be ascertained
             key = (target_qubit, target_node, ctrl_node)
             _add_entry(qubit_node_pairs, key, (gate, ii))
     return qubit_node_pairs
+
 
 def find_node_node_pairs(partitioned_gates):
     node_node_pairs = {}
     for ii, gate in enumerate(partitioned_gates):
         if len(gate) > 3 and gate[2] != gate[4]:
-        #if two-qubit remote gate (node names not the same):
+            # if two-qubit remote gate (node names not the same):
             ctrl_node = gate[2]
             target_node = gate[4]
             key = (ctrl_node, target_node)
-            key = tuple(sorted(key)) #puts key in intuitive ordering 
-                                     #(eg, node_0, node_1, ... rather than
-                                     #node_1, node_0, ...)
+            key = tuple(sorted(key))  # puts key in intuitive ordering
+            # (eg, node_0, node_1, ... rather than
+            # node_1, node_0, ...)
             if key in node_node_pairs:
                 node_node_pairs[key].append((gate, ii))
-                #index ii needed so that the position in partitioned_gates can 
-                #be ascertained later, during scheduling, to avoid illegal 
-                #commutation
+                # index ii needed so that the position in partitioned_gates can
+                # be ascertained later, during scheduling, to avoid illegal
+                # commutation
             elif (key[1], key[0]) in node_node_pairs:
                 node_node_pairs[(key[1], key[0])].append((gate, ii))
             else:
@@ -408,7 +450,7 @@ def find_pairs(partitioned_gates, pair_type):
     ----------
     partitioned_gates : list of tuples
         List of tuples with gate information including type of gate, qubit
-        indices acted on, node names acted on, and (for remote gates) a string 
+        indices acted on, node names acted on, and (for remote gates) a string
         indicating the scheme (here this should be some placeholder string
         as the scheme is not yet decided).
     pair_type : str
@@ -426,7 +468,7 @@ def find_pairs(partitioned_gates, pair_type):
         pairs = find_node_node_pairs(partitioned_gates)
     return pairs
 
-            
+
 def order_pairs(pairs):
     """
     Sorts dict of the remote gates associated with different qubit-node or
@@ -436,7 +478,7 @@ def order_pairs(pairs):
     ----------
     pairs : dict
         Sorts dict of the remote gates associated with different qubit-node or
-        node-node pairs 
+        node-node pairs
 
     Returns
     -------
@@ -445,14 +487,15 @@ def order_pairs(pairs):
         the least.
 
     """
-    return dict(sorted(pairs.items(), key=lambda items : len(items[1]),
-                       reverse=True))
+    return dict(sorted(pairs.items(), key=lambda items: len(items[1]), reverse=True))
+
 
 # =============================================================================
 # def something_btwn_gates(all_gates, gate1_info, gate2_info):
-#     if element1 
+#     if element1
 # =============================================================================
-    
+
+
 def get_qubit_id(gate):
     """
     Collecting info needed to uniquely ID the qubits of a gate within a
@@ -471,8 +514,8 @@ def get_qubit_id(gate):
         DESCRIPTION.
 
     """
-    #TO DO: convert this function to handle multi-qubit gate using the pattern
-    #of indices (would need to return a single tuple which can be unpacked)
+    # TO DO: convert this function to handle multi-qubit gate using the pattern
+    # of indices (would need to return a single tuple which can be unpacked)
     if len(gate) == 3:
         qubit_index0 = gate[1]
         qubit_index1 = None
@@ -484,29 +527,30 @@ def get_qubit_id(gate):
         qubit_index1 = gate[3]
         node_index0 = gate[2]
         node_index1 = gate[4]
-        qubit1 = (qubit_index1, node_index1) # fully defining 2nd qubit
+        qubit1 = (qubit_index1, node_index1)  # fully defining 2nd qubit
     qubit0 = (qubit_index0, node_index0)
     return qubit0, qubit1
+
 
 def shared_qubit(gate0, gate1):
     gate0qubit0, gate0qubit1 = get_qubit_id(gate0)
     gate1qubit0, gate1qubit1 = get_qubit_id(gate1)
     gate0shares_gate1qubit0 = (
-        (gate0qubit0 == gate1qubit0 or gate0qubit0 == gate1qubit1)
-        and None not in gate0qubit0)
+        gate0qubit0 == gate1qubit0 or gate0qubit0 == gate1qubit1
+    ) and None not in gate0qubit0
     gate0shares_gate1qubit1 = (
-        (gate0qubit1 == gate1qubit0 or gate0qubit1 == gate1qubit1)
-        and None not in gate0qubit1)
-    return (gate0shares_gate1qubit0 or 
-            gate0shares_gate1qubit1)
+        gate0qubit1 == gate1qubit0 or gate0qubit1 == gate1qubit1
+    ) and None not in gate0qubit1
+    return gate0shares_gate1qubit0 or gate0shares_gate1qubit1
+
 
 def find_consecutive_gate(partitioned_gates, gate, gate_position):
     """
-    
+
     Finds the next gate which has shared qubits with the specified `gate`.
-    
+
     Otherwise, the next gate in partitioned gates may be completely unrelated
-    to the gate of interest with no need to maintain their ordering. They 
+    to the gate of interest with no need to maintain their ordering. They
     may even occur on completely different nodes or pairs of nodes.
 
     Parameters
@@ -523,27 +567,27 @@ def find_consecutive_gate(partitioned_gates, gate, gate_position):
     nxt_gate : tuple
         The gate consecutive to `gate`.
     """
-    #TO DO: replace following with generator for memory efficiency to avoid
-    #storing whole sublist
-    unvisited_partitioned_gates = partitioned_gates[gate_position+1:]
+    # TO DO: replace following with generator for memory efficiency to avoid
+    # storing whole sublist
+    unvisited_partitioned_gates = partitioned_gates[gate_position + 1 :]
     nxt_gate = None
     for gate2check in unvisited_partitioned_gates:
-# =============================================================================
-#         print(f'gate of interest is {gate}')
-#         print(f'gate to check is {gate2check}')
-#         print(f'they are consecutive: {shared_qubit(gate, gate2check)}')
-# =============================================================================
+        # =============================================================================
+        #         print(f'gate of interest is {gate}')
+        #         print(f'gate to check is {gate2check}')
+        #         print(f'they are consecutive: {shared_qubit(gate, gate2check)}')
+        # =============================================================================
         if shared_qubit(gate, gate2check):
             nxt_gate = gate2check
-# =============================================================================
-#             print(f'consecutive gate is {gate2check}')
-# =============================================================================
+            # =============================================================================
+            #             print(f'consecutive gate is {gate2check}')
+            # =============================================================================
             break
     return nxt_gate
 
 
-#TO DO: think about whether the following function should be internal to 
-#aggregate_comms (in which case filtered_remote_gates would be qubit_node_pairs)
+# TO DO: think about whether the following function should be internal to
+# aggregate_comms (in which case filtered_remote_gates would be qubit_node_pairs)
 def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
     """
     Finds the consecutive gates in a filtered set of remote gates (eg, those
@@ -553,16 +597,16 @@ def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
     ----------
     partitioned_gates : list of tuples
         All gates in quantum circuit (partitioned into different nodes)
-    filtered_remote_gates : list of tuples of form 
+    filtered_remote_gates : list of tuples of form
                             (gate, postional index of gate within partitioned gates)
         The filtered list of remote gates and their positional indices wrt
         the overall list of partitioned gates.
-        
+
 
     Returns
     -------
     burst_comm_blocks : list of lists
-        The identified burst communication blocks as found in the first step of 
+        The identified burst communication blocks as found in the first step of
         the autocomm communication aggregation process (identifying blocks)
         without circuit restructuring.
 
@@ -575,26 +619,24 @@ def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
     for ii, nxt_remote_gateNindex in enumerate(unvisited_gates, start=1):
         nxt_filtered_gate = nxt_remote_gateNindex[0]
         nxt_filtered_gate_position = nxt_remote_gateNindex[1]
-        nxt_partitioned_gate = find_consecutive_gate(partitioned_gates,
-                                                     current_filtered_gate,
-                                                     current_filtered_gate_position)
+        nxt_partitioned_gate = find_consecutive_gate(
+            partitioned_gates, current_filtered_gate, current_filtered_gate_position
+        )
         if nxt_partitioned_gate == nxt_filtered_gate:
-        #if the remote gates from the filtered set ARE consecutive:
+            # if the remote gates from the filtered set ARE consecutive:
             burst_comm_blocks[-1].append(nxt_remote_gateNindex)
         else:
-        #if the remote gates from the filtered set are NOT consecutive:
+            # if the remote gates from the filtered set are NOT consecutive:
             burst_comm_blocks.append([nxt_remote_gateNindex])
         current_filtered_gate = nxt_filtered_gate
         current_filtered_gate_position = nxt_filtered_gate_position
-    #removing trailing empty sublist
+    # removing trailing empty sublist
     if not burst_comm_blocks[-1]:
-    #if final element empty:
+        # if final element empty:
         del burst_comm_blocks[-1]
     return burst_comm_blocks
-    #TO DO: figure out why this is not giving desired output
-            
-        
-    
+    # TO DO: figure out why this is not giving desired output
+
 
 # =============================================================================
 # def aggregate_comms(partitioned_gates):
@@ -612,6 +654,7 @@ def find_consecutive_remote_gates(partitioned_gates, filtered_remote_gates):
 # #TO DO (longer term): generalise aggregate_comms to work with node-node pairs as well
 # =============================================================================
 
+
 def _find_all_nodes(partitioned_gates):
     qpu_node_names = []
     for gate_tuple in partitioned_gates:
@@ -622,17 +665,18 @@ def _find_all_nodes(partitioned_gates):
     return qpu_node_names
 
 
-#compilers
-#---------
+# compilers
+# ---------
 
 
-def sort_greedily_by_node_and_time(partitioned_gates, 
-                                   new_time_slice4each_remote_gate=False):
+def sort_greedily_by_node_and_time(
+    partitioned_gates, new_time_slice4each_remote_gate=False
+):
     """
     Distributes the circuit between nodes and splits into explicit time-slices
-    (rows in output array). Initialisation of qubits must be specified as 
+    (rows in output array). Initialisation of qubits must be specified as
     an instruction in the partitioned_gates input.
-    
+
     Parameters
     ----------
     partitioned_gates:  list of tuples
@@ -653,9 +697,9 @@ def sort_greedily_by_node_and_time(partitioned_gates,
                                 just do a teleportation
                             gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                 The gate instruction for the target gate
-                            instruction_tuple : tuple 
+                            instruction_tuple : tuple
                                 Tuple of form (gate_instruction, op), where
-                                op is the operatution used to perform the 
+                                op is the operatution used to perform the
                                 gate. This form is useful if you want to give
                                 several gates the same
                                 `netsquid.components.qprocessor.PhysicalInstruction`
@@ -663,85 +707,90 @@ def sort_greedily_by_node_and_time(partitioned_gates,
                                 The qubit index
                             node_name: str
                             The name of the relevant node
-                            scheme: str, optional 
+                            scheme: str, optional
                                 Only needed for remote gates
     new_time_slice4each_remote_gate : bool, optional
         Whether to create a new time slice for all QPUs for every remote gates.
-        This is a simplistic way of avoiding scheduling conflicts when more 
+        This is a simplistic way of avoiding scheduling conflicts when more
         than 2 QPUs are used. The drawback is that the latency will be higher.
-    
+
     Notes
     -----
-    The scheduling here works less well for more than two QPUs and may lead to 
+    The scheduling here works less well for more than two QPUs and may lead to
     errors.
 
     Returns
     -------
-    dict 
-        Dictionary with term for each node which is an list of different 
+    dict
+        Dictionary with term for each node which is an list of different
         time slices (each time slice is a list within the list)
     """
     qpu_ops = QpuOps()
 
     for gate_tuple in partitioned_gates:
-        if len(gate_tuple) == 3 and gate_tuple[-1] == 'distribute_ebit':
+        if len(gate_tuple) == 3 and gate_tuple[-1] == "distribute_ebit":
             node0_name = gate_tuple[0]
             node1_name = gate_tuple[1]
-            if node0_name not in qpu_ops.ops: 
+            if node0_name not in qpu_ops.ops:
                 qpu_ops.add_empty_node_entry(node0_name)
-            if node1_name not in qpu_ops.ops: 
+            if node1_name not in qpu_ops.ops:
                 qpu_ops.add_empty_node_entry(node1_name)
-                
+
             qpu_ops.make_num_time_slices_match(node0_name, node1_name)
             qpu_ops.distribute_ebit(gate_tuple)
-        elif len(gate_tuple) == 3: #if single-qubit gate:
+        elif len(gate_tuple) == 3:  # if single-qubit gate:
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
             op = (gate_instr, qubit_index)
             qpu_ops.add_op(node_name, op)
-        elif len(gate_tuple) == 4: #if single-qubit_subroutine (gate with some 
-                                   #additional behaviour, eg measurement with
-                                   #result saved):
+        elif len(gate_tuple) == 4:  # if single-qubit_subroutine (gate with some
+            # additional behaviour, eg measurement with
+            # result saved):
             gate_instr = gate_tuple[0]
             qubit_index = gate_tuple[1]
             node_name = gate_tuple[2]
             subroutine_type = gate_tuple[3]
             op = (gate_instr, qubit_index, subroutine_type)
             qpu_ops.add_op(node_name, op)
-        elif len(gate_tuple) > 4: #if multi-qubit gate:
+        elif len(gate_tuple) > 4:  # if multi-qubit gate:
             qubit_index0 = gate_tuple[1]
             node0_name = gate_tuple[2]
             qubit_index1 = gate_tuple[3]
             node1_name = gate_tuple[4]
-            if node0_name == node1_name: #if local:
+            if node0_name == node1_name:  # if local:
                 gate_instr = gate_tuple[0]
                 node_name = node0_name
                 op = (gate_instr, qubit_index0, qubit_index1)
                 qpu_ops.add_op(node_name, op)
-            else: #if remote gate:
+            else:  # if remote gate:
                 scheme = gate_tuple[-1]
                 gate_instructions = gate_tuple[0]
-                if (isinstance(gate_instructions, 
-                               ns.components.instructions.IGate)
-                    or isinstance(gate_instructions, tuple)):
-                    #putting into correct form to use the comm-qubit index
-                    #as the control (defers exact index choice to 
-                    #InterpreterProtocol in
-                    #dqc_simulator.software.dqc_control.py):
+                if isinstance(
+                    gate_instructions, ns.components.instructions.IGate
+                ) or isinstance(gate_instructions, tuple):
+                    # putting into correct form to use the comm-qubit index
+                    # as the control (defers exact index choice to
+                    # InterpreterProtocol in
+                    # dqc_simulator.software.dqc_control.py):
                     gate_instructions = [(gate_instructions, -1, qubit_index1)]
-                if node0_name not in qpu_ops.ops: 
+                if node0_name not in qpu_ops.ops:
                     qpu_ops.add_empty_node_entry(node0_name)
-                if node1_name not in qpu_ops.ops: 
+                if node1_name not in qpu_ops.ops:
                     qpu_ops.add_empty_node_entry(node1_name)
-                    
+
                 qpu_ops.make_num_time_slices_match(node0_name, node1_name)
-                qpu_ops.apply_remote_gate(scheme, gate_instructions, 
-                                           qubit_index0, qubit_index1, 
-                                           node0_name, node1_name)
-                #Time slices are added in the above line as part of the QpuOps
-                #methods corresponding to specific remote gate schemes.
-                
+                qpu_ops.apply_remote_gate(
+                    scheme,
+                    gate_instructions,
+                    qubit_index0,
+                    qubit_index1,
+                    node0_name,
+                    node1_name,
+                )
+                # Time slices are added in the above line as part of the QpuOps
+                # methods corresponding to specific remote gate schemes.
+
                 if new_time_slice4each_remote_gate:
                     qpu_node_names = _find_all_nodes(partitioned_gates)
                     for node_name in qpu_node_names:
@@ -753,13 +802,13 @@ def sort_greedily_by_node_and_time(partitioned_gates,
 def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
     """
     Distributes the circuit between QPU nodes and splits into explicit time-slices
-    (rows in output array). Initialisation of qubits must be specified as 
-    an instruction in the partitioned_gates input. Unlike 
+    (rows in output array). Initialisation of qubits must be specified as
+    an instruction in the partitioned_gates input. Unlike
     `sort_greedily_by_node_and_time` with the default settings, this compiler
-    is designed to avoid scheduling conflicts when more than 2 QPUs are used. 
+    is designed to avoid scheduling conflicts when more than 2 QPUs are used.
     The drawback is that the latency will be higher because a new time slice is
     created every time a remote gate occurs.
-    
+
     Parameters
     ----------
     partitioned_gates:  list of tuples
@@ -780,9 +829,9 @@ def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
                                 just do a teleportation
                             gate_instruction : :class:`~netsquid.components.instructions.Instruction`
                                 The gate instruction for the target gate
-                            instruction_tuple : tuple 
+                            instruction_tuple : tuple
                                 Tuple of form (gate_instruction, op), where
-                                op is the operatution used to perform the 
+                                op is the operatution used to perform the
                                 gate. This form is useful if you want to give
                                 several gates the same
                                 `netsquid.components.qprocessor.PhysicalInstruction`
@@ -790,25 +839,25 @@ def sort_many_qpus_greedily_by_node_and_time(partitioned_gates):
                                 The qubit index
                             node_name: str
                             The name of the relevant node
-                            scheme: str, optional 
+                            scheme: str, optional
                                 Only needed for remote gates
 
     Returns
     -------
-    dict 
-        Dictionary with term for each node which is an list of different 
+    dict
+        Dictionary with term for each node which is an list of different
         time slices (each time slice is a list within the list)
     """
-    return sort_greedily_by_node_and_time(partitioned_gates,
-                                          new_time_slice4each_remote_gate=True)
-    #The second option is the point of this wrapper.
+    return sort_greedily_by_node_and_time(
+        partitioned_gates, new_time_slice4each_remote_gate=True
+    )
+    # The second option is the point of this wrapper.
 
 
-#I think rather than compiling dqc_circuit you need to pre-process once more 
-#and add initialisation in that stage if you want to use existing machinery
-#if not it needs updated to use instance of DqcCircuit
+# I think rather than compiling dqc_circuit you need to pre-process once more
+# and add initialisation in that stage if you want to use existing machinery
+# if not it needs updated to use instance of DqcCircuit
 
-#For communication fusion blocks then you should be inputting a block of 
-#different gates sandwhiched by remote gate primitives into 
-#HandleCommBlockForOneNodeProtocol
-
+# For communication fusion blocks then you should be inputting a block of
+# different gates sandwhiched by remote gate primitives into
+# HandleCommBlockForOneNodeProtocol
