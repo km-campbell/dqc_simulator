@@ -45,9 +45,8 @@ class Test_qasm2gate_tuples(unittest.TestCase):
         
     def test_on_ghz_circuit(self):
         # assuming that working directory is repo root
-        filepath = ('./src/dqc_simulator/software/tests/unit_tests/'
-                    'ghz_indep_qiskit_5.qasm')
-        include_path = './src/dqc_simulator/software/tests/unit_tests/'
+        filepath = ('ghz_indep_qiskit_5.qasm')
+        include_path = '.'
         scheme = 'cat'
         gate_tuples = qasm2gate_tuples(self.dqc, filepath, scheme, 
                                        include_path=include_path)
