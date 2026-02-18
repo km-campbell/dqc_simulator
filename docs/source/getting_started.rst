@@ -499,7 +499,7 @@ together to run a quantum experiment and take results for it: ::
 
    import netsquid as ns
    from netsquid.components import instructions as instr
-   from netsquid.qubits import QFormalism, ketstates as ks
+   from netsquid.qubits import QFormalism
    import numpy as np
 
    from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
