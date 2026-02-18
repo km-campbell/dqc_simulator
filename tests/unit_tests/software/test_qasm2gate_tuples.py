@@ -3,6 +3,7 @@ Tests for qasm2gate_tuples module
 """
 
 import itertools as it
+from pathlib import Path
 import unittest
 
 from netsquid.components import instructions as instr
@@ -12,6 +13,10 @@ from dqc_simulator.hardware.dqc_creation import DQC
 from dqc_simulator.hardware.quantum_processors import NoisyQPU
 from dqc_simulator.qlib.states import werner_state
 from dqc_simulator.software.qasm2gate_tuples import qasm2gate_tuples
+
+directory_path = ((Path(__file__).parents[2] / 'MQT_benchmarking_circuits/').as_posix()
+                               + '/') # path to benchmark circuits
+include_path = Path(__file__).parent.as_posix() # path to parent directory
 
 class Test_qasm2gate_tuples(unittest.TestCase):
     def setUp(self):
@@ -45,8 +50,7 @@ class Test_qasm2gate_tuples(unittest.TestCase):
         
     def test_on_ghz_circuit(self):
         # assuming that working directory is repo root
-        filepath = ('ghz_indep_qiskit_5.qasm')
-        include_path = '.'
+        filepath = directory_path + 'ghz_indep_qiskit_5.qasm'
         scheme = 'cat'
         gate_tuples = qasm2gate_tuples(self.dqc, filepath, scheme, 
                                        include_path=include_path)

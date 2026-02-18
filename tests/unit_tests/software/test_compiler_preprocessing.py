@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
-Created on Thu Oct 19 15:41:19 2023
-
-@author: kenny
+The following are arguably integration tests but are sufficiently fast and specific to single functions as 
+to be included with the unit tests.
 """
 
 from pathlib import Path
@@ -10,22 +8,22 @@ import unittest
 
 from dqc_simulator.software.compiler_preprocessing import ( 
                                 preprocess_qasm_to_compilable_bipartitioned)
-                                             
+
+directory_path = ((Path(__file__).parents[2] / 'MQT_benchmarking_circuits/').as_posix()
+                               + '/') # path to benchmark circuits
+include_path = Path(__file__).parent.as_posix() # path to parent directory                                         
 
 class Test_preprocess_qasm_to_compilable_bipartitioned(unittest.TestCase):
     """Testing using circuits from MQTBench.
     
-    Sense-making test checking that no errors arise."""
-    def setUp(self):
-        self.directory_path = (Path(__file__).parents[2] / 'MQT_benchmarking_circuits/')
+    Sense-making test checking that no errors arise."""        
         
     def _get_dqc_circuit(self, filename):
-        filepath = self.directory_path + filename
+        filepath = directory_path + filename
         dqc_circuit = preprocess_qasm_to_compilable_bipartitioned(
                                                         filepath, 
                                                         scheme='tp_safe',
-                                                        include_path='.')
-        print(dqc_circuit.ops)
+                                                        include_path=include_path)
         return dqc_circuit
         
     def test_with_ae_indep_qiskit_5(self):
