@@ -5,21 +5,19 @@ Created on Thu Oct 19 15:41:19 2023
 @author: kenny
 """
 
+from pathlib import Path
 import unittest
 
 from dqc_simulator.software.compiler_preprocessing import ( 
                                 preprocess_qasm_to_compilable_bipartitioned)
                                              
 
-#TO DO: have proper test rather than just printing
-
-
-
 class Test_preprocess_qasm_to_compilable_bipartitioned(unittest.TestCase):
-    """Testing using circuits from MQTBench"""
+    """Testing using circuits from MQTBench.
+    
+    Sense-making test checking that no errors arise."""
     def setUp(self):
-        self.directory_path = ('/home/kenny/coding_projects/dqc_simulation/' + 
-                          'MQT_benchmarking_circuits/scalable_5to10_qubits/')
+        self.directory_path = (Path(__file__).parents[2] / 'MQT_benchmarking_circuits/')
         
     def _get_dqc_circuit(self, filename):
         filepath = self.directory_path + filename

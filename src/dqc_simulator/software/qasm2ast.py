@@ -1530,10 +1530,8 @@ def qasm2ast(filepath, name='main',
     
     def _handle_error(err, erring_filepath):
         """Print out exception packet"""
-        print("Error: " + erring_filepath)
         x = err.errpacket()
-        print(x)
-        raise Exception("")
+        raise Exception("Error when parsing file" + erring_filepath + ". Error packet: ", x)
         
     qt = None
     try:

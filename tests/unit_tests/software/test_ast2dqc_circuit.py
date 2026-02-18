@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """
-Created on Wed Oct 11 11:24:31 2023
-
-@author: kenny
+The following are arguably integration tests but are sufficiently fast and specific to single functions as 
+to be included with the unit tests.
 """
 
+from pathlib import Path
 import unittest
 
 import numpy as np
@@ -21,10 +20,6 @@ from dqc_simulator.software.ast2dqc_circuit import (
                                                  #, ast2dqc_circuit
                                                  Ast2DqcCircuitTranslator)
 from dqc_simulator.qlib import gates
-
-
-
-        
 
 # =============================================================================
 # class TestNonTerminalInterpreter(unittest.TestCase):
@@ -228,12 +223,12 @@ class Test_ast2dqc_circuit(unittest.TestCase):
     """Testing using circuits from MQTBench. The following aren't currently
     proper tests, they just confirm that no errors are raised"""
     def setUp(self):
-        self.directory_path = ('/home/kenny/coding_projects/dqc_simulation/' + 
-                          'MQT_benchmarking_circuits/scalable_5to10_qubits/')
+        self.directory_path = ((Path(__file__).parents[2] / 'MQT_benchmarking_circuits/').as_posix()
+                               + '/')
         
     def _get_dqc_circuit(self, filename):
         filepath = self.directory_path + filename
-        ast = qasm2ast(filepath)
+        ast = qasm2ast(filepath, include_path=Path(__file__).parent.as_posix())
         dqc_circuit = Ast2DqcCircuitTranslator(ast).ast2dqc_circuit()
         return dqc_circuit
     
