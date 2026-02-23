@@ -35,30 +35,33 @@ Key features:
 * python 3.9
 * NetSquid 1.1.7. See [NetSquid](https://netsquid.org/).
 * NetSquid-PhysLayer 4.3.0. See [link](https://docs.netsquid.org/snippets/netsquid-physlayer/).
-
-The remaining requirements can be found on pypi and are in the requirements.txt file.
+* pydynaa>=1.0.2
 
 ### Installation instructions for users
 
-First, install NetSquid version 1.1.7 using the instructions on 
-[NetSquid](https://netsquid.org/). This will require creating a NetSquid 
-account.
+First, create a NetSquid account using the instructions on 
+[NetSquid](https://netsquid.org/). Much of the package's functionality 
+relies on NetSquid and so this is important to make full use of the package.
 
-Then install the requirements using the command 
-
-```
-pip install -r requirements.txt
-```
-
-Finally, the package itself can be installed.
-It is intended to make this package available on PyPi in the near future. 
-For now, please access directly from this repository using the command
+To make your NetSquid account credentials available during package installation, use the commands 
 
 ```
-pip install git+https://github.com/km-campbell/dqc_simulator.git
+export UV_INDEX_NETSQUID_USERNAME=<USERNAME>
+export UV_INDEX_NETSQUID_PASSWORD=<PASSWORD>
+```
+where `<USERNAME>` and `<PASSWORD>` are the username and password for your NetSquid account. You can also store your
+NetSquid authentication details using any other method of choice 
+compatible with the [uv package manager](https://docs.astral.sh/uv/).
+
+Once your NetSquid authentication credentials are made available, install `dqc_simulator` using the command
+
+```
+pip install dqc_simulator
 ```
 
-To edit the package or have access to the documentation use 
+### Installation instructions for developers
+
+To install the package from source use the command
 
 ```
 git clone https://github.com/km-campbell/dqc_simulator.git
@@ -78,14 +81,6 @@ make html
 
 A version of the documentation will then be available in the docs/build directory.
 Within that directory open index.html to access the documentation.
-
-### Known issues
-
-In addition, to anything listed in the issues section of the repo, the following issues exist.
-
-* Some tests are implemented within a separate private repository as they pertain to
-  specific experiments. Equivalent tests need to be added here.
-* The documentation is incomplete and some docstrings require updating.
 
 
 ## Acknowledgements
