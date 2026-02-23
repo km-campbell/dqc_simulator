@@ -1,6 +1,6 @@
 [project]
 name = "dqc-simulator"
-version = "0.2.0"
+version = "0.2.1"
 description = "An easy-to-use but flexible distributed quantum computing simulator."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -13,6 +13,7 @@ netsquid-physlayer = {index = "netsquid"}
 [[tool.uv.index]]
 name = "netsquid"
 url = "https://pypi.netsquid.org"
+explicit=true
 
 [build-system]
 requires = ["uv_build >= 0.10.0, <0.11.0"]
