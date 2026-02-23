@@ -1,0 +1,19 @@
+[project]
+name = "dqc-simulator"
+version = "0.2.0"
+description = "An easy-to-use but flexible distributed quantum computing simulator."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["netsquid==1.1.7", "netsquid-physlayer>=4.3.0", "pyparsing>=3.0.9", "pydynaa>=1.0.2"]
+
+[tool.uv.sources]
+netsquid = {index = "netsquid"}
+netsquid-physlayer = {index = "netsquid"}
+
+[[tool.uv.index]]
+name = "netsquid"
+url = "https://pypi.netsquid.org"
+
+[build-system]
+requires = ["uv_build >= 0.10.0, <0.11.0"]
+build-backend = "uv_build"
