@@ -20,14 +20,17 @@ Key features:
    quantum circuits.
 2. Automatic partitioning of monolithic (single-processor)
    quantum circuits
-   between quantum processing units (QPUs). Arbitrary
-   algorithms for doing this can be specified by the user
-   if desired, using the DQC circuit interface. Circuits
+   between quantum processing units (QPUs). 
+   * Arbitrary
+   algorithms for doing this can also be specified by the user
+   if desired, using the DQC circuit interface.
+   * Circuits
    can be specified as a list of tuples or as a .qasm
    file.
 3. Automatic management of remote gates and communication
    qubits.
-4. Automatic compilation using pre-made compilers. The user
+4. Automatic compilation using pre-made compilers. 
+   * The user
    can also easily specify their own.
 
 ### Requirements
@@ -35,28 +38,37 @@ Key features:
 * python 3.9
 * NetSquid 1.1.7. See [NetSquid](https://netsquid.org/).
 * NetSquid-PhysLayer 4.3.0. See [link](https://docs.netsquid.org/snippets/netsquid-physlayer/).
-* pydynaa>=1.0.2
+* pyparsing 3.0.9
 
 ### Installation instructions for users
 
-First, create a NetSquid account using the instructions on 
-[NetSquid](https://netsquid.org/). Much of the package's functionality 
-relies on NetSquid and so this is important to make full use of the package.
+Firstly, if you do not already have one, create a NetSquid account using the instructions [here](https://netsquid.org/). Much of the package's functionality 
+relies on NetSquid and so this is important to make full use of the package. However, you do not need to actually install NetSquid at this stage because it will be done automatically in the next step. At the end of the NetSquid account creation process you should have a username and 
+password. In what follows replace `<USERNAME>` and `<PASSWORD>` with the username and password for your
+Netsquid account.
 
-To make your NetSquid account credentials available during package installation, use the commands 
+With a NetSquid account created, `dqc_simulator` and all of its dependencies can be installed with the command:
+```
+pip install --extra-index-url https://<USERNAME>:<PASSWORD>@pypi.netsquid.org dqc_simulator
+```
+where `<USERNAME>` and `<PASSWORD>` are the username and password for your NetSquid account.
+
+Alternatively, if using [uv](https://docs.astral.sh/uv/), use the command
 
 ```
-export UV_INDEX_NETSQUID_USERNAME=<USERNAME>
-export UV_INDEX_NETSQUID_PASSWORD=<PASSWORD>
+uv add --index https://<USERNAME>:<PASSWORD>@pypi.netsquid.org dqc_simulator
 ```
-where `<USERNAME>` and `<PASSWORD>` are the username and password for your NetSquid account. You can also store your
-NetSquid authentication details using any other method of choice 
-compatible with the [uv package manager](https://docs.astral.sh/uv/).
 
-Once your NetSquid authentication credentials are made available, install `dqc_simulator` using the command
+If all of the dependencies have already been installed, then you can instead install `dqc_simulator` using the simpler command
 
 ```
 pip install dqc_simulator
+```
+because the `--extra-index-url` was only required by the dependencies. `dqc_simulator` in of itself does not require an account.
+
+For uv, the corresponding simpler command is
+```
+uv add dqc_simulator
 ```
 
 ### Installation instructions for developers
@@ -66,6 +78,24 @@ To install the package from source use the command
 ```
 git clone https://github.com/km-campbell/dqc_simulator.git
 ```
+
+Then install the [uv package manager](https://docs.astral.sh/uv/) onto your system.
+
+Finally, run 
+
+```
+uv sync --index https://<USERNAME>:<PASSWORD>@hw.ac.uk
+```
+where `<USERNAME>` and `<PASSWORD>` are the username and password for your NetSquid account from the root of the cloned repository. This will allow the build to proceed deterministically and allow you to run all code within the virtual environment included in the `dqc_simulator` repo. For more on this, see the uv [documentation](https://docs.astral.sh/uv/).
+
+Note that syncing is actually done, automatically whenever you run code using `uv run` and so it is possible to skip this step, but `uv sync` is a nice check that everything is working properly.
+
+To test that all is working as it should be, you can run:
+
+```
+uv run python -m unittest
+```
+
 
 ### Documentation
 
