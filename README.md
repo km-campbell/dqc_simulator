@@ -96,7 +96,6 @@ To test that all is working as it should be, you can run:
 uv run python -m unittest
 ```
 
-
 ### Documentation
 
 The documentation is available via readthedocs [here](https://km-campbell-dqc-simulator.readthedocs.io/en/latest/).
@@ -112,6 +111,13 @@ make html
 A version of the documentation will then be available in the docs/build directory.
 Within that directory open index.html to access the documentation.
 
+## Contributing
+
+Contributions to dqc_simulator are very welcome. In particular, I strongly encourage users to add any useful circuit identities or circuits, gates and states to the relevant modules of the qlib subpackage, if you think that things you have made for your own work would be useful to others. In this way, we can make DQC research easier and more accessible for everyone.   
+
+## Feature requests
+
+To request a feature please create an issue with and start the issue title with the words "Feature request". I am very open to adding features that others would find useful, when I get the chance. If you believe that you could add the feature yourself, I strongly encourage you to volunteer to do so in the feature request. I will try to get back to you promptly on if I think that the feature would fit in well with dqc_simulator.
 
 ## Acknowledgements
 
