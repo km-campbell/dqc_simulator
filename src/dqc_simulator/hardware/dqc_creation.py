@@ -477,7 +477,7 @@ class DQC(Network):
     name : str, optional
         The name of the DQC object. The default is "DQC".
     nodes : list of :class:`~netsquid.nodes.node.Node` instances or None, optional
-        Overwritten if qpu_class is specified. If this is None, `qpu_class` must
+        The QPU network nodes. Overwritten if qpu_class is specified. If this is None, `qpu_class` must
         not be None.
     node_separation : float or None, optional
         The distance between QPU nodes in km. Used when instantiating the default
