@@ -2,12 +2,13 @@
 Distributed quantum computing compilers.
 
 These compilers take a list of gate tuples, and output a time-sliced dictionary
-of what happens on each individual QPU.
+of what happens on each individual QPU. The resulting output can then be 
+interpreted by classes in the :mod: `~dqc_simulator.software.dqc_control` module.
 
 Notes
 -----
-Some compilation is also done in dqc_control.py. There common
-subroutines used by Cat-comm and TP-comm are broken down into individual gates
+In dqc_control.py, common subroutines used by Cat-comm and TP-comm are broken down 
+into individual gates
 and run on individual nodes. The role of these compilers is to break a
 monolithic quantum circuit into the lower level commands used in
 :mod: `~dqc_simulator.software.dqc_control`.
@@ -21,14 +22,6 @@ greedily compiled and executed by functions in
 :mod: `~dqc_simulator.software.dqc_control` but near-arbitrary compilation can
 be done by careful choice of the time slices.
 """
-
-# Note: some compilation is also done in dqc_control.py. There common
-# subroutines used by Cat-comm and TP-comm are broken down into individual gates
-# and run on individual nodes. The role of these compilers is to break a
-# monolithic quantum circuit into the lower level commands used in dqc_control.py.
-# That said, very general compilers can be defined here. The only limitation is
-# that they use only intraprocessor quantum gates and the interprocessor
-# subroutines involved in Cat and TP-comm
 
 from functools import partial
 

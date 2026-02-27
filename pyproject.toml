@@ -1,6 +1,6 @@
 [project]
 name = "dqc_simulator"
-version = "0.2.5"
+version = "0.2.6"
 description = "An easy-to-use but flexible distributed quantum computing simulator."
 readme = "README.md"
 requires-python = ">=3.9, <3.10"

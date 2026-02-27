@@ -397,7 +397,6 @@ as follows: ::
       from dqc_simulator.software.partitioner import ( 
          first_come_first_served_qubits_to_qpus as allocate,
          partition_gate_tuples as partition)
-      from dqc_simulator.software.qasm2ast import qasm2ast
 
       # import .qasm file and convert to gate_tuples for monolithic_circuit
       filepath = 'ghz_indep_qiskit_5.qasm' # assuming this is in current working directory
