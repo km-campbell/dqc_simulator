@@ -74,7 +74,7 @@ def setup_sim(dqc):
 
     # import .qasm file and convert to gate_tuples for monolithic_circuit
     filepath = (
-        "ghz_indep_qiskit_5.qasm"  # assuming this is in current working directory
+        "ghz_5qubits.qasm"  # assuming this is in current working directory
     )
     include_path = "."  # assuming qelib1.inc is in current working directory
     dqc_circuit = preprocess(filepath, include_path=include_path)
