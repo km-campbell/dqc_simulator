@@ -1,10 +1,9 @@
-import functools as ft
+"""This is similar to from_monolithic_circuit.py but has been adapted to collect data from multiple circuits"""
+
 import itertools as it
 
-
 import netsquid as ns
-from netsquid.qubits import QFormalism
-import numpy as np
+from netsquid.qubits import QFormalism, qubitapi as qapi
 
 from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
 from dqc_simulator.hardware.dqc_creation import DQC
@@ -68,16 +67,13 @@ def setup_hardware(
     return dqc
 
 
-def setup_sim(dqc):
+def setup_software(dqc, circuit_filepath):
     # Retrieving QPU nodes from DQC
     nodes = list(dqc.nodes.values())
 
     # import .qasm file and convert to gate_tuples for monolithic_circuit
-    filepath = (
-        "ghz_5qubits.qasm"  # assuming this is in current working directory
-    )
     include_path = "."  # assuming qelib1.inc is in current working directory
-    dqc_circuit = preprocess(filepath, include_path=include_path)
+    dqc_circuit = preprocess(circuit_filepath, include_path=include_path)
     monolithic_circuit = dqc_circuit.ops  # gate_tuples
 
     # Determine allocation of processing qubits to QPUs
@@ -96,23 +92,22 @@ def setup_sim(dqc):
     )
     # Setting up the software
     protocol = DQCMasterProtocol(partitioned_gate_tuples, nodes=dqc.nodes)
+    return protocol, nodes
 
+
+def setup_data_collection(protocol, nodes, desired_state):
     # Preparing data collection
     qubit_indices_2b_checked = [
         (nodes[0].qmemory.processing_qubit_positions[0:2], nodes[0]),
         (nodes[1].qmemory.processing_qubit_positions[0:2], nodes[1]),
         (nodes[2].qmemory.processing_qubit_positions[0], nodes[2]),
     ]
-    ket0 = np.array([[1], [0]])
-    ket1 = np.array([[0], [1]])
-    first_term = ft.reduce(np.kron, [ket0 for _ in range(5)])
-    second_term = ft.reduce(np.kron, [ket1 for _ in range(5)])
-    desired_state = np.sqrt(1 / 2) * (first_term + second_term)
     dc = get_data_collector(protocol, qubit_indices_2b_checked, desired_state)
-    return protocol, dc
+    return dc
 
 
 def take_experimental_shot(
+    circuit_filepath,
     F_werner=1,
     p_depolar_error_cnot=0,
     single_qubit_gate_error_prob=0,
@@ -133,25 +128,64 @@ def take_experimental_shot(
         meas_error_prob=meas_error_prob,
         memory_depolar_rate=memory_depolar_rate,
     )
-    protocol, dc = setup_sim(dqc)
+    protocol, nodes = setup_software(dqc, circuit_filepath)
 
     # Running the circuit
     protocol.start()
     ns.sim_run()
-    fidelity = dc.dataframe["fidelity"].iloc[0]
-    return fidelity
+
+    qubits_2b_checked = []
+    for node in nodes:
+        positions = node.qmemory.processing_qubit_positions
+        qubits = node.qmemory.pop(positions)
+        qubits_2b_checked += [qubit for qubit in qubits if qubit is not None]
+    return qubits_2b_checked
 
 
-print(take_experimental_shot())
+def run_experiment(
+    F_werner=1,
+    p_depolar_error_cnot=0,
+    single_qubit_gate_error_prob=0,
+    meas_error_prob=0,
+    memory_depolar_rate=0,
+):
+    # Choosing circuits to use (assuming the files are in the current working
+    # directory)
+    circuit_filepaths = [
+        "ghz_5qubits.qasm",  # GHZ generation circuit
+        "grover_5qubits.qasm",  # Grover algorithm
+        "qft_5qubits.qasm",  # QFT
+    ]
+
+    data = {}
+    for circuit in circuit_filepaths:
+        # Run ideal shot
+        ideal_qubits = take_experimental_shot(circuit)
+        actual_qubits = take_experimental_shot(
+            circuit,
+            F_werner=F_werner,
+            p_depolar_error_cnot=p_depolar_error_cnot,
+            single_qubit_gate_error_prob=single_qubit_gate_error_prob,
+            meas_error_prob=meas_error_prob,
+            memory_depolar_rate=memory_depolar_rate,
+        )
+        desired_state = qapi.reduced_dm(ideal_qubits)
+        fidelity = qapi.fidelity(actual_qubits, desired_state, squared=True)
+        data[circuit] = fidelity
+    return data
+
+
 print(
-    take_experimental_shot(
-        F_werner=0.9,
+    run_experiment(
+        F_werner=0.99,
         p_depolar_error_cnot=1e-03,
         single_qubit_gate_error_prob=2e-05,
         meas_error_prob=3e-03,
         memory_depolar_rate=0.055,
     )
 )
+
 # Expected result:
-# 1.0000000000000002 # note slightly greater than 1 due to floating point error
-# 0.7928258818055854
+# {'ghz_5qubits.qasm': 0.9570522876374276, 
+# 'grover_5qubits.qasm': 0.1071574284590638, 
+# 'qft_5qubits.qasm': 0.6470482939691747}
