@@ -9,6 +9,9 @@ from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnecti
 from dqc_simulator.hardware.dqc_creation import DQC
 from dqc_simulator.hardware.quantum_processors import NoisyQPU
 from dqc_simulator.qlib.states import werner_state
+from dqc_simulator.software.compilers import (
+    sort_many_qpus_greedily_by_node_and_time as default_compiler,
+)
 from dqc_simulator.software.compiler_preprocessing import (
     preprocess_qasm_to_compilable_monolithic as preprocess,
 )
@@ -91,7 +94,9 @@ def setup_software(dqc, circuit_filepath):
         proc_qubit_allocation4each_qpu,
     )
     # Setting up the software
-    protocol = DQCMasterProtocol(partitioned_gate_tuples, nodes=dqc.nodes)
+    protocol = DQCMasterProtocol(
+        partitioned_gate_tuples, nodes=dqc.nodes, compiler_func=default_compiler
+    )
     return protocol, nodes
 
 
@@ -186,6 +191,6 @@ print(
 )
 
 # Expected result:
-# {'ghz_5qubits.qasm': 0.9570522876374276, 
-# 'grover_5qubits.qasm': 0.1071574284590638, 
+# {'ghz_5qubits.qasm': 0.9570522876374276,
+# 'grover_5qubits.qasm': 0.1071574284590638,
 # 'qft_5qubits.qasm': 0.6470482939691747}
