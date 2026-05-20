@@ -1,13 +1,9 @@
 """This is similar to from_monolithic_circuit.py but has been adapted to collect data from multiple circuits"""
 
-import functools as ft
 import itertools as it
-
 
 import netsquid as ns
 from netsquid.qubits import QFormalism, qubitapi as qapi
-import numpy as np
-import pandas as pd
 
 from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
 from dqc_simulator.hardware.dqc_creation import DQC
@@ -153,11 +149,15 @@ def run_experiment(
     meas_error_prob=0,
     memory_depolar_rate=0,
 ):
-    # Choosing circuits to use
+    # Choosing circuits to use (assuming the files are in the current working
+    # directory)
     circuit_filepaths = [
-        "ghz_indep_qiskit_5.qasm"  # assuming this is in current working directory
+        "ghz_5qubits.qasm",  # GHZ generation circuit
+        "grover_5qubits.qasm",  # Grover algorithm
+        "qft_5qubits.qasm",  # QFT
     ]
 
+    data = {}
     for circuit in circuit_filepaths:
         # Run ideal shot
         ideal_qubits = take_experimental_shot(circuit)
@@ -171,28 +171,21 @@ def run_experiment(
         )
         desired_state = qapi.reduced_dm(ideal_qubits)
         fidelity = qapi.fidelity(actual_qubits, desired_state, squared=True)
-    
-    
+        data[circuit] = fidelity
+    return data
 
 
-run_experiment(
-    F_werner=0.9,
-    p_depolar_error_cnot=1e-03,
-    single_qubit_gate_error_prob=2e-05,
-    meas_error_prob=3e-03,
-    memory_depolar_rate=0.055,
+print(
+    run_experiment(
+        F_werner=0.99,
+        p_depolar_error_cnot=1e-03,
+        single_qubit_gate_error_prob=2e-05,
+        meas_error_prob=3e-03,
+        memory_depolar_rate=0.055,
+    )
 )
 
-# print(take_experimental_shot())
-# print(
-#     take_experimental_shot(
-        # F_werner=0.9,
-        # p_depolar_error_cnot=1e-03,
-        # single_qubit_gate_error_prob=2e-05,
-        # meas_error_prob=3e-03,
-        # memory_depolar_rate=0.055,
-#     )
-# )
 # Expected result:
-# 1.0000000000000002 # note slightly greater than 1 due to floating point error
-# 0.7928258818055854
+# {'ghz_5qubits.qasm': 0.9570522876374276, 
+# 'grover_5qubits.qasm': 0.1071574284590638, 
+# 'qft_5qubits.qasm': 0.6470482939691747}
