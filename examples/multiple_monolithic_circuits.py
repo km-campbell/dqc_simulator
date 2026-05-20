@@ -20,7 +20,6 @@ from dqc_simulator.software.partitioner import (
     first_come_first_served_qubits_to_qpus as allocate,
     partition_gate_tuples as partition,
 )
-from dqc_simulator.util.helper import get_data_collector
 
 
 def setup_hardware(
@@ -98,17 +97,6 @@ def setup_software(dqc, circuit_filepath):
         partitioned_gate_tuples, nodes=dqc.nodes, compiler_func=default_compiler
     )
     return protocol, nodes
-
-
-def setup_data_collection(protocol, nodes, desired_state):
-    # Preparing data collection
-    qubit_indices_2b_checked = [
-        (nodes[0].qmemory.processing_qubit_positions[0:2], nodes[0]),
-        (nodes[1].qmemory.processing_qubit_positions[0:2], nodes[1]),
-        (nodes[2].qmemory.processing_qubit_positions[0], nodes[2]),
-    ]
-    dc = get_data_collector(protocol, qubit_indices_2b_checked, desired_state)
-    return dc
 
 
 def take_experimental_shot(
