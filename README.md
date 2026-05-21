@@ -96,7 +96,6 @@ To test that all is working as it should be, you can run:
 uv run python -m unittest
 ```
 
-
 ### Documentation
 
 The documentation is available via readthedocs [here](https://km-campbell-dqc-simulator.readthedocs.io/en/latest/).
@@ -112,11 +111,16 @@ make html
 A version of the documentation will then be available in the docs/build directory.
 Within that directory open index.html to access the documentation.
 
+## Contributing
+
+Contributions to dqc_simulator are very welcome. In particular, I strongly encourage users to add any useful circuit identities or circuits, gates and states to the relevant modules of the qlib subpackage, if you think that things you have made for your own work would be useful to others. In this way, we can make DQC research easier and more accessible for everyone.   
+
+## Feature requests
+
+To request a feature please create an issue with and start the issue title with the words "Feature request". I am very open to adding features that others would find useful, when I get the chance. If you believe that you could add the feature yourself, I strongly encourage you to volunteer to do so in the feature request. I will try to get back to you promptly on if I think that the feature would fit in well with dqc_simulator.
 
 ## Acknowledgements
 
-I acknowledge the use of modified code from nuqasm2 in the qasm2ast module 
-subject to the Apache 2.0 license included above under the name
-LICENSE4qasm2ast_base_code. It is explicitly stated in any modules where modified nuqasm2 code is used.
+I acknowledge the use of modified code from nuqasm2 in the qasm2ast module subject to the Apache 2.0 license included above under the name LICENSE4qasm2ast_base_code. It is explicitly stated in any modules where modified nuqasm2 code is used. In my `examples` file, which contains some examples of how dqc_simulator can be used, I acknowledge the use of the .qasm and .inc files from the source code for MQT bench (https://github.com/munich-quantum-toolkit/bench.git). All .qasm and .inc files are sourced from there. More details about MQT bench can be found in the paper: "N Questslich, L Burgholzer and R Wille, MQT Bench: benchmarking software and design automation tools for quantum computing, Quantum, 7, 1062 (2023)".
 
 In my `examples` file, which contains some examples of how dqc_simulator can be used, I acknowledge the use of the `ghz_indep_qiskit_5.qasm` and `qelib1.inc` files from the source code for MQT bench (https://github.com/munich-quantum-toolkit/bench.git). More details about MQT bench can be found in the paper: "N Questslich, L Burgholzer and R Wille, MQT Bench: benchmarking software and design automation tools for quantum computing, Quantum, 7, 1062 (2023)".
