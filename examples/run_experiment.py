@@ -35,6 +35,7 @@ def take_experimental_shot(
     protocol.start()
     ns.sim_run()
 
+    # Identifying all initialised processing qubits
     qubits_2b_checked = []
     for node in nodes:
         positions = node.qmemory.processing_qubit_positions
