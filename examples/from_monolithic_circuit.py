@@ -77,8 +77,8 @@ def setup_sim(dqc):
         "ghz_5qubits.qasm"  # assuming this is in current working directory
     )
     include_path = "."  # assuming qelib1.inc is in current working directory
-    dqc_circuit = preprocess(filepath, include_path=include_path)
-    monolithic_circuit = dqc_circuit.ops  # gate_tuples
+    monolithic_circuit = preprocess(filepath, include_path=include_path)
+    monolithic_circuit = monolithic_circuit.ops  # gate_tuples
 
     # Determine allocation of processing qubits to QPUs
     old_to_new_lookup, proc_qubit_allocation4each_qpu = allocate(

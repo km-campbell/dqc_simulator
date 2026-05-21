@@ -75,8 +75,8 @@ def setup_software(dqc, circuit_filepath):
 
     # import .qasm file and convert to gate_tuples for monolithic_circuit
     include_path = "."  # assuming qelib1.inc is in current working directory
-    dqc_circuit = preprocess(circuit_filepath, include_path=include_path)
-    monolithic_circuit = dqc_circuit.ops  # gate_tuples
+    monolithic_circuit = preprocess(circuit_filepath, include_path=include_path)
+    monolithic_circuit = monolithic_circuit.ops  # gate_tuples
 
     # Determine allocation of processing qubits to QPUs
     old_to_new_lookup, proc_qubit_allocation4each_qpu = allocate(
