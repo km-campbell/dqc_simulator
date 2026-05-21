@@ -5,6 +5,7 @@ from dqc_simulator.hardware.dqc_creation import DQC
 from dqc_simulator.hardware.quantum_processors import NoisyQPU
 from dqc_simulator.qlib.states import werner_state
 
+
 def setup_hardware(
     F_werner=1,
     p_depolar_error_cnot=0,
@@ -38,7 +39,7 @@ def setup_hardware(
 
     # Setting up the hardware
     num_qpus = 3
-    quantum_topology = [(0, 1)]
+    quantum_topology = list(it.combinations(range(3), 2))
     classical_topology = list(it.combinations(range(3), 2))
     dqc = DQC(
         entangling_connection_class,

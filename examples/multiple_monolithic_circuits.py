@@ -69,7 +69,7 @@ def setup_hardware(
     return dqc
 
 
-def setup_software(dqc, circuit_filepath):
+def setup_sim(dqc, circuit_filepath):
     # Retrieving QPU nodes from DQC
     nodes = list(dqc.nodes.values())
 
@@ -121,7 +121,7 @@ def take_experimental_shot(
         meas_error_prob=meas_error_prob,
         memory_depolar_rate=memory_depolar_rate,
     )
-    protocol, nodes = setup_software(dqc, circuit_filepath)
+    protocol, nodes = setup_sim(dqc, circuit_filepath)
 
     # Running the circuit
     protocol.start()

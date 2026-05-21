@@ -1,34 +1,41 @@
-from netsquid.components import instructions as instr
-import numpy as np
-
+from dqc_simulator.software.compilers import (
+    sort_many_qpus_greedily_by_node_and_time as default_compiler,
+)
+from dqc_simulator.software.compiler_preprocessing import (
+    preprocess_qasm_to_compilable_monolithic as preprocess,
+)
 from dqc_simulator.software.dqc_control import DQCMasterProtocol
-from dqc_simulator.util.helper import get_data_collector
+from dqc_simulator.software.partitioner import (
+    first_come_first_served_qubits_to_qpus as allocate,
+    partition_gate_tuples as partition,
+)
 
-def setup_sim(dqc):
+
+def setup_sim(dqc, circuit_filepath):
     # Retrieving QPU nodes from DQC
-    node_0 = dqc.get_node("node_0")
-    node_1 = dqc.get_node("node_1")
-    node_2 = dqc.get_node("node_2")
+    nodes = list(dqc.nodes.values())
 
-    # Identifying the processing qubits that we wish to initialise
-    qubits0 = node_0.qmemory.processing_qubit_positions[0:3]
-    qubits1 = node_1.qmemory.processing_qubit_positions[0:3]
-    qubits2 = node_2.qmemory.processing_qubit_positions[0:3]
+    # import .qasm file and convert to gate_tuples for monolithic_circuit
+    include_path = "."  # assuming qelib1.inc is in current working directory
+    monolithic_circuit = preprocess(circuit_filepath, include_path=include_path)
+    monolithic_circuit = monolithic_circuit.ops  # gate_tuples
 
-    # Defining the gates
-    gate_tuples = [
-        (instr.INSTR_INIT, qubits0, node_0.name),
-        (instr.INSTR_INIT, qubits1, node_1.name),
-        (instr.INSTR_INIT, qubits2, node_2.name),
-        (instr.INSTR_H, qubits0[0], node_0.name),
-        (instr.INSTR_CNOT, qubits0[0], node_0.name, qubits1[0], node_1.name, "cat"),
-    ]
+    # Determine allocation of processing qubits to QPUs
+    old_to_new_lookup, proc_qubit_allocation4each_qpu = allocate(
+        monolithic_circuit, list(dqc.nodes.values())
+    )
 
+    # Partition according to the previously defined qubit allocation
+    scheme = "cat"  # the remote gate scheme to use
+    partitioned_gate_tuples = partition(
+        monolithic_circuit,
+        dqc,  # defined earlier in tutorial
+        scheme,
+        old_to_new_lookup,
+        proc_qubit_allocation4each_qpu,
+    )
     # Setting up the software
-    protocol = DQCMasterProtocol(gate_tuples, nodes=dqc.nodes)
-
-    # Preparing data collection
-    qubit_indices_2b_checked = [(qubits0[0], node_0), (qubits1[0], node_1)]
-    desired_state = np.sqrt(1 / 2) * np.array([[1], [0], [0], [1]])
-    dc = get_data_collector(protocol, qubit_indices_2b_checked, desired_state)
-    return protocol, dc
+    protocol = DQCMasterProtocol(
+        partitioned_gate_tuples, nodes=dqc.nodes, compiler_func=default_compiler
+    )
+    return protocol, nodes
