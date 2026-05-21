@@ -69,14 +69,14 @@ def setup_hardware(
     return dqc
 
 
-def setup_software(dqc, circuit_filepath):
+def setup_sim(dqc, circuit_filepath):
     # Retrieving QPU nodes from DQC
     nodes = list(dqc.nodes.values())
 
     # import .qasm file and convert to gate_tuples for monolithic_circuit
     include_path = "."  # assuming qelib1.inc is in current working directory
-    dqc_circuit = preprocess(circuit_filepath, include_path=include_path)
-    monolithic_circuit = dqc_circuit.ops  # gate_tuples
+    monolithic_circuit = preprocess(circuit_filepath, include_path=include_path)
+    monolithic_circuit = monolithic_circuit.ops  # gate_tuples
 
     # Determine allocation of processing qubits to QPUs
     old_to_new_lookup, proc_qubit_allocation4each_qpu = allocate(
@@ -121,7 +121,7 @@ def take_experimental_shot(
         meas_error_prob=meas_error_prob,
         memory_depolar_rate=memory_depolar_rate,
     )
-    protocol, nodes = setup_software(dqc, circuit_filepath)
+    protocol, nodes = setup_sim(dqc, circuit_filepath)
 
     # Running the circuit
     protocol.start()

@@ -1,3 +1,7 @@
+"""
+A useful template for running a full simulation.
+"""
+
 import itertools as it
 
 import netsquid as ns
