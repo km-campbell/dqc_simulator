@@ -1,3 +1,5 @@
+"""The experimental setup for multiple_monolithic_circuits.py"""
+
 import netsquid as ns
 from netsquid.qubits import QFormalism, qubitapi as qapi
 

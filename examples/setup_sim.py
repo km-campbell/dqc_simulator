@@ -1,3 +1,5 @@
+"""The software and sim setup parts from multiple_monolithic_circuits.py"""
+
 from dqc_simulator.software.compilers import (
     sort_many_qpus_greedily_by_node_and_time as default_compiler,
 )

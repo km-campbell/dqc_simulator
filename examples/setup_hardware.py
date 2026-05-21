@@ -1,3 +1,5 @@
+"""The hardware parts from multiple_monolithic_circuits.py"""
+
 import itertools as it
 
 from dqc_simulator.hardware.connections import BlackBoxEntanglingQsourceConnection
