@@ -121,7 +121,5 @@ To request a feature please create an issue with and start the issue title with 
 
 ## Acknowledgements
 
-I acknowledge the use of modified code from nuqasm2 in the qasm2ast module 
-subject to the Apache 2.0 license included above under the name
-LICENSE4qasm2ast_base_code. It is explicitly stated in any modules where modified nuqasm2 code is used.
+I acknowledge the use of modified code from nuqasm2 in the qasm2ast module subject to the Apache 2.0 license included above under the name LICENSE4qasm2ast_base_code. It is explicitly stated in any modules where modified nuqasm2 code is used. In my `examples` file, which contains some examples of how dqc_simulator can be used, I acknowledge the use of the .qasm and .inc files from the source code for MQT bench (https://github.com/munich-quantum-toolkit/bench.git). All .qasm and .inc files are sourced from there. More details about MQT bench can be found in the paper: "N Questslich, L Burgholzer and R Wille, MQT Bench: benchmarking software and design automation tools for quantum computing, Quantum, 7, 1062 (2023)".
 
