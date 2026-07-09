@@ -15,7 +15,11 @@ simulator and also aid development.
 # the process of working with the simulator.
 
 from enum import Enum
+import functools as ft
 import inspect
+from multiprocessing import Process, Queue
+import sys
+import traceback
 
 import pydynaa
 from netsquid.qubits.dmtools import DenseDMRepr
@@ -261,3 +265,52 @@ def get_data_collector_for_mid_sim_instr_output():
         [pydynaa.EventExpression(event_type=QDCSignals.RESULT_PRODUCED.value)]
     )
     return dc
+
+
+def processify(func):
+    '''
+    Decorator to spawn a new process every time a function is called. Full credit for this 
+    incredibly nice piece of code goes to [schlamar](https://gist.github.com/schlamar/2311116); 
+    for a nice description see [here](https://ys-l.github.io/posts/2015/10/03/processifying-bulky-functions-in-python).
+
+        def test_processify():
+
+            @skywalker.processify
+            def tricky():
+                return os.getpid()
+
+            print(os.getpid(), tricky(), tricky())
+    '''
+
+    def process_func(q, *args, **kwargs):
+        try:
+            ret = func(*args, **kwargs)
+        except Exception:
+            ex_type, ex_value, tb = sys.exc_info()
+            error = ex_type, ex_value, ''.join(traceback.format_tb(tb))
+            ret = None
+        else:
+            error = None
+
+        q.put((ret, error))
+
+    # register original function with different name
+    # in sys.modules so it is pickable
+    process_func.__name__ = func.__name__ + 'processify_func'
+    setattr(sys.modules[__name__], process_func.__name__, process_func)
+
+    @ft.wraps(func)
+    def wrapper(*args, **kwargs):
+        q = Queue()
+        p = Process(target=process_func, args=[q] + list(args), kwargs=kwargs)
+        p.start()
+        ret, error = q.get()
+        p.join()
+
+        if error:
+            ex_type, ex_value, tb_str = error
+            message = '%s (in subprocess)\n%s' % (repr(ex_value), tb_str)
+            raise ex_type(message)
+
+        return ret
+    return wrapper
