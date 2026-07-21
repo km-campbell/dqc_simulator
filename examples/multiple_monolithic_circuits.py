@@ -20,6 +20,7 @@ from dqc_simulator.software.partitioner import (
     first_come_first_served_qubits_to_qpus as allocate,
     partition_gate_tuples as partition,
 )
+from dqc_simulator.util.helper import processify
 
 
 def setup_hardware(
@@ -134,6 +135,29 @@ def take_experimental_shot(
         qubits_2b_checked += [qubit for qubit in qubits if qubit is not None]
     return qubits_2b_checked
 
+@processify
+def get_fidelity(
+                 circuit, 
+                 F_werner,
+                 p_depolar_error_cnot,
+                 single_qubit_gate_error_prob,
+                 meas_error_prob,
+                 memory_depolar_rate):
+    # Run ideal shot
+    ideal_qubits = take_experimental_shot(circuit)
+    actual_qubits = take_experimental_shot(
+        circuit,
+        F_werner=F_werner,
+        p_depolar_error_cnot=p_depolar_error_cnot,
+        single_qubit_gate_error_prob=single_qubit_gate_error_prob,
+        meas_error_prob=meas_error_prob,
+        memory_depolar_rate=memory_depolar_rate,
+    )
+    desired_state = qapi.reduced_dm(ideal_qubits)
+    fidelity = qapi.fidelity(actual_qubits, desired_state, squared=True)
+    return fidelity
+
+
 
 def run_experiment(
     F_werner=1,
@@ -152,18 +176,14 @@ def run_experiment(
 
     data = {}
     for circuit in circuit_filepaths:
-        # Run ideal shot
-        ideal_qubits = take_experimental_shot(circuit)
-        actual_qubits = take_experimental_shot(
+        fidelity = get_fidelity(
             circuit,
             F_werner=F_werner,
             p_depolar_error_cnot=p_depolar_error_cnot,
             single_qubit_gate_error_prob=single_qubit_gate_error_prob,
             meas_error_prob=meas_error_prob,
-            memory_depolar_rate=memory_depolar_rate,
+            memory_depolar_rate=memory_depolar_rate
         )
-        desired_state = qapi.reduced_dm(ideal_qubits)
-        fidelity = qapi.fidelity(actual_qubits, desired_state, squared=True)
         data[circuit] = fidelity
     return data
 
@@ -179,6 +199,8 @@ print(
 )
 
 # Expected result:
-# {'ghz_5qubits.qasm': 0.9570522876374276,
-# 'grover_5qubits.qasm': 0.1071574284590638,
-# 'qft_5qubits.qasm': 0.6470482939691747}
+# {
+# 'ghz_5qubits.qasm': 0.9570557899960964,
+# 'grover_5qubits.qasm': 0.10715888008746577, 
+# 'qft_5qubits.qasm': 0.647120140087253
+# }

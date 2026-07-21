@@ -59,17 +59,7 @@ Alternatively, if using [uv](https://docs.astral.sh/uv/), use the command
 uv add --index https://<USERNAME>:<PASSWORD>@pypi.netsquid.org dqc_simulator
 ```
 
-If all of the dependencies have already been installed, then you can instead install `dqc_simulator` using the simpler command
-
-```
-pip install dqc_simulator
-```
-because the `--extra-index-url` was only required by the dependencies. `dqc_simulator` in of itself does not require an account.
-
-For uv, the corresponding simpler command is
-```
-uv add dqc_simulator
-```
+Note that the index is needed to install the NetSquid requirement. For uv this it will be necessary to include the index every time that the virtual environment is updated. So, for example when running `uv add` or the first `uv run` after adding a new dependency with `uv add`, even if that dependency is not needed for the package being installed.
 
 ### Installation instructions for developers
 
@@ -124,3 +114,5 @@ To request a feature please create an issue with and start the issue title with 
 I acknowledge the use of modified code from nuqasm2 in the qasm2ast module subject to the Apache 2.0 license included above under the name LICENSE4qasm2ast_base_code. It is explicitly stated in any modules where modified nuqasm2 code is used. In my `examples` file, which contains some examples of how dqc_simulator can be used, I acknowledge the use of the .qasm and .inc files from the source code for MQT bench (https://github.com/munich-quantum-toolkit/bench.git). All .qasm and .inc files are sourced from there. More details about MQT bench can be found in the paper: "N Questslich, L Burgholzer and R Wille, MQT Bench: benchmarking software and design automation tools for quantum computing, Quantum, 7, 1062 (2023)".
 
 In my `examples` file, which contains some examples of how dqc_simulator can be used, I acknowledge the use of the `ghz_indep_qiskit_5.qasm` and `qelib1.inc` files from the source code for MQT bench (https://github.com/munich-quantum-toolkit/bench.git). More details about MQT bench can be found in the paper: "N Questslich, L Burgholzer and R Wille, MQT Bench: benchmarking software and design automation tools for quantum computing, Quantum, 7, 1062 (2023)".
+
+I also acknowledge the use of the processify function, which was created by [schlamar](https://gist.github.com/schlamar/2311116) and appears with minor modifications to the error handling in my dqc_simulator.util.helper module. The function is intended to be used as a workaround for a memory leak in NetSquid itself. The leak has been reported to the NetSquid developers but as NetSquid is closed source, I am unable to fix the leak myself. More info on processify is available here [here](https://ys-l.github.io/posts/2015/10/03/processifying-bulky-functions-in-python). The version of processify I used was obtained from the skywalker module by [dgerosa](https://github.com/dgerosa/skywalker.git) with DOI https://zenodo.org/records/15511604. 
