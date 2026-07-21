@@ -275,7 +275,7 @@ def processify(func):
 
         def test_processify():
 
-            @skywalker.processify
+            @processify
             def tricky():
                 return os.getpid()
 
