@@ -35,8 +35,8 @@ Key features:
 
 ### Requirements
 
-* python 3.9
-* NetSquid 1.1.7. See [NetSquid](https://netsquid.org/).
+* python 3.10
+* NetSquid 1.1.8. See [NetSquid](https://netsquid.org/).
 * NetSquid-PhysLayer 4.3.0. See [link](https://docs.netsquid.org/snippets/netsquid-physlayer/).
 * pyparsing 3.0.9
 
